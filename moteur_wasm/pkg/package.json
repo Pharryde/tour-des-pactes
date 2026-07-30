@@ -1,0 +1,15 @@
+{
+  "name": "moteur_wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "moteur_wasm_bg.wasm",
+    "moteur_wasm.js",
+    "moteur_wasm.d.ts"
+  ],
+  "main": "moteur_wasm.js",
+  "types": "moteur_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
