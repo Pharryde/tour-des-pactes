@@ -6,7 +6,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { Hub } from './components/Hub';
 import { Inventaire } from './components/Inventaire';
 import { CombatArene } from './components/CombatArene';
-import { Fin } from './components/Fin';
+import { Fin } from './components/fin';
 import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
 import './App.css';

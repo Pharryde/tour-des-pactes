@@ -14,6 +14,7 @@ export interface Entite {
     paliersEsquive: number[];
     actionsPossibles: ActionType[];
     actionsCachees?: boolean;
+    chanceCombo?: number;
 
     // --- PROPRIÉTÉS DES PACTES ---
     actionFinTourDoublee?: boolean;
