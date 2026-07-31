@@ -14,18 +14,19 @@ export interface Entite {
     paliersEsquive: number[];
     actionsPossibles: ActionType[];
     actionsCachees?: boolean;
-    chanceCombo?: number;
 
     // --- PROPRIÉTÉS DES PACTES ---
     actionFinTourDoublee?: boolean;
     actionTroisiemeTriplee?: boolean;
-    comboMultiplicateur?: number; // CORRIGÉ : Aligné sur la variable Rust
+    comboMultiplicateur?: number;
     degatsPrecisDoubles?: boolean;
     bloqueEsquiveOpposant?: boolean;
     degatsArmureRestanteFinTour?: boolean;
+    pacteSoinVieII?: boolean; 
 
     // --- PROPRIÉTÉS DES BOSS ---
     regenArmureTour?: number;
+    chanceCombo?: number;
     regenPvChaqueXTours?: number;
     regenPvPourcentage?: number;
     pertePvChaqueXTours?: number;

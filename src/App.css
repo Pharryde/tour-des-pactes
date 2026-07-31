@@ -182,3 +182,98 @@
     border-right-color: var(--border);
   }
 }
+
+/* --- RESPONSIVE COMBAT ARENE --- */
+
+/* 1. Sur Bureau : Entête fluide, boutons système au centre de taille normale */
+.combat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 15px;
+}
+
+.combat-header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.combat-header-pactes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    flex: 1; 
+}
+
+.arene {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+/* Boutons d'annulation et fin de tour centrés et de taille propre sur PC */
+.controles-systeme {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+    justify-content: center;
+}
+
+/* 2. Sur Mobile/Tablette : On réorganise tout selon ton croquis */
+@media (max-width: 768px) {
+    /* Héros et Monstre côte à côte */
+    .arene {
+        flex-direction: row !important;
+        gap: 10px;
+    }
+    
+    .arene .entite {
+        flex: 1;
+        width: 50%;
+        padding: 6px;
+    }
+
+    /* Réduction des textes pour que le côte à côte fonctionne */
+    .arene .entite h2 {
+        font-size: 1rem;
+        margin-bottom: 5px;
+        text-align: center;
+    }
+    .arene .entite .stats, 
+    .arene .entite .stats-base, 
+    .arene .entite .combo {
+        font-size: 0.75rem; 
+        line-height: 1.4;
+    }
+
+    /* Actions du monstre plus petites */
+    .arene .entite .actions-box .action-slot {
+        width: 25px;
+        height: 25px;
+        font-size: 0.8em;
+    }
+
+    /* Entête : Abandon/Mode AU-DESSUS des pactes */
+    .combat-header {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .combat-header-pactes {
+        justify-content: center;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    /* Boutons Annuler/Fin de tour sur la MÊME LIGNE, étirés proprement */
+    .controles-systeme {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .controles-systeme .btn-systeme {
+        flex: 1; 
+    }
+}

@@ -10,6 +10,8 @@ interface CombatAreneProps {
     joueurInitial: Entite;
     monstreInitial: Entite;
     nomEtage: string;
+    numeroEtage: number;
+    totalEtages: number;
     numeroSalle: number;
     totalSalles: number;
     pactesEquipes: string[];
@@ -17,6 +19,8 @@ interface CombatAreneProps {
     ajouterLogGlobal: (log: string) => void;
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite) => void;
     onAbandon: () => void;
+    enCombatPacte: boolean;
+    typeCombatPacte: 'lvl1' | 'lvl2';
 }
 
 const lireCache = <T,>(cle: string, defaut: T): T => {
@@ -25,11 +29,12 @@ const lireCache = <T,>(cle: string, defaut: T): T => {
 };
 
 export function CombatArene({ 
-    joueurInitial, monstreInitial, nomEtage, numeroSalle, totalSalles, 
-    pactesEquipes, logsGlobaux, ajouterLogGlobal, onFinDeCombat, onAbandon
+    joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles, 
+    pactesEquipes, logsGlobaux, ajouterLogGlobal, onFinDeCombat, onAbandon,
+    enCombatPacte, typeCombatPacte
 }: CombatAreneProps) {
     
-    const combatKey = `${nomEtage}-${numeroSalle}`;
+    const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
     const isResume = lireCache('tdp_active_combat_key', '') === combatKey;
 
     const [joueur, setJoueur] = useState<Entite>(() => isResume ? lireCache('tdp_c_joueur', joueurInitial) : joueurInitial);
@@ -58,10 +63,14 @@ export function CombatArene({
     const modeResolutionRef = useRef<'auto'|'manuel'>(modeResolution);
 
     const logEndRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logsGlobaux]);
     
-    // CORRECTION MAJEURE ANTI-TRICHE ET ANTI-STRICT MODE : 
-    // On ne génère les actions de l'ennemi QUE si sa liste est vide.
+    // Auto-scroll des logs
+    useEffect(() => { 
+        if (logEndRef.current) {
+            logEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+    }, [logsGlobaux]);
+    
     useEffect(() => { 
         if (actionsMonstre.length === 0 && !combatEnCours) {
             setActionsMonstre(genererActionsMonstre(monstre));
@@ -152,6 +161,15 @@ export function CombatArene({
             await attendreEtape(600);
         }
 
+        if (resultat.joueur.pv > 0 && resultat.monstre.pv > 0) {
+            if (tourActuel % 5 === 0 && pactesEquipes.includes("Pacte de la Vie II")) {
+                const healAmount = Math.floor(resultat.joueur.pvMax * 0.10);
+                resultat.joueur.pv = Math.min(resultat.joueur.pvMax, resultat.joueur.pv + healAmount);
+                ajouterLogGlobal(`<div class="log-soin">✨ Pacte de la Vie II : Vous récupérez ${healAmount} PV ! (Tour ${tourActuel})</div>`);
+                await attendreEtape(600);
+            }
+        }
+
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
@@ -165,60 +183,75 @@ export function CombatArene({
         } else {
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
             setComboAffichageJ({type: null, count: 0}); setComboAffichageM({type: null, count: 0});
-            
-            // LA CORRECTION EST LÀ : En fin de tour on force les actions à vide.
-            // Cela provoquera le useEffect de génération des actions, proprement.
-            setActionsJoueur([]); 
-            setActionsMonstre([]); 
-            
-            setTourActuel(t => t + 1); 
-            setCombatEnCours(false);
+            setActionsJoueur([]); setActionsMonstre([]); 
+            setTourActuel(t => t + 1); setCombatEnCours(false);
         }
     };
 
-    let titreEtage = `${nomEtage} - Salle ${numeroSalle + 1}/${totalSalles}`;
-    if (numeroSalle === totalSalles - 1) titreEtage = `${nomEtage} - 👑 SALLE DU BOSS`;
-    if (nomEtage === "⚠️ COMBAT POUR LE PACTE ⚠️") titreEtage = nomEtage;
+    let titreEtage = `Étage ${numeroEtage}/${totalEtages} : ${nomEtage} - Salle ${numeroSalle + 1}/${totalSalles}`;
+    let prefixeBoss = "";
+    
+    if (numeroSalle === totalSalles - 1) {
+        titreEtage = `Étage ${numeroEtage}/${totalEtages} : ${nomEtage} - 👑 SALLE DU BOSS`;
+        if (enCombatPacte) {
+            prefixeBoss = typeCombatPacte === 'lvl2' ? "FORME FINALE" : "FORME ÉVOLUÉE";
+        } else {
+            prefixeBoss = "BOSS";
+        }
+    }
 
+    const nomPropre = monstre.nom.replace(/👑\s*(BOSS:\s*)?/g, "").trim();
+    const titreMonstreFinal = prefixeBoss ? `👑 ${prefixeBoss} : ${nomPropre}` : `👿 ${nomPropre}`;
     const badges = genererBadgesPactes(pactesEquipes);
 
     return (
-        <div className="arene-wrapper" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div className="arene-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', position: 'relative', height: '100%' }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                <button 
-                    onClick={() => { if (window.confirm("Abandonner l'ascension en cours ?")) onAbandon(); }} 
-                    style={{ padding: '4px 8px', fontSize: '0.85em', background: 'transparent', border: '1px solid #f38ba8', color: '#f38ba8', borderRadius: '4px', cursor: 'pointer' }}
-                    disabled={combatEnCours}
-                >
-                    🏳️ Abandonner
-                </button>
+            <div className="combat-header">
+                <div className="combat-header-actions">
+                    <button 
+                        onClick={() => { if (window.confirm("Abandonner l'ascension en cours ?")) onAbandon(); }} 
+                        style={{ padding: '6px 12px', fontSize: '0.85em', background: 'transparent', border: '1px solid #f38ba8', color: '#f38ba8', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        disabled={combatEnCours}
+                    >
+                        🏳️ Abandonner
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
+                        <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Mode : <strong>{modeResolution === 'auto' ? 'Auto' : 'Manuel'}</strong></span>
+                        <button className="btn-systeme" onClick={basculerModeResolution} style={{ fontSize: '0.8em', padding: '4px 8px' }}>
+                            🔄 Changer
+                        </button>
+                        {modeResolution === 'manuel' && combatEnCours && attenteManuelle && (
+                            <button className="btn-systeme" onClick={etapeSuivanteManuelle} style={{ backgroundColor: '#89b4fa', color: '#11111b', fontWeight: 'bold', fontSize: '0.8em', padding: '4px 8px' }}>
+                                ⏩ Suivant
+                            </button>
+                        )}
+                    </div>
+                </div>
 
-                <div id="pactes-actifs-liste" style={{ flex: 1, textAlign: 'right' }}>
-                    {badges.length === 0 ? "Aucun Pacte" : badges.map(b => (
+                <div className="combat-header-pactes">
+                    {badges.length === 0 ? <span style={{color: '#a6adc8'}}>Aucun Pacte</span> : badges.map(b => (
                         <span key={b.nom} className="pacte-badge" title={b.desc}>{b.nom} {b.desc}</span>
                     ))}
                 </div>
             </div>
 
-            <div id="etage-info">{titreEtage}</div>
+            <div id="etage-info" style={{ textAlign: 'center', marginBottom: '15px' }}>{titreEtage}</div>
             
             <div className="arene">
                 <div className="entite">
                     <h2>🧑 {joueur.nom}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span>
-                        <br/><span className="esquive">💨 Nv.{joueur.nivEsquive} ({joueur.paliersEsquive[Math.min(joueur.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({joueur.paliersEsquive[Math.min(joueur.nivEsquive, 3)]}%)</span>
                     </div>
                     <div className="stats-base">⚔️ {joueur.baseA} | 🎯 {joueur.baseP} | 🛡️ {joueur.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageJ)}</span>
                 </div>
 
                 <div className="entite">
-                    <h2>😈 {monstre.nom}</h2>
+                    <h2>{titreMonstreFinal}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span>
-                        <br/><span className="esquive">💨 Nv.{monstre.nivEsquive} ({monstre.paliersEsquive[Math.min(monstre.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({monstre.paliersEsquive[Math.min(monstre.nivEsquive, 3)]}%)</span>
                     </div>
                     <div className="stats-base">⚔️ {monstre.baseA} | 🎯 {monstre.baseP} | 🛡️ {monstre.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageM)}</span>
@@ -232,36 +265,37 @@ export function CombatArene({
                 </div>
             </div>
 
-            <div className="actions-box" style={{ marginTop: '10px' }}>
+            <div className="actions-box" style={{ marginTop: '15px', minHeight: '40px' }}>
                 {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
             </div>
 
-            <div className="controles" style={{ marginTop: '10px' }}>
+            <div className="controles" style={{ marginTop: '15px' }}>
                 <button className="btn-action" id="btn-a" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'A'])}} disabled={combatEnCours}>⚔️ Attaque</button>
                 <button className="btn-action" id="btn-p" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'P'])}} disabled={combatEnCours}>🎯 Précise</button>
                 <button className="btn-action" id="btn-d" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'D'])}} disabled={combatEnCours}>🛡️ Défense</button>
                 <button className="btn-action" id="btn-e" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'E'])}} disabled={combatEnCours}>💨 Esquive</button>
+            </div>
+            
+            <div className="controles-systeme">
                 <button className="btn-systeme" onClick={effacerDerniereAction} disabled={combatEnCours || actionsJoueur.length === 0}>↩️ Annuler</button>
                 <button className="btn-systeme" onClick={validerTour} disabled={combatEnCours || actionsJoueur.length < 5}>▶️ Fin de Tour</button>
             </div>
 
-            <div className="controles" style={{ marginTop: '10px', backgroundColor: '#181825', padding: '15px', borderRadius: '8px' }}>
-                <span style={{ marginRight: '15px' }}>Mode Résolution : <strong>{modeResolution === 'auto' ? 'Automatique' : 'Étape par étape'}</strong></span>
-                <button className="btn-systeme" onClick={basculerModeResolution} style={{ fontSize: '0.9em', padding: '8px 12px' }}>
-                    🔄 Changer
-                </button>
-                {modeResolution === 'manuel' && combatEnCours && attenteManuelle && (
-                    <button className="btn-systeme" onClick={etapeSuivanteManuelle} style={{ backgroundColor: '#89b4fa', color: '#11111b', marginLeft: '10px', fontWeight: 'bold' }}>
-                        ⏩ Action Suivante
-                    </button>
-                )}
-            </div>
-
-            <div id="log" style={{ marginTop: '10px' }}>
+            <div id="log" style={{ 
+                flexGrow: 1, 
+                overflowY: 'auto', 
+                maxHeight: '250px', 
+                minHeight: '150px',
+                marginTop: '20px', 
+                padding: '10px',
+                border: '1px solid #313244',
+                borderRadius: '8px',
+                backgroundColor: '#11111b'
+            }}>
                 {logsGlobaux.map((log, index) => (
                     <div key={index} dangerouslySetInnerHTML={{ __html: log }} />
                 ))}
-                <div ref={logEndRef} />
+                <div ref={logEndRef} style={{ height: '1px' }} />
             </div>
         </div>
     );

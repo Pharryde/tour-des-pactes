@@ -1,10 +1,8 @@
-// src/utils/pactes.ts
 import type { Entite } from '../types';
 
 export function appliquerPactesSurJoueur(joueur: Entite, pactesEquipes: string[]): Entite {
     const j = { ...joueur };
     
-    // CORRECTION : On réaligne bien les PV actuels sur le nouveau maximum !
     if (pactesEquipes.includes("Pacte de la Vie")) {
         j.pvMax = Math.floor(j.pvMax * 1.10);
         j.pv = j.pvMax;
@@ -12,6 +10,7 @@ export function appliquerPactesSurJoueur(joueur: Entite, pactesEquipes: string[]
     if (pactesEquipes.includes("Pacte de la Vie II")) {
         j.pvMax = Math.floor(j.pvMax * 1.25);
         j.pv = j.pvMax;
+        j.pacteSoinVieII = true; // Active le trigger de soin dans l'arène
     }
     
     if (pactesEquipes.includes("Pacte de l'Armure") || pactesEquipes.includes("Pacte de l'Armure II")) {
@@ -72,13 +71,13 @@ export function genererBadgesPactes(pactesEquipes: string[]): { nom: string, des
 }
 
 export function determinerNomPacte(nomEtage: string): string {
-    const nom = nomEtage.toLowerCase();
+    const nom = nomEtage.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
-    if (nom.includes("armure")) return "Pacte de l'Armure";
-    if (nom.includes("vitesse") || nom.includes("esquive")) return "Pacte de l'Esquive";
-    if (nom.includes("vie")) return "Pacte de la Vie";
-    if (nom.includes("ombre")) return "Pacte de l'Ombre";
-    if (nom.includes("temps")) return "Pacte du Temps";
+    if (nom.includes("armure") || nom.includes("defense") || nom.includes("bouclier")) return "Pacte de l'Armure";
+    if (nom.includes("vitesse") || nom.includes("esquive") || nom.includes("agilite")) return "Pacte de l'Esquive";
+    if (nom.includes("vie") || nom.includes("vitalite") || nom.includes("sang")) return "Pacte de la Vie";
+    if (nom.includes("ombre") || nom.includes("tenebre") || nom.includes("assassin")) return "Pacte de l'Ombre";
+    if (nom.includes("temps") || nom.includes("chronos") || nom.includes("horloge")) return "Pacte du Temps";
     
     return "Pacte du Combo"; 
 }
