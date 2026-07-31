@@ -1,4 +1,3 @@
-// src/components/CombatArene.tsx
 import { useEffect, useState, useRef } from 'react';
 import type { Entite, ActionType } from '../types';
 import { genererActionsMonstre, SYMBOLES } from '../utils/combat';
@@ -64,7 +63,6 @@ export function CombatArene({
 
     const logEndRef = useRef<HTMLDivElement>(null);
     
-    // Auto-scroll des logs
     useEffect(() => { 
         if (logEndRef.current) {
             logEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -120,7 +118,17 @@ export function CombatArene({
         setCombatEnCours(true);
         ajouterLogGlobal(`<div class="log-tour">--- TOUR ${tourActuel} ---</div>`);
 
-        const resultat = jouer_tour(joueur, monstre, actionsJoueur, actionsMonstre, tourActuel);
+        let resultat;
+        // NOUVEAU : Sécurisation absolue de l'appel WASM
+        try {
+            resultat = jouer_tour(joueur, monstre, actionsJoueur, actionsMonstre, tourActuel);
+        } catch (error) {
+            console.error("Panique dans le module WASM:", error);
+            ajouterLogGlobal(`<div class="log-mort">❌ Une erreur critique est survenue lors de la résolution (Panique WASM). Le tour a été annulé pour éviter un blocage.</div>`);
+            setActionsJoueur([]); // On vide les actions du joueur pour débloquer les boutons
+            setCombatEnCours(false); // On déverrouille l'interface (anti soft-lock)
+            return;
+        }
 
         let currentJoueur = { ...joueur }; let currentMonstre = { ...monstre };
         let localComboJ = { ...comboAffichageJ }; let localComboM = { ...comboAffichageM };
@@ -130,7 +138,7 @@ export function CombatArene({
         for (let i = 0; i < resultat.etapes.length; i++) {
             const etape = resultat.etapes[i];
             
-            if (etape.log.includes("Action ")) {
+            if (etape.estAction) {
                 const actJ = actionsJoueur[indexDesActionsCombats];
                 const actM = actionsMonstre[indexDesActionsCombats];
                 

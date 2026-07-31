@@ -1,85 +1,131 @@
+// src/utils/pactes.ts
 import type { Entite } from '../types';
+
+interface PacteDef {
+    desc: string;
+    appliquer?: (j: Entite) => void;
+    bonusSoinRepos?: number;      // Multiplicateur optionnel (ex: 1.1 pour +10%)
+    bonusGainPvMaxRepos?: number; // Multiplicateur optionnel (ex: 1.1 pour +10%)
+}
+
+// ============================================================================
+// SOURCE DE VÉRITÉ UNIQUE POUR TOUS LES PACTES
+// Ajouter un nouveau pacte ici l'activera instantanément dans tout le jeu.
+// ============================================================================
+export const PACTES_REGISTRY: Record<string, PacteDef> = {
+    "Pacte de la Vie": {
+        desc: "(+10% PV Max)",
+        appliquer: (j) => {
+            j.pvMax = Math.floor(j.pvMax * 1.10);
+            j.pv = j.pvMax;
+        },
+        bonusSoinRepos: 1.1,
+        bonusGainPvMaxRepos: 1.1
+    },
+    "Pacte de la Vie II": {
+        desc: "(+25% PV Max, Heal 10% / 5 Tours)",
+        appliquer: (j) => {
+            j.pvMax = Math.floor(j.pvMax * 1.25);
+            j.pv = j.pvMax;
+            j.pacteSoinVieII = true;
+        },
+        bonusSoinRepos: 1.1,
+        bonusGainPvMaxRepos: 1.1
+    },
+    "Pacte de l'Armure": {
+        desc: "(+5 Défense)",
+        appliquer: (j) => { j.baseD += 5; }
+    },
+    "Pacte de l'Armure II": {
+        desc: "(+5 Déf, Renvoi d'Armure)",
+        appliquer: (j) => {
+            j.baseD += 5;
+            j.degatsArmureRestanteFinTour = true;
+        }
+    },
+    "Pacte de l'Esquive": {
+        desc: "(+10% Paliers Esquive)",
+        appliquer: (j) => { j.paliersEsquive = [0, 60, 85, 100]; }
+    },
+    "Pacte de l'Esquive II": {
+        desc: "(+30% Paliers Esquive)",
+        appliquer: (j) => { j.paliersEsquive = [0, 80, 100, 100]; }
+    },
+    "Pacte du Combo": {
+        desc: "(*1.5 Multiplicateur Combo)",
+        appliquer: (j) => { j.comboMultiplicateur = 1.5; }
+    },
+    "Pacte du Combo II": {
+        desc: "(*2 Multiplicateur Combo)",
+        appliquer: (j) => { j.comboMultiplicateur = 2.0; }
+    },
+    "Pacte de l'Ombre": {
+        desc: "(Dégâts Précis x2)",
+        appliquer: (j) => { j.degatsPrecisDoubles = true; }
+    },
+    "Pacte de l'Ombre II": {
+        desc: "(Bloque Esquive Ennemi)",
+        appliquer: (j) => { j.bloqueEsquiveOpposant = true; }
+    },
+    "Pacte du Temps": {
+        desc: "(5e Action x2)",
+        appliquer: (j) => { j.actionFinTourDoublee = true; }
+    },
+    "Pacte du Temps II": {
+        desc: "(3e Action x3)",
+        appliquer: (j) => { j.actionTroisiemeTriplee = true; }
+    }
+};
+// ============================================================================
 
 export function appliquerPactesSurJoueur(joueur: Entite, pactesEquipes: string[]): Entite {
     const j = { ...joueur };
     
-    if (pactesEquipes.includes("Pacte de la Vie")) {
-        j.pvMax = Math.floor(j.pvMax * 1.10);
-        j.pv = j.pvMax;
-    }
-    if (pactesEquipes.includes("Pacte de la Vie II")) {
-        j.pvMax = Math.floor(j.pvMax * 1.25);
-        j.pv = j.pvMax;
-        j.pacteSoinVieII = true; // Active le trigger de soin dans l'arène
-    }
-    
-    if (pactesEquipes.includes("Pacte de l'Armure") || pactesEquipes.includes("Pacte de l'Armure II")) {
-        j.baseD += 5;
-    }
-    if (pactesEquipes.includes("Pacte de l'Armure II")) {
-        j.degatsArmureRestanteFinTour = true;
-    }
-    
-    if (pactesEquipes.includes("Pacte de l'Esquive")) j.paliersEsquive = [0, 60, 85, 100];
-    if (pactesEquipes.includes("Pacte de l'Esquive II")) j.paliersEsquive = [0, 80, 100, 100];
-
-    if (pactesEquipes.includes("Pacte du Combo")) j.comboMultiplicateur = 1.5;
-    if (pactesEquipes.includes("Pacte du Combo II")) j.comboMultiplicateur = 2.0;
-
-    if (pactesEquipes.includes("Pacte de l'Ombre")) j.degatsPrecisDoubles = true;
-    if (pactesEquipes.includes("Pacte de l'Ombre II")) j.bloqueEsquiveOpposant = true;
-
-    if (pactesEquipes.includes("Pacte du Temps")) j.actionFinTourDoublee = true;
-    if (pactesEquipes.includes("Pacte du Temps II")) j.actionTroisiemeTriplee = true;
+    pactesEquipes.forEach(nomPacte => {
+        const def = PACTES_REGISTRY[nomPacte];
+        if (def && def.appliquer) {
+            def.appliquer(j);
+        }
+    });
     
     return j;
 }
 
 export function calculerSoinRepos(pvMax: number, pactesEquipes: string[]): number {
     let baseSoin = Math.floor(pvMax / 2);
-    if (pactesEquipes.includes("Pacte de la Vie") || pactesEquipes.includes("Pacte de la Vie II")) {
-        baseSoin = Math.floor(baseSoin * 1.1);
-    }
-    return baseSoin;
+    let multiplicateur = 1;
+
+    pactesEquipes.forEach(nomPacte => {
+        const def = PACTES_REGISTRY[nomPacte];
+        if (def && def.bonusSoinRepos) {
+            // Utiliser Math.max évite de cumuler bêtement le multiplicateur si un jour 
+            // tu permets d'équiper deux pactes donnant des bonus de repos.
+            multiplicateur = Math.max(multiplicateur, def.bonusSoinRepos);
+        }
+    });
+
+    return Math.floor(baseSoin * multiplicateur);
 }
 
 export function calculerGainPvMaxRepos(pactesEquipes: string[]): number {
     let gainPvMax = 10;
-    if (pactesEquipes.includes("Pacte de la Vie") || pactesEquipes.includes("Pacte de la Vie II")) {
-        gainPvMax = Math.floor(gainPvMax * 1.1);
-    }
-    return gainPvMax;
+    let multiplicateur = 1;
+
+    pactesEquipes.forEach(nomPacte => {
+        const def = PACTES_REGISTRY[nomPacte];
+        if (def && def.bonusGainPvMaxRepos) {
+            multiplicateur = Math.max(multiplicateur, def.bonusGainPvMaxRepos);
+        }
+    });
+
+    return Math.floor(gainPvMax * multiplicateur);
 }
 
 export function genererBadgesPactes(pactesEquipes: string[]): { nom: string, desc: string }[] {
-    return pactesEquipes.map(p => { 
-        let desc = "";
-        if (p === "Pacte de l'Armure") desc = "(+5 Défense)";
-        else if (p === "Pacte de l'Armure II") desc = "(+5 Déf, Renvoi d'Armure)";
-        else if (p === "Pacte de l'Esquive") desc = "(+10% Paliers Esquive)";
-        else if (p === "Pacte de l'Esquive II") desc = "(+30% Paliers Esquive)";
-        else if (p === "Pacte du Combo") desc = "(*1.5 Multiplicateur Combo)";
-        else if (p === "Pacte du Combo II") desc = "(*2 Multiplicateur Combo)";
-        else if (p === "Pacte de la Vie") desc = "(+10% PV Max)";
-        else if (p === "Pacte de la Vie II") desc = "(+25% PV Max, Heal 10% / 5 Tours)";
-        else if (p === "Pacte de l'Ombre") desc = "(Dégâts Précis x2)";
-        else if (p === "Pacte de l'Ombre II") desc = "(Bloque Esquive Ennemi)";
-        else if (p === "Pacte du Temps") desc = "(5e Action x2)";
-        else if (p === "Pacte du Temps II") desc = "(3e Action x3)";
-        return { nom: p, desc: desc }; 
-    });
-}
-
-export function determinerNomPacte(nomEtage: string): string {
-    const nom = nomEtage.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    if (nom.includes("armure") || nom.includes("defense") || nom.includes("bouclier")) return "Pacte de l'Armure";
-    if (nom.includes("vitesse") || nom.includes("esquive") || nom.includes("agilite")) return "Pacte de l'Esquive";
-    if (nom.includes("vie") || nom.includes("vitalite") || nom.includes("sang")) return "Pacte de la Vie";
-    if (nom.includes("ombre") || nom.includes("tenebre") || nom.includes("assassin")) return "Pacte de l'Ombre";
-    if (nom.includes("temps") || nom.includes("chronos") || nom.includes("horloge")) return "Pacte du Temps";
-    
-    return "Pacte du Combo"; 
+    return pactesEquipes.map(nom => ({
+        nom,
+        desc: PACTES_REGISTRY[nom]?.desc || "(Effet inconnu)"
+    }));
 }
 
 export function peutEquiperPacte(nomPacte: string, pactesDejaEquipes: string[]): { valide: boolean, messageErreur?: string } {
@@ -90,6 +136,7 @@ export function peutEquiperPacte(nomPacte: string, pactesDejaEquipes: string[]):
     const nomLvl1 = nomBase;
     const nomLvl2 = nomBase + " II";
 
+    // Vérification des conflits intra-pacte (ne pas équiper Niveau I et Niveau II du même pacte)
     if (estLvl2 && pactesDejaEquipes.includes(nomLvl1)) {
         return { valide: false, messageErreur: `Vous ne pouvez pas équiper à la fois ${nomLvl1} et ${nomPacte}.` };
     }
@@ -97,6 +144,8 @@ export function peutEquiperPacte(nomPacte: string, pactesDejaEquipes: string[]):
         return { valide: false, messageErreur: `Vous ne pouvez pas équiper à la fois ${nomPacte} et ${nomLvl2}.` };
     }
 
+    // Vérification des limites de slots (3 de Nv 1, 1 de Nv 2)
+    // Cette règle n'est pas liée à une donnée stricte de dictionnaire, c'est une règle métier de l'inventaire.
     if (estLvl2 && pactesDejaEquipes.filter(p => p.endsWith(" II")).length >= 1) {
         return { valide: false, messageErreur: "Vous ne pouvez équiper qu'un seul Pacte de Niveau 2." };
     } 

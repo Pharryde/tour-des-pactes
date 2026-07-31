@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite } from './types';
-import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, determinerNomPacte, peutEquiperPacte } from './utils/pactes';
+import type { Ecran, Entite, StructureEtage } from './types';
+import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from './utils/pactes';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Hub } from './components/Hub';
 import { Inventaire } from './components/Inventaire';
@@ -9,17 +9,19 @@ import { CombatArene } from './components/CombatArene';
 import { Fin } from './components/fin';
 import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 function App() {
   const [moteurPret, setMoteurPret] = useState(false);
-  const [donneesBaseEtages, setDonneesBaseEtages] = useState<any[]>([]);
+  const [erreurMoteur, setErreurMoteur] = useState<string | null>(null);
+  const [donneesBaseEtages, setDonneesBaseEtages] = useState<StructureEtage[]>([]);
   
   const [pactesDebloques, setPactesDebloques] = useLocalStorage<string[]>('tdp_pactes_debloques', []);
   const [pactesEquipes, setPactesEquipes] = useLocalStorage<string[]>('tdp_pactes_equipes', []);
 
   const [ecran, setEcran] = useLocalStorage<Ecran>('tdp_ecran', 'ecran-hub');
-  const [listeEtages, setListeEtages] = useLocalStorage<any[]>('tdp_liste_etages', []);
+  const [listeEtages, setListeEtages] = useLocalStorage<StructureEtage[]>('tdp_liste_etages', []);
   const [joueur, setJoueur] = useLocalStorage<Entite | null>('tdp_joueur', null);
   const [indexEtageActuel, setIndexEtageActuel] = useLocalStorage<number>('tdp_index_etage', 0);
   const [indexSalle, setIndexSalle] = useLocalStorage<number>('tdp_index_salle', 0);
@@ -29,7 +31,16 @@ function App() {
   const [typeCombatPacte, setTypeCombatPacte] = useLocalStorage<'lvl1'|'lvl2'>('tdp_type_pacte', 'lvl1');
 
   useEffect(() => {
-    const demarrer = async () => { await init(); setDonneesBaseEtages(get_donnees_etages()); setMoteurPret(true); };
+    const demarrer = async () => { 
+        try {
+            await init(); 
+            setDonneesBaseEtages(get_donnees_etages()); 
+            setMoteurPret(true); 
+        } catch (error) {
+            console.error("Le module WebAssembly a crashé à l'initialisation:", error);
+            setErreurMoteur(String(error)); 
+        }
+    };
     demarrer();
   }, []);
 
@@ -88,40 +99,50 @@ function App() {
     setJoueur(joueurNettoye);
     const etageActuel = listeEtages[indexEtageActuel];
 
-    const nomPacteCourant = determinerNomPacte(etageActuel.nom);
+    // LA SÉCURITÉ EST ICI : Si Rust n'envoie pas idPacte, on met un fallback au lieu de crasher
+    const nomPacteCourant = etageActuel?.idPacte || "Pacte Inconnu";
     const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
     const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
+    const aLvl1Possede = pactesDebloques.includes(nomPacteCourant);
+    const aLvl2Possede = pactesDebloques.includes(nomPacteCourant + " II");
 
-    // === PHASE 2 : Le combat du Pacte optionnel est gagné ===
     if (enCombatPacte) {
         setEnCombatPacte(false);
         const nomFinal = typeCombatPacte === 'lvl2' ? nomPacteCourant + " II" : nomPacteCourant;
         if (!pactesDebloques.includes(nomFinal)) setPactesDebloques([...pactesDebloques, nomFinal]);
         
+        // Le crash arrivait ici. Grâce au fallback au-dessus, c'est impossible désormais.
         setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ VOUS AVEZ ARRACHÉ LE ${nomFinal.toUpperCase()} !</span>`]);
         setTimeout(() => { gererPassageEtageSuivant(); }, 2000);
         return;
     }
 
-    // === PHASE 1 : Le Boss initial de l'étage est vaincu ===
-    if (indexSalle === etageActuel.monstres.length) {
+    if (indexSalle === (etageActuel?.monstres?.length || 0)) {
         if (aLvl2Equipe) {
-            // S'il avait déjà le Lvl 2 équipé, le palier max est atteint, on skip le ChoixBoss
             setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Puissance maximale confirmée. Le Gardien s'incline. Progression automatique !</span>`]);
             setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+        } else if (aLvl1Equipe) {
+            if (aLvl2Possede) {
+                setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Vous possédez déjà la Forme Finale de ce pacte. Progression automatique !</span>`]);
+                setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+            } else {
+                setEcran('ecran-choix-boss'); 
+            }
         } else {
-            // Sinon on ouvre l'écran de choix (quitte ou double)
-            setEcran('ecran-choix-boss'); 
+            if (aLvl1Possede || aLvl2Possede) {
+                setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Vous possédez déjà ce pacte. Le Gardien vous laisse passer. Progression automatique !</span>`]);
+                setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+            } else {
+                setEcran('ecran-choix-boss'); 
+            }
         }
         return;
     }
 
-    // === On avance d'une salle ===
     const prochaineSalle = indexSalle + 1;
     setIndexSalle(prochaineSalle);
     
-    // Si la prochaine salle est le Boss
-    if (prochaineSalle === etageActuel.monstres.length) {
+    if (prochaineSalle === (etageActuel?.monstres?.length || 0)) {
         if (aLvl2Equipe) {
             setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 Le Gardien résonne avec votre Pacte de Niveau II et libère d'emblée sa FORME FINALE !</b>`]);
         } else if (aLvl1Equipe) {
@@ -129,33 +150,43 @@ function App() {
         } else {
             setHistoriqueLogs(prev => [...prev, `<br><b>👑 Combat : Le Gardien approche !</b>`]);
         }
-        return; // L'écran reste sur le combat
+        return; 
     }
 
-    // Monstres normaux
-    const prochainMonstre = etageActuel.monstres[prochaineSalle];
-    setHistoriqueLogs(prev => [...prev, `<br><b>⚔️ Combat : ${prochainMonstre.nom} approche !</b>`]);
+    const prochainMonstre = etageActuel?.monstres[prochaineSalle];
+    if (prochainMonstre) {
+        setHistoriqueLogs(prev => [...prev, `<br><b>⚔️ Combat : ${prochainMonstre.nom} approche !</b>`]);
+    }
   };
+
+  if (erreurMoteur) {
+      return (
+          <div className="jeu-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <h1 style={{ color: '#f38ba8' }}>Erreur du Moteur Rust</h1>
+              <p style={{ color: '#cdd6f4' }}>Impossible de charger la logique du jeu.</p>
+              <div style={{ background: '#11111b', border: '1px solid #313244', padding: '15px', borderRadius: '8px', marginTop: '20px', color: '#f38ba8', fontFamily: 'monospace' }}>
+                  {erreurMoteur}
+              </div>
+          </div>
+      );
+  }
 
   if (!moteurPret) return <div className="chargement">Chargement du Moteur WebAssembly...</div>;
 
-  // --- DÉTERMINATION DU MONSTRE (L'Adaptation se fait ici !) ---
   let monstreActuel = null; 
   const etageActuel = listeEtages[indexEtageActuel];
-  const nomPacteCourant = etageActuel ? determinerNomPacte(etageActuel.nom) : "";
+  const nomPacteCourant = etageActuel?.idPacte || "Pacte Inconnu";
   const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
   const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
 
   if (etageActuel) {
       if (enCombatPacte) {
-          // Si on a accepté le défi dans ChoixBoss, on affronte la cible visée
           monstreActuel = typeCombatPacte === 'lvl2' ? etageActuel.bossHeroiqueLvl2 : etageActuel.bossHeroique;
       } 
       else if (indexSalle < etageActuel.monstres.length) {
           monstreActuel = etageActuel.monstres[indexSalle];
       } 
       else {
-          // Arrivée en Phase 1 de la salle du boss : le niveau dépend de l'équipement
           if (aLvl2Equipe) monstreActuel = etageActuel.bossHeroiqueLvl2;
           else if (aLvl1Equipe) monstreActuel = etageActuel.bossHeroique;
           else monstreActuel = etageActuel.bossNormal;
@@ -163,45 +194,46 @@ function App() {
   }
 
   return (
-    <div className="jeu-container">
-      {ecran === 'ecran-hub' && <Hub onLancerRun={gererLancerRun} onChangeEcran={setEcran} />}
-      {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
-      {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} />}
-      {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} onChoix={gererChoixRepos} />}
-      
-      {/* Ton composant ChoixBoss reprend sa place et son comportement exact d'origine ! */}
-      {ecran === 'ecran-choix-boss' && (
-        <ChoixBoss 
-            aLvl1Equipe={aLvl1Equipe} 
-            estDernierEtage={indexEtageActuel >= listeEtages.length - 1} 
-            onFuir={gererPassageEtageSuivant}
-            onCombattreLvl1={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME HÉROÏQUE !</b>`]); setTypeCombatPacte('lvl1'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
-            onCombattreLvl2={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME SUBMÉDITÉE !</b>`]); setTypeCombatPacte('lvl2'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
-        />
-      )}
-      
-      {ecran === 'ecran-combat' && monstreActuel && joueur && (
-        <div id="ecran-combat" className="ecran" style={{ justifyContent: 'flex-start' }}>
-          <CombatArene 
-            key={`${indexEtageActuel}-${indexSalle}-${enCombatPacte}`}
-            joueurInitial={joueur} 
-            monstreInitial={monstreActuel} 
-            nomEtage={etageActuel.nom}
-            numeroEtage={indexEtageActuel + 1}
-            totalEtages={listeEtages.length}
-            numeroSalle={indexSalle} 
-            totalSalles={etageActuel.monstres.length + 1}
-            pactesEquipes={pactesEquipes} 
-            logsGlobaux={historiqueLogs} 
-            ajouterLogGlobal={(l) => setHistoriqueLogs(prev => [...prev, l])}
-            onFinDeCombat={handleFinDeCombat}
-            onAbandon={gererAbandon}
-            enCombatPacte={enCombatPacte}
-            typeCombatPacte={typeCombatPacte}
-          />
+    <ErrorBoundary>
+        <div className="jeu-container">
+          {ecran === 'ecran-hub' && <Hub onLancerRun={gererLancerRun} onChangeEcran={setEcran} />}
+          {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
+          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} />}
+          {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} onChoix={gererChoixRepos} />}
+          
+          {ecran === 'ecran-choix-boss' && (
+            <ChoixBoss 
+                aLvl1Equipe={aLvl1Equipe} 
+                estDernierEtage={indexEtageActuel >= listeEtages.length - 1} 
+                onFuir={gererPassageEtageSuivant}
+                onCombattreLvl1={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME HÉROÏQUE !</b>`]); setTypeCombatPacte('lvl1'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
+                onCombattreLvl2={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME SUBMÉDITÉE !</b>`]); setTypeCombatPacte('lvl2'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
+            />
+          )}
+          
+          {ecran === 'ecran-combat' && monstreActuel && joueur && (
+            <div id="ecran-combat" className="ecran" style={{ justifyContent: 'flex-start' }}>
+              <CombatArene 
+                key={`${indexEtageActuel}-${indexSalle}-${enCombatPacte}`}
+                joueurInitial={joueur} 
+                monstreInitial={monstreActuel} 
+                nomEtage={etageActuel.nom}
+                numeroEtage={indexEtageActuel + 1}
+                totalEtages={listeEtages.length}
+                numeroSalle={indexSalle} 
+                totalSalles={etageActuel.monstres.length + 1}
+                pactesEquipes={pactesEquipes} 
+                logsGlobaux={historiqueLogs} 
+                ajouterLogGlobal={(l) => setHistoriqueLogs(prev => [...prev, l])}
+                onFinDeCombat={handleFinDeCombat}
+                onAbandon={gererAbandon}
+                enCombatPacte={enCombatPacte}
+                typeCombatPacte={typeCombatPacte}
+              />
+            </div>
+          )}
         </div>
-      )}
-    </div>
+    </ErrorBoundary>
   );
 }
 

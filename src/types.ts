@@ -33,3 +33,23 @@ export interface Entite {
     pertePvPourcentage?: number;
     pertePvBaseMax?: boolean;
 }
+
+export interface EtapeCombat {
+    estAction: boolean;
+    log: string;
+    joueurPv: number;
+    joueurArmure: number;
+    joueurNivEsquive: number;
+    monstrePv: number;
+    monstreArmure: number;
+    monstreNivEsquive: number;
+}
+
+export interface StructureEtage {
+    idPacte: string;
+    nom: string;
+    monstres: Entite[];
+    bossNormal: Entite;
+    bossHeroique: Entite;
+    bossHeroiqueLvl2: Entite;
+}

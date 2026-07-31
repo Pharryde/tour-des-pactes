@@ -16,7 +16,6 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         regen_armure_tour: None,
         chance_combo: None,
         combo_multiplicateur: None,
-        combo_multiplicateur_valeur: None,
         actions_cachees: false,
         degats_precis_doubles: false,
         perte_pv_chaque_x_tours: None,
@@ -26,8 +25,6 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         action_troisieme_triplee: false,
         regen_pv_chaque_x_tours: None,
         regen_pv_pourcentage: None,
-        inflige_degats_chaque_x_tours: None,
-        inflige_degats_pourcentage_pv_max_joueur: None,
         bloque_esquive_opposant: false,
         degats_armure_restante_fin_tour: false,
     }
@@ -44,6 +41,7 @@ pub fn get_etage_armure() -> StructureEtage {
     boss_h2.degats_armure_restante_fin_tour = true;
 
     StructureEtage {
+        id_pacte: "Pacte de l'Armure".to_string(),
         nom: "Étage de l'Armure".to_string(),
         monstres: vec![
             creer_base("Garde Novice", 30, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D]),
@@ -61,6 +59,7 @@ pub fn get_etage_esquive() -> StructureEtage {
     boss_h2.bloque_esquive_opposant = true;
 
     StructureEtage {
+        id_pacte: "Pacte de l'Esquive".to_string(),
         nom: "Étage de la Vitesse".to_string(),
         monstres: vec![
             creer_base("Voleur Rapide", 25, 8, 5, 5, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::E]),
@@ -87,11 +86,19 @@ pub fn get_etage_combo() -> StructureEtage {
     let mut boss_h2 = creer_base("👑 L'Harmonie Brisée (Lvl 2)", 110, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
     boss_h2.chance_combo = Some(50); boss_h2.combo_multiplicateur = Some(2.0);
 
-    StructureEtage { nom: "Étage du Combo".to_string(), monstres: vec![adepte, batteur, chore], boss_normal: boss, boss_heroique: boss_h, boss_heroique_lvl2: boss_h2 }
+    StructureEtage { 
+        id_pacte: "Pacte du Combo".to_string(),
+        nom: "Étage du Combo".to_string(), 
+        monstres: vec![adepte, batteur, chore], 
+        boss_normal: boss, 
+        boss_heroique: boss_h, 
+        boss_heroique_lvl2: boss_h2 
+    }
 }
 
 pub fn get_etage_vie() -> StructureEtage {
     StructureEtage {
+        id_pacte: "Pacte de la Vie".to_string(),
         nom: "Étage de la Vie".to_string(),
         monstres: vec![
             creer_base("Adepte de Chair", 60, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::D, ActionType::E]),
@@ -113,7 +120,14 @@ pub fn get_etage_ombre() -> StructureEtage {
     let mut boss_h = creer_base("👑 Le Cauchemar (Héroïque)", 120, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); boss_h.actions_cachees = true;
     let mut boss_h2 = creer_base("👑 Le Cauchemar (Lvl 2)", 120, 12, 5, 12, vec![30, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); boss_h2.actions_cachees = true;
 
-    StructureEtage { nom: "Étage de l'Ombre".to_string(), monstres: vec![ombre, traqueur, spectre], boss_normal: boss, boss_heroique: boss_h, boss_heroique_lvl2: boss_h2 }
+    StructureEtage { 
+        id_pacte: "Pacte de l'Ombre".to_string(),
+        nom: "Étage de l'Ombre".to_string(), 
+        monstres: vec![ombre, traqueur, spectre], 
+        boss_normal: boss, 
+        boss_heroique: boss_h, 
+        boss_heroique_lvl2: boss_h2 
+    }
 }
 
 pub fn get_etage_temps() -> StructureEtage {
@@ -128,6 +142,7 @@ pub fn get_etage_temps() -> StructureEtage {
     boss_h2.regen_pv_chaque_x_tours = Some(4); boss_h2.regen_pv_pourcentage = Some(10);
 
     StructureEtage {
+        id_pacte: "Pacte du Temps".to_string(),
         nom: "Étage du Temps".to_string(),
         monstres: vec![
             creer_base("Trotteuse Agile", 30, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::E]),
@@ -140,7 +155,7 @@ pub fn get_etage_temps() -> StructureEtage {
     }
 }
 
-// Fonction globale pour récupérer tous les étages d'un coup (comme on le faisait en TS)
+// Fonction globale pour récupérer tous les étages d'un coup
 pub fn get_tous_les_etages() -> Vec<StructureEtage> {
     vec![
         get_etage_armure(),

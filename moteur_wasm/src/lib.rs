@@ -11,6 +11,7 @@ use crate::boss_data::get_tous_les_etages;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EtapeCombat {
+    pub est_action: bool, // NOUVEAU
     pub log: String,
     pub joueur_pv: i32,
     pub joueur_armure: i32,
@@ -54,6 +55,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     if let Some(regen) = monstre.regen_armure_tour {
         monstre.armure += regen;
         etapes.push(EtapeCombat { 
+            est_action: false, // NOUVEAU : C'est un simple log de texte
             log: format!("<span class=\"log-mort\">🔥 Le passif du Boss s'active : +{} Armure !</span>", regen), 
             joueur_pv: joueur.pv, 
             joueur_armure: joueur.armure,
@@ -106,6 +108,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         }
         
         etapes.push(EtapeCombat { 
+            est_action: true, // NOUVEAU : C'est une vraie action de combat pour React
             log: log_action, 
             joueur_pv: joueur.pv, 
             joueur_armure: joueur.armure, 
