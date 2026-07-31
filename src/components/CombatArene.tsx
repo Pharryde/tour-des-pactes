@@ -56,9 +56,12 @@ export function CombatArene({
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
 
     const [modeResolution, setModeResolution] = useLocalStorage<'auto'|'manuel'>('tdp_mode_reso', 'auto');
+    const [vitesseResolution, setVitesseResolution] = useLocalStorage<number>('tdp_vitesse_reso', 1);
+    
     const [attenteManuelle, setAttenteManuelle] = useState(false);
     const resolveManualStepRef = useRef<(() => void) | null>(null);
     const modeResolutionRef = useRef<'auto'|'manuel'>(modeResolution);
+    const vitesseRef = useRef<number>(vitesseResolution);
 
     const logEndRef = useRef<HTMLDivElement>(null);
     
@@ -103,9 +106,15 @@ export function CombatArene({
         }
     };
 
+    const basculerVitesse = () => {
+        const nextVitesse = vitesseResolution === 1 ? 2 : vitesseResolution === 2 ? 4 : 1;
+        setVitesseResolution(nextVitesse);
+        vitesseRef.current = nextVitesse;
+    };
+
     const attendreEtape = async (ms: number) => {
         if (modeResolutionRef.current === 'auto') {
-            await new Promise(r => setTimeout(r, ms));
+            await new Promise(r => setTimeout(r, ms / vitesseRef.current));
         } else {
             setAttenteManuelle(true);
             await new Promise<void>(resolve => { resolveManualStepRef.current = resolve; });
@@ -180,11 +189,11 @@ export function CombatArene({
         setMonstre(resultat.monstre);
 
         if (resultat.joueur.pv <= 0) {
-            if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000));
+            if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000 / vitesseRef.current));
             onFinDeCombat(false, resultat.joueur);
         } else if (resultat.monstre.pv <= 0) {
             ajouterLogGlobal(`<br><span class="log-mort">🩸 ${resultat.monstre.nom} est mort !</span>`);
-            if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500));
+            if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
             onFinDeCombat(true, resultat.joueur);
         } else {
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
@@ -206,7 +215,7 @@ export function CombatArene({
         <div className="arene-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', position: 'relative', height: '100%' }}>
             
             <div className="combat-header">
-                <div className="combat-header-actions">
+                <div className="combat-header-actions" style={{ flexWrap: 'wrap' }}>
                     <button 
                         onClick={() => { if (window.confirm("Abandonner l'ascension en cours ?")) onAbandon(); }} 
                         style={{ padding: '6px 12px', fontSize: '0.85em', background: 'transparent', border: '1px solid #f38ba8', color: '#f38ba8', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -214,13 +223,23 @@ export function CombatArene({
                     >
                         🏳️ Abandonner
                     </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
-                        <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Mode : <strong>{modeResolution === 'auto' ? 'Auto' : 'Manuel'}</strong></span>
-                        <button className="btn-systeme" onClick={basculerModeResolution} style={{ fontSize: '0.8em', padding: '4px 8px' }}>
-                            🔄 Changer
+                    
+                    {/* Bouton Vitesse Compact sans ":" */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
+                        <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Vitesse</span>
+                        <button className="btn-systeme" onClick={basculerVitesse} style={{ fontSize: '0.85em', padding: '2px 8px', fontWeight: 'bold' }}>
+                            x{vitesseResolution}
+                        </button>
+                    </div>
+
+                    {/* Bouton Mode Compact sans ":" */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
+                        <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Mode</span>
+                        <button className="btn-systeme" onClick={basculerModeResolution} style={{ fontSize: '0.85em', padding: '2px 8px', fontWeight: 'bold' }}>
+                            {modeResolution === 'auto' ? 'Auto' : 'Manuel'}
                         </button>
                         {modeResolution === 'manuel' && combatEnCours && attenteManuelle && (
-                            <button className="btn-systeme" onClick={etapeSuivanteManuelle} style={{ backgroundColor: '#89b4fa', color: '#11111b', fontWeight: 'bold', fontSize: '0.8em', padding: '4px 8px' }}>
+                            <button className="btn-systeme" onClick={etapeSuivanteManuelle} style={{ backgroundColor: '#89b4fa', color: '#11111b', fontWeight: 'bold', fontSize: '0.8em', padding: '2px 8px' }}>
                                 ⏩ Suivant
                             </button>
                         )}
@@ -276,7 +295,7 @@ export function CombatArene({
             
             <div className="controles-systeme">
                 <button className="btn-systeme" onClick={effacerDerniereAction} disabled={combatEnCours || actionsJoueur.length === 0}>↩️ Annuler</button>
-                <button className="btn-systeme" onClick={validerTour} disabled={combatEnCours || actionsJoueur.length < 5}>▶️ Fin de Tour</button>
+                <button className="btn-systeme" onClick={validerTour} disabled={combatEnCours || actionsJoueur.length < 5}>▶️ Valider</button>
             </div>
 
             <div id="log" style={{ 
