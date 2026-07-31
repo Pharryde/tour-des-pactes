@@ -88,16 +88,14 @@ function App() {
     setJoueur(joueurNettoye);
     const etageActuel = listeEtages[indexEtageActuel];
 
-    // 1. Si on vient de battre le Gardien de l'étage (Classique, Évolué ou Final)
-    if (indexSalle === etageActuel.monstres.length) {
+    const nomPacteCourant = determinerNomPacte(etageActuel.nom);
+    const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
+    const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
+
+    // === PHASE 2 : Le combat du Pacte optionnel est gagné ===
+    if (enCombatPacte) {
         setEnCombatPacte(false);
-        const nomPacte = determinerNomPacte(etageActuel.nom);
-        const aLvl1Equipe = pactesEquipes.includes(nomPacte);
-        const aLvl2Equipe = pactesEquipes.includes(nomPacte + " II");
-        
-        // On gagne le niveau 2 si on l'a affronté en Évolué ou en Final, sinon le niveau 1
-        const nomFinal = (aLvl1Equipe || aLvl2Equipe) ? nomPacte + " II" : nomPacte;
-        
+        const nomFinal = typeCombatPacte === 'lvl2' ? nomPacteCourant + " II" : nomPacteCourant;
         if (!pactesDebloques.includes(nomFinal)) setPactesDebloques([...pactesDebloques, nomFinal]);
         
         setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ VOUS AVEZ ARRACHÉ LE ${nomFinal.toUpperCase()} !</span>`]);
@@ -105,49 +103,64 @@ function App() {
         return;
     }
 
-    // 2. On avance d'une salle
+    // === PHASE 1 : Le Boss initial de l'étage est vaincu ===
+    if (indexSalle === etageActuel.monstres.length) {
+        if (aLvl2Equipe) {
+            // S'il avait déjà le Lvl 2 équipé, le palier max est atteint, on skip le ChoixBoss
+            setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Puissance maximale confirmée. Le Gardien s'incline. Progression automatique !</span>`]);
+            setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+        } else {
+            // Sinon on ouvre l'écran de choix (quitte ou double)
+            setEcran('ecran-choix-boss'); 
+        }
+        return;
+    }
+
+    // === On avance d'une salle ===
     const prochaineSalle = indexSalle + 1;
     setIndexSalle(prochaineSalle);
     
-    // 3. Arrivée face à la salle du Gardien
+    // Si la prochaine salle est le Boss
     if (prochaineSalle === etageActuel.monstres.length) {
-        const nomPacte = determinerNomPacte(etageActuel.nom);
-        const aLvl1Equipe = pactesEquipes.includes(nomPacte);
-        const aLvl2Equipe = pactesEquipes.includes(nomPacte + " II");
-
-        // RÈGLE : Choix automatique du boss selon le pacte équipé
         if (aLvl2Equipe) {
-            setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 Le Gardien résonne avec votre Pacte de Niveau II et libère sa FORME FINALE !</b>`]);
-            setTypeCombatPacte('lvl2'); 
-            setEnCombatPacte(true);
-        } 
-        else if (aLvl1Equipe) {
-            setHistoriqueLogs(prev => [...prev, `<br><b style="color: #fab387;">⚡ Le Gardien sent votre maîtrise du Niveau I et se relève dans sa FORME ÉVOLUÉE !</b>`]);
-            setTypeCombatPacte('lvl1'); 
-            setEnCombatPacte(true);
-        } 
-        else {
-            setHistoriqueLogs(prev => [...prev, `<br><b>👑 Combat : Le Gardien Classique approche !</b>`]);
-            setEnCombatPacte(false);
+            setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 Le Gardien résonne avec votre Pacte de Niveau II et libère d'emblée sa FORME FINALE !</b>`]);
+        } else if (aLvl1Equipe) {
+            setHistoriqueLogs(prev => [...prev, `<br><b style="color: #fab387;">⚡ Le Gardien sent votre maîtrise du Niveau I et engage directement le combat dans sa FORME ÉVOLUÉE !</b>`]);
+        } else {
+            setHistoriqueLogs(prev => [...prev, `<br><b>👑 Combat : Le Gardien approche !</b>`]);
         }
-        return; // L'écran reste 'ecran-combat', le joueur enchaîne directement
+        return; // L'écran reste sur le combat
     }
 
-    // 4. Combat d'un monstre normal
+    // Monstres normaux
     const prochainMonstre = etageActuel.monstres[prochaineSalle];
     setHistoriqueLogs(prev => [...prev, `<br><b>⚔️ Combat : ${prochainMonstre.nom} approche !</b>`]);
   };
 
   if (!moteurPret) return <div className="chargement">Chargement du Moteur WebAssembly...</div>;
 
-  // --- RÉCUPÉRATION DU MONSTRE ACTUEL POUR L'AFFICHAGE ---
-  let monstreActuel = null; const etageActuel = listeEtages[indexEtageActuel];
-  if (etageActuel) {
-      if (enCombatPacte) monstreActuel = typeCombatPacte === 'lvl2' ? etageActuel.bossHeroiqueLvl2 : etageActuel.bossHeroique;
-      else if (indexSalle < etageActuel.monstres.length) monstreActuel = etageActuel.monstres[indexSalle];
-      else monstreActuel = etageActuel.bossNormal;
-  }
+  // --- DÉTERMINATION DU MONSTRE (L'Adaptation se fait ici !) ---
+  let monstreActuel = null; 
+  const etageActuel = listeEtages[indexEtageActuel];
   const nomPacteCourant = etageActuel ? determinerNomPacte(etageActuel.nom) : "";
+  const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
+  const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
+
+  if (etageActuel) {
+      if (enCombatPacte) {
+          // Si on a accepté le défi dans ChoixBoss, on affronte la cible visée
+          monstreActuel = typeCombatPacte === 'lvl2' ? etageActuel.bossHeroiqueLvl2 : etageActuel.bossHeroique;
+      } 
+      else if (indexSalle < etageActuel.monstres.length) {
+          monstreActuel = etageActuel.monstres[indexSalle];
+      } 
+      else {
+          // Arrivée en Phase 1 de la salle du boss : le niveau dépend de l'équipement
+          if (aLvl2Equipe) monstreActuel = etageActuel.bossHeroiqueLvl2;
+          else if (aLvl1Equipe) monstreActuel = etageActuel.bossHeroique;
+          else monstreActuel = etageActuel.bossNormal;
+      }
+  }
 
   return (
     <div className="jeu-container">
@@ -156,12 +169,14 @@ function App() {
       {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} />}
       {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} onChoix={gererChoixRepos} />}
       
-      {/* Ce bloc ChoixBoss ne s'affichera plus grâce à la nouvelle logique automatique, mais je ne le casse pas pour respecter tes imports */}
+      {/* Ton composant ChoixBoss reprend sa place et son comportement exact d'origine ! */}
       {ecran === 'ecran-choix-boss' && (
         <ChoixBoss 
-            aLvl1Equipe={pactesEquipes.includes(nomPacteCourant)} estDernierEtage={indexEtageActuel >= listeEtages.length - 1} onFuir={gererPassageEtageSuivant}
-            onCombattreLvl1={() => { setHistoriqueLogs(prev => [...prev, `<b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME HÉROÏQUE !</b>`]); setTypeCombatPacte('lvl1'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
-            onCombattreLvl2={() => { setHistoriqueLogs(prev => [...prev, `<b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME SUBMÉDITÉE !</b>`]); setTypeCombatPacte('lvl2'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
+            aLvl1Equipe={aLvl1Equipe} 
+            estDernierEtage={indexEtageActuel >= listeEtages.length - 1} 
+            onFuir={gererPassageEtageSuivant}
+            onCombattreLvl1={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME HÉROÏQUE !</b>`]); setTypeCombatPacte('lvl1'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
+            onCombattreLvl2={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME SUBMÉDITÉE !</b>`]); setTypeCombatPacte('lvl2'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
         />
       )}
       
