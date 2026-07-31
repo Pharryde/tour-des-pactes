@@ -10,7 +10,20 @@ import { Fin } from './components/fin';
 import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CinematiqueBoss } from './components/CinematiqueBoss';
 import './App.css';
+
+const getImageCinematique = (idPacte: string) => {
+    switch(idPacte) {
+        case "Pacte de l'Armure": return "/images/boss_armure.png";
+        case "Pacte de l'Esquive": return "/images/boss_esquive.png";
+        case "Pacte du Combo": return "/images/boss_combo.png";
+        case "Pacte de la Vie": return "/images/boss_vie.png";
+        case "Pacte de l'Ombre": return "/images/boss_ombre.png";
+        case "Pacte du Temps": return "/images/boss_temps.png";
+        default: return "/images/boss_default.png";
+    }
+};
 
 function App() {
   const [moteurPret, setMoteurPret] = useState(false);
@@ -99,7 +112,6 @@ function App() {
     setJoueur(joueurNettoye);
     const etageActuel = listeEtages[indexEtageActuel];
 
-    // LA SÉCURITÉ EST ICI : Si Rust n'envoie pas idPacte, on met un fallback au lieu de crasher
     const nomPacteCourant = etageActuel?.idPacte || "Pacte Inconnu";
     const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
     const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
@@ -111,7 +123,6 @@ function App() {
         const nomFinal = typeCombatPacte === 'lvl2' ? nomPacteCourant + " II" : nomPacteCourant;
         if (!pactesDebloques.includes(nomFinal)) setPactesDebloques([...pactesDebloques, nomFinal]);
         
-        // Le crash arrivait ici. Grâce au fallback au-dessus, c'est impossible désormais.
         setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ VOUS AVEZ ARRACHÉ LE ${nomFinal.toUpperCase()} !</span>`]);
         setTimeout(() => { gererPassageEtageSuivant(); }, 2000);
         return;
@@ -150,6 +161,7 @@ function App() {
         } else {
             setHistoriqueLogs(prev => [...prev, `<br><b>👑 Combat : Le Gardien approche !</b>`]);
         }
+        setEcran('ecran-cinematique'); 
         return; 
     }
 
@@ -206,9 +218,17 @@ function App() {
                 aLvl1Equipe={aLvl1Equipe} 
                 estDernierEtage={indexEtageActuel >= listeEtages.length - 1} 
                 onFuir={gererPassageEtageSuivant}
-                onCombattreLvl1={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME HÉROÏQUE !</b>`]); setTypeCombatPacte('lvl1'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
-                onCombattreLvl2={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME SUBMÉDITÉE !</b>`]); setTypeCombatPacte('lvl2'); setEnCombatPacte(true); setEcran('ecran-combat'); }}
+                onCombattreLvl1={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME HÉROÏQUE !</b>`]); setTypeCombatPacte('lvl1'); setEnCombatPacte(true); setEcran('ecran-cinematique'); }}
+                onCombattreLvl2={() => { setHistoriqueLogs(prev => [...prev, `<br><b style="color: #f38ba8;">🔥 LE GARDIEN SE RELÈVE DANS SA FORME SUBMÉDITÉE !</b>`]); setTypeCombatPacte('lvl2'); setEnCombatPacte(true); setEcran('ecran-cinematique'); }}
             />
+          )}
+
+          {ecran === 'ecran-cinematique' && monstreActuel && (
+              <CinematiqueBoss 
+                  titre={monstreActuel.nom} 
+                  imageSrc={getImageCinematique(nomPacteCourant)}
+                  onContinuer={() => setEcran('ecran-combat')}
+              />
           )}
           
           {ecran === 'ecran-combat' && monstreActuel && joueur && (
@@ -228,7 +248,6 @@ function App() {
                 onFinDeCombat={handleFinDeCombat}
                 onAbandon={gererAbandon}
                 enCombatPacte={enCombatPacte}
-                typeCombatPacte={typeCombatPacte}
               />
             </div>
           )}

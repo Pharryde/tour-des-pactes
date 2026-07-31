@@ -19,7 +19,6 @@ interface CombatAreneProps {
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
-    typeCombatPacte: 'lvl1' | 'lvl2';
 }
 
 const lireCache = <T,>(cle: string, defaut: T): T => {
@@ -30,7 +29,7 @@ const lireCache = <T,>(cle: string, defaut: T): T => {
 export function CombatArene({ 
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles, 
     pactesEquipes, logsGlobaux, ajouterLogGlobal, onFinDeCombat, onAbandon,
-    enCombatPacte, typeCombatPacte
+    enCombatPacte
 }: CombatAreneProps) {
     
     const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
@@ -119,14 +118,13 @@ export function CombatArene({
         ajouterLogGlobal(`<div class="log-tour">--- TOUR ${tourActuel} ---</div>`);
 
         let resultat;
-        // NOUVEAU : Sécurisation absolue de l'appel WASM
         try {
             resultat = jouer_tour(joueur, monstre, actionsJoueur, actionsMonstre, tourActuel);
         } catch (error) {
             console.error("Panique dans le module WASM:", error);
             ajouterLogGlobal(`<div class="log-mort">❌ Une erreur critique est survenue lors de la résolution (Panique WASM). Le tour a été annulé pour éviter un blocage.</div>`);
-            setActionsJoueur([]); // On vide les actions du joueur pour débloquer les boutons
-            setCombatEnCours(false); // On déverrouille l'interface (anti soft-lock)
+            setActionsJoueur([]);
+            setCombatEnCours(false);
             return;
         }
 
@@ -197,19 +195,11 @@ export function CombatArene({
     };
 
     let titreEtage = `Étage ${numeroEtage}/${totalEtages} : ${nomEtage} - Salle ${numeroSalle + 1}/${totalSalles}`;
-    let prefixeBoss = "";
-    
     if (numeroSalle === totalSalles - 1) {
         titreEtage = `Étage ${numeroEtage}/${totalEtages} : ${nomEtage} - 👑 SALLE DU BOSS`;
-        if (enCombatPacte) {
-            prefixeBoss = typeCombatPacte === 'lvl2' ? "FORME FINALE" : "FORME ÉVOLUÉE";
-        } else {
-            prefixeBoss = "BOSS";
-        }
     }
-
-    const nomPropre = monstre.nom.replace(/👑\s*(BOSS:\s*)?/g, "").trim();
-    const titreMonstreFinal = prefixeBoss ? `👑 ${prefixeBoss} : ${nomPropre}` : `👿 ${nomPropre}`;
+    
+    const titreMonstreFinal = numeroSalle === totalSalles - 1 ? monstre.nom : `👿 ${monstre.nom}`;
     const badges = genererBadgesPactes(pactesEquipes);
 
     return (

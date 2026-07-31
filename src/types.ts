@@ -1,5 +1,5 @@
 // src/types.ts
-export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire';
+export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 
 export interface Entite {
