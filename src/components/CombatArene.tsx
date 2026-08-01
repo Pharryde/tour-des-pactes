@@ -16,7 +16,8 @@ interface CombatAreneProps {
     pactesEquipes: string[];
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
-    onFinDeCombat: (victoire: boolean, joueurRestant: Entite) => void;
+    // NOUVEAU : Ajout de l'argument optionnel doubleKO
+    onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
 }
@@ -188,13 +189,18 @@ export function CombatArene({
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
-        if (resultat.joueur.pv <= 0) {
+        // NOUVEAU : Logique de fin de combat incluant le Double KO
+        if (resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
+            ajouterLogGlobal(`<br><span class="log-mort">🩸 DOUBLE KO ! Vous avez emporté ${resultat.monstre.nom} avec vous !</span>`);
+            if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
+            onFinDeCombat(false, resultat.joueur, true); 
+        } else if (resultat.joueur.pv <= 0) {
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000 / vitesseRef.current));
-            onFinDeCombat(false, resultat.joueur);
+            onFinDeCombat(false, resultat.joueur, false);
         } else if (resultat.monstre.pv <= 0) {
             ajouterLogGlobal(`<br><span class="log-mort">🩸 ${resultat.monstre.nom} est mort !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
-            onFinDeCombat(true, resultat.joueur);
+            onFinDeCombat(true, resultat.joueur, false);
         } else {
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
             setComboAffichageJ({type: null, count: 0}); setComboAffichageM({type: null, count: 0});
@@ -224,7 +230,6 @@ export function CombatArene({
                         🏳️ Abandonner
                     </button>
                     
-                    {/* Bouton Vitesse Compact sans ":" */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
                         <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Vitesse</span>
                         <button className="btn-systeme" onClick={basculerVitesse} style={{ fontSize: '0.85em', padding: '2px 8px', fontWeight: 'bold' }}>
@@ -232,7 +237,6 @@ export function CombatArene({
                         </button>
                     </div>
 
-                    {/* Bouton Mode Compact sans ":" */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
                         <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Mode</span>
                         <button className="btn-systeme" onClick={basculerModeResolution} style={{ fontSize: '0.85em', padding: '2px 8px', fontWeight: 'bold' }}>

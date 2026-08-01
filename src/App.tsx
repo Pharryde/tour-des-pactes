@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite, StructureEtage } from './types';
+import type { Ecran, Entite, StructureEtage, Competences } from './types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from './utils/pactes';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Hub } from './components/Hub';
 import { Inventaire } from './components/Inventaire';
 import { CombatArene } from './components/CombatArene';
-import { Fin } from './components/fin';
+import { Fin } from './components/fin'; 
 import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
+import { Tuto } from './components/Tuto';
+import { ArbreCompetences } from './components/ArbreCompetences';
 import './App.css';
 
 const getImageCinematique = (idPacte: string) => {
@@ -23,6 +25,18 @@ const getImageCinematique = (idPacte: string) => {
         case "Pacte du Temps": return "/images/boss_temps.png";
         default: return "/images/boss_default.png";
     }
+};
+
+const buffEntite = (entite: Entite, multiplicateur: number): Entite => {
+    if (multiplicateur === 1) return entite;
+    return {
+        ...entite,
+        pv: Math.floor(entite.pv * multiplicateur),
+        pvMax: Math.floor(entite.pvMax * multiplicateur),
+        baseA: Math.floor(entite.baseA * multiplicateur),
+        baseP: Math.floor(entite.baseP * multiplicateur),
+        baseD: Math.floor(entite.baseD * multiplicateur),
+    };
 };
 
 function App() {
@@ -42,6 +56,14 @@ function App() {
   const [victoireTotale, setVictoireTotale] = useLocalStorage<boolean>('tdp_victoire', false);
   const [enCombatPacte, setEnCombatPacte] = useLocalStorage<boolean>('tdp_combat_pacte', false);
   const [typeCombatPacte, setTypeCombatPacte] = useLocalStorage<'lvl1'|'lvl2'>('tdp_type_pacte', 'lvl1');
+  const [logsMort, setLogsMort] = useLocalStorage<string[]>('tdp_logs_mort', []);
+
+  const [monstresTues, setMonstresTues] = useLocalStorage<number>('tdp_monstres_tues', 0);
+  const [competences, setCompetences] = useLocalStorage<Competences>('tdp_competences', { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
+  const [xpTotal, setXpTotal] = useLocalStorage<number>('tdp_xp_total', 0);
+  const [bestiaire, setBestiaire] = useLocalStorage<{normal: number, boss: number, evolue: number, final: number}>('tdp_bestiaire', { normal: 0, boss: 0, evolue: 0, final: 0 });
+
+  const [aConnuBuff, setAConnuBuff] = useLocalStorage<boolean>('tdp_a_connu_buff', false);
 
   useEffect(() => {
     const demarrer = async () => { 
@@ -80,12 +102,62 @@ function App() {
   };
 
   const gererLancerRun = () => {
-    const herosBase: Entite = { nom: "Héros", pv: 100, pvMax: 100, armure: 0, nivEsquive: 0, baseA: 10, baseP: 4, baseD: 10, paliersEsquive: [0, 50, 75, 100], actionsPossibles: ['A', 'P', 'D', 'E'] };
+    const bonusEsq = (competences.esq || 0) * 5;
+    
+    const herosBase: Entite = { 
+        nom: "Héros", 
+        pv: 100 + ((competences.pv || 0) * 10), 
+        pvMax: 100 + ((competences.pv || 0) * 10), 
+        armure: 0, 
+        nivEsquive: 0, 
+        baseA: 10 + (competences.atk || 0), 
+        baseP: 4 + (competences.pre || 0), 
+        baseD: 10 + (competences.def || 0), 
+        paliersEsquive: [
+            0, 
+            Math.min(100, 50 + bonusEsq), 
+            Math.min(100, 75 + bonusEsq), 
+            Math.min(100, 100 + bonusEsq)
+        ], 
+        actionsPossibles: ['A', 'P', 'D', 'E'] 
+    };
+    
     setJoueur(appliquerPactesSurJoueur(herosBase, pactesEquipes));
-    const melange = [...donneesBaseEtages].sort(() => Math.random() - 0.5);
+    
+    const melange = [...donneesBaseEtages]
+        .sort(() => Math.random() - 0.5)
+        .map(etage => {
+            let mult = 1;
+            if (pactesEquipes.includes(etage.idPacte + " II")) mult = 1.2;
+            else if (pactesEquipes.includes(etage.idPacte)) mult = 1.1;
+
+            if (mult === 1) return etage;
+
+            return {
+                ...etage,
+                monstres: etage.monstres.map(m => buffEntite(m, mult))
+            };
+        });
+        
     setListeEtages(melange);
-    setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
-    setHistoriqueLogs([`<b>🎲 Nouvelle Ascension ! Vous entrez dans l'Étage 1.</b>`, `<br><b>⚔️ Combat : ${melange[0].monstres[0].nom} approche !</b>`]);
+    setIndexEtageActuel(0); 
+    setIndexSalle(0); 
+    setEnCombatPacte(false);
+
+    let messageBuff = "";
+    if (pactesEquipes.includes(melange[0].idPacte + " II")) {
+        messageBuff = `<br><b style="color: #f38ba8;">⚠️ Les monstres sont enragés par la présence de votre Pacte de Niveau II !</b>`;
+        setAConnuBuff(true);
+    } else if (pactesEquipes.includes(melange[0].idPacte)) {
+        messageBuff = `<br><b style="color: #fab387;">⚠️ Les monstres sont renforcés par la présence de votre Pacte !</b>`;
+        setAConnuBuff(true);
+    }
+
+    setHistoriqueLogs([
+        `<b>🎲 Nouvelle Ascension ! Vous entrez dans l'Étage 1.</b>`, 
+        ...(messageBuff ? [messageBuff] : []),
+        `<br><b>⚔️ Combat : ${melange[0].monstres[0].nom} approche !</b>`
+    ]);
     setEcran('ecran-combat');
   };
 
@@ -101,12 +173,77 @@ function App() {
       if (choix === 'pv') { const gain = calculerGainPvMaxRepos(pactesEquipes); j.pvMax += gain; j.pv += gain; }
       if (choix === 'atk') j.baseA += 2; if (choix === 'pre') j.baseP += 1; if (choix === 'def') j.baseD += 2;
       
-      setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">🚪 DIRECTION L'ÉTAGE SUIVANT...</span>`, `<br><b>⚔️ Combat : ${listeEtages[indexEtageActuel + 1].monstres[0].nom} approche !</b>`]);
-      setJoueur(j); setIndexEtageActuel(i => i + 1); setIndexSalle(0); setEcran('ecran-combat');
+      const prochainEtage = listeEtages[indexEtageActuel + 1];
+      
+      let messageBuff = "";
+      if (pactesEquipes.includes(prochainEtage.idPacte + " II")) {
+          messageBuff = `<br><b style="color: #f38ba8;">⚠️ Les monstres sont enragés par la présence de votre Pacte de Niveau II !</b>`;
+          setAConnuBuff(true);
+      } else if (pactesEquipes.includes(prochainEtage.idPacte)) {
+          messageBuff = `<br><b style="color: #fab387;">⚠️ Les monstres sont renforcés par la présence de votre Pacte !</b>`;
+          setAConnuBuff(true);
+      }
+
+      setHistoriqueLogs(prev => [
+          ...prev, 
+          `<br><span class="log-tour">🚪 DIRECTION L'ÉTAGE SUIVANT...</span>`, 
+          ...(messageBuff ? [messageBuff] : []),
+          `<br><b>⚔️ Combat : ${prochainEtage.monstres[0].nom} approche !</b>`
+      ]);
+      setJoueur(j); 
+      setIndexEtageActuel(i => i + 1); 
+      setIndexSalle(0); 
+      setEcran('ecran-combat');
   };
 
-  const handleFinDeCombat = async (victoire: boolean, joueurRestant: Entite) => {
-    if (!victoire) { setVictoireTotale(false); setEcran('ecran-fin'); effacerRun(); return; }
+  const handleFinDeCombat = async (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false) => {
+    
+    if (victoire || doubleKO) {
+        setMonstresTues(prev => prev + 1);
+        
+        let gainXp = 1;
+        let typeMonstre = 'normal';
+        const etageActuel = listeEtages[indexEtageActuel];
+        
+        if (indexSalle === (etageActuel?.monstres?.length || 0)) {
+            if (enCombatPacte) {
+                gainXp = typeCombatPacte === 'lvl2' ? 8 : 4;
+                typeMonstre = typeCombatPacte === 'lvl2' ? 'final' : 'evolue';
+            } else {
+                const nomPacteCourant = etageActuel?.idPacte || "Pacte Inconnu";
+                const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
+                const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
+                
+                if (aLvl2Equipe) { gainXp = 8; typeMonstre = 'final'; }
+                else if (aLvl1Equipe) { gainXp = 4; typeMonstre = 'evolue'; }
+                else { gainXp = 2; typeMonstre = 'boss'; }
+            }
+        }
+        
+        setBestiaire(prev => ({...prev, [typeMonstre]: prev[typeMonstre as keyof typeof prev] + 1}));
+        setXpTotal(prev => prev + gainXp);
+        setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${gainXp} point(s) d'XP !</div>`]);
+    }
+
+    if (!victoire) { 
+        try {
+            const logsAjour = JSON.parse(window.localStorage.getItem('tdp_historique_logs') || '[]');
+            let startIndex = -1;
+            for (let i = logsAjour.length - 1; i >= 0; i--) {
+                if (logsAjour[i].includes('--- TOUR')) { startIndex = i; break; }
+            }
+            const logsDernierTour = startIndex !== -1 ? logsAjour.slice(startIndex) : logsAjour;
+            setLogsMort(logsDernierTour);
+        } catch (e) {
+            console.error("Erreur lecture logs mort", e);
+            setLogsMort([]);
+        }
+
+        setVictoireTotale(false); 
+        setEcran('ecran-fin'); 
+        effacerRun(); 
+        return; 
+    }
 
     const joueurNettoye = { ...joueurRestant, armure: 0, nivEsquive: 0 };
     setJoueur(joueurNettoye);
@@ -208,9 +345,30 @@ function App() {
   return (
     <ErrorBoundary>
         <div className="jeu-container">
-          {ecran === 'ecran-hub' && <Hub onLancerRun={gererLancerRun} onChangeEcran={setEcran} />}
+          {ecran === 'ecran-hub' && <Hub onLancerRun={gererLancerRun} onChangeEcran={setEcran} xpTotal={xpTotal} />}
+          
+          {ecran === 'ecran-tuto' && (
+              <Tuto 
+                  pactesDebloques={pactesDebloques} 
+                  xpTotal={xpTotal}
+                  bestiaire={bestiaire}
+                  aConnuBuff={aConnuBuff}
+                  onRetour={() => setEcran('ecran-hub')} 
+              />
+          )}
+
+          {ecran === 'ecran-arbre' && (
+              <ArbreCompetences 
+                  xpTotal={xpTotal} 
+                  competences={competences} 
+                  setCompetences={setCompetences} 
+                  monstresTues={monstresTues}
+                  onRetour={() => setEcran('ecran-hub')} 
+              />
+          )}
+
           {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
-          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} />}
+          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} logsMort={logsMort} />}
           {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} onChoix={gererChoixRepos} />}
           
           {ecran === 'ecran-choix-boss' && (
