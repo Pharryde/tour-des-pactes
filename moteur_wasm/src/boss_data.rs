@@ -1,6 +1,5 @@
 use crate::entite::{ActionType, Entite, StructureEtage};
 
-// Fonction utilitaire pour éviter de réécrire les 20 propriétés à chaque monstre
 fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers: Vec<i32>, actions: Vec<ActionType>) -> Entite {
     Entite {
         nom: nom.to_string(),
@@ -27,18 +26,17 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         regen_pv_pourcentage: None,
         bloque_esquive_opposant: false,
         degats_armure_restante_fin_tour: false,
+        limite_combo_max: None,
+        annule_bonus_combo: false,
     }
 }
 
 pub fn get_etage_armure() -> StructureEtage {
     let mut boss_h = creer_base("👑FORME EVOLUEE: Le Mur de Fer", 100, 12, 5, 15, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D]);
-    boss_h.armure = 5;
-    boss_h.regen_armure_tour = Some(5);
+    boss_h.armure = 5; boss_h.regen_armure_tour = Some(5);
 
     let mut boss_h2 = creer_base("👑FORME FINALE: Le Mur de Fer", 100, 12, 5, 15, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D]);
-    boss_h2.armure = 5;
-    boss_h2.regen_armure_tour = Some(5);
-    boss_h2.degats_armure_restante_fin_tour = true; // <-- Le renvoi de dégâts du boss est bien ici !
+    boss_h2.armure = 5; boss_h2.regen_armure_tour = Some(5); boss_h2.degats_armure_restante_fin_tour = true;
 
     StructureEtage {
         id_pacte: "Pacte de l'Armure".to_string(),
@@ -77,22 +75,13 @@ pub fn get_etage_combo() -> StructureEtage {
     let mut batteur = creer_base("Batteur Fou", 40, 10, 5, 8, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); batteur.chance_combo = Some(50);
     let mut chore = creer_base("Chorégraphe de Sang", 55, 10, 5, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); chore.chance_combo = Some(50);
     
-    let mut boss = creer_base("👑 BOSS: L'Harmonie Brisée", 85, 10, 5, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); 
-    boss.chance_combo = Some(50);
-    
-    let mut boss_h = creer_base("👑FORME EVOLUEE: L'Harmonie Brisée", 110, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
-    boss_h.chance_combo = Some(50); boss_h.combo_multiplicateur = Some(1.5);
-
-    let mut boss_h2 = creer_base("👑FORME FINALE: L'Harmonie Brisée", 110, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
-    boss_h2.chance_combo = Some(50); boss_h2.combo_multiplicateur = Some(2.0);
+    let mut boss = creer_base("👑 BOSS: L'Harmonie Brisée", 85, 10, 5, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); boss.chance_combo = Some(50);
+    let mut boss_h = creer_base("👑FORME EVOLUEE: L'Harmonie Brisée", 110, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); boss_h.chance_combo = Some(50); boss_h.combo_multiplicateur = Some(1.5);
+    let mut boss_h2 = creer_base("👑FORME FINALE: L'Harmonie Brisée", 110, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); boss_h2.chance_combo = Some(50); boss_h2.combo_multiplicateur = Some(2.0);
 
     StructureEtage { 
-        id_pacte: "Pacte du Combo".to_string(),
-        nom: "Étage du Combo".to_string(), 
-        monstres: vec![adepte, batteur, chore], 
-        boss_normal: boss, 
-        boss_heroique: boss_h, 
-        boss_heroique_lvl2: boss_h2 
+        id_pacte: "Pacte du Combo".to_string(), nom: "Étage du Combo".to_string(), 
+        monstres: vec![adepte, batteur, chore], boss_normal: boss, boss_heroique: boss_h, boss_heroique_lvl2: boss_h2 
     }
 }
 
@@ -121,12 +110,8 @@ pub fn get_etage_ombre() -> StructureEtage {
     let mut boss_h2 = creer_base("👑FORME FINALE: Le Cauchemar", 120, 12, 5, 12, vec![30, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]); boss_h2.actions_cachees = true;
 
     StructureEtage { 
-        id_pacte: "Pacte de l'Ombre".to_string(),
-        nom: "Étage de l'Ombre".to_string(), 
-        monstres: vec![ombre, traqueur, spectre], 
-        boss_normal: boss, 
-        boss_heroique: boss_h, 
-        boss_heroique_lvl2: boss_h2 
+        id_pacte: "Pacte de l'Ombre".to_string(), nom: "Étage de l'Ombre".to_string(), 
+        monstres: vec![ombre, traqueur, spectre], boss_normal: boss, boss_heroique: boss_h, boss_heroique_lvl2: boss_h2 
     }
 }
 
@@ -142,13 +127,40 @@ pub fn get_etage_temps() -> StructureEtage {
     boss_h2.regen_pv_chaque_x_tours = Some(4); boss_h2.regen_pv_pourcentage = Some(10);
 
     StructureEtage {
-        id_pacte: "Pacte du Temps".to_string(),
-        nom: "Étage du Temps".to_string(),
+        id_pacte: "Pacte du Temps".to_string(), nom: "Étage du Temps".to_string(),
         monstres: vec![
             creer_base("Trotteuse Agile", 30, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::E]),
             creer_base("Gardien du Sablier", 45, 10, 4, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::D, ActionType::E]),
             creer_base("Anachorète Temporel", 55, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]),
         ],
+        boss_normal: boss, boss_heroique: boss_h, boss_heroique_lvl2: boss_h2,
+    }
+}
+
+pub fn get_etage_fluidite() -> StructureEtage {
+    let mut m1 = creer_base("Gouttelette Agressive", 35, 8, 4, 8, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::E]);
+    m1.limite_combo_max = Some(4);
+
+    let mut m2 = creer_base("Élémentaire d'Eau", 45, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D]);
+    m2.limite_combo_max = Some(4);
+
+    let mut m3 = creer_base("Ondin Mage", 55, 10, 5, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
+    m3.limite_combo_max = Some(4);
+
+    let mut boss = creer_base("👑 BOSS: Le Maître des Courants", 80, 10, 4, 10, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
+    boss.limite_combo_max = Some(4); // Bloque le 5ème
+
+    let mut boss_h = creer_base("👑FORME EVOLUEE: Le Maître des Courants", 110, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
+    boss_h.limite_combo_max = Some(3); // CORRIGÉ : Bloque le 4ème (permet 3 actions)
+
+    let mut boss_h2 = creer_base("👑FORME FINALE: Le Maître des Courants", 140, 12, 5, 12, vec![0, 50, 75, 100], vec![ActionType::A, ActionType::P, ActionType::D, ActionType::E]);
+    boss_h2.limite_combo_max = Some(2); // CORRIGÉ : Bloque le 3ème (permet 2 actions)
+    boss_h2.annule_bonus_combo = true; 
+
+    StructureEtage {
+        id_pacte: "Pacte de la Fluidité".to_string(),
+        nom: "Étage de la Fluidité".to_string(),
+        monstres: vec![m1, m2, m3],
         boss_normal: boss,
         boss_heroique: boss_h,
         boss_heroique_lvl2: boss_h2,
@@ -163,5 +175,6 @@ pub fn get_tous_les_etages() -> Vec<StructureEtage> {
         get_etage_vie(),
         get_etage_ombre(),
         get_etage_temps(),
+        get_etage_fluidite(),
     ]
 }

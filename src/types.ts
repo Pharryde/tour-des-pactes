@@ -1,4 +1,3 @@
-// src/types.ts
 export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 
@@ -40,6 +39,10 @@ export interface Entite {
     pertePvChaqueXTours?: number;
     pertePvPourcentage?: number;
     pertePvBaseMax?: boolean;
+
+    // --- NOUVEAU : ANTI-COMBO ---
+    limiteComboMax?: number; 
+    annuleBonusCombo?: boolean; 
 }
 
 export interface EtapeCombat {

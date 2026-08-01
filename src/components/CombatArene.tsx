@@ -16,7 +16,6 @@ interface CombatAreneProps {
     pactesEquipes: string[];
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
-    // NOUVEAU : Ajout de l'argument optionnel doubleKO
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
@@ -74,9 +73,32 @@ export function CombatArene({
     
     useEffect(() => { 
         if (actionsMonstre.length === 0 && !combatEnCours) {
-            setActionsMonstre(genererActionsMonstre(monstre));
+            let generated = genererActionsMonstre(monstre);
+            
+            // --- CORRECTION : Le joueur applique son Pacte Lvl 1/2 sur le monstre ---
+            const limiteAdverse = joueur.limiteComboMax ?? 5;
+            
+            if (limiteAdverse < 5) {
+                let actionsCorrigees: ActionType[] = [];
+                for (let i = 0; i < 5; i++) {
+                    let act = generated[i];
+                    let actionsSuite = 0;
+                    for (let j = actionsCorrigees.length - 1; j >= 0; j--) {
+                        if (actionsCorrigees[j] === act) actionsSuite++; else break;
+                    }
+                    
+                    if (actionsSuite >= limiteAdverse) {
+                        const alternatives = ['A', 'P', 'D', 'E'].filter(a => a !== act) as ActionType[];
+                        act = alternatives[Math.floor(Math.random() * alternatives.length)];
+                    }
+                    actionsCorrigees.push(act);
+                }
+                setActionsMonstre(actionsCorrigees);
+            } else {
+                setActionsMonstre(generated);
+            }
         }
-    }, [actionsMonstre.length, monstre, combatEnCours]);
+    }, [actionsMonstre.length, monstre, combatEnCours, joueur.limiteComboMax]);
 
     const formatterCombo = (comboObj: {type: ActionType|null, count: number}) => {
         if(comboObj.count <= 1 || comboObj.type === 'E' || comboObj.type === null) return "Aucun";
@@ -120,6 +142,23 @@ export function CombatArene({
             setAttenteManuelle(true);
             await new Promise<void>(resolve => { resolveManualStepRef.current = resolve; });
         }
+    };
+
+    const peutAjouterAction = (action: ActionType) => {
+        if (combatEnCours || actionsJoueur.length >= 5) return false;
+        
+        const limite = monstre.limiteComboMax ?? 5; 
+        
+        let actionsSuite = 0;
+        for (let i = actionsJoueur.length - 1; i >= 0; i--) {
+            if (actionsJoueur[i] === action) {
+                actionsSuite++;
+            } else {
+                break;
+            }
+        }
+        
+        return actionsSuite < limite;
     };
 
     const validerTour = async () => {
@@ -189,7 +228,6 @@ export function CombatArene({
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
-        // NOUVEAU : Logique de fin de combat incluant le Double KO
         if (resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
             ajouterLogGlobal(`<br><span class="log-mort">🩸 DOUBLE KO ! Vous avez emporté ${resultat.monstre.nom} avec vous !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
@@ -291,10 +329,10 @@ export function CombatArene({
             </div>
 
             <div className="controles" style={{ marginTop: '15px' }}>
-                <button className="btn-action" id="btn-a" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'A'])}} disabled={combatEnCours}>⚔️ Attaque</button>
-                <button className="btn-action" id="btn-p" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'P'])}} disabled={combatEnCours}>🎯 Précise</button>
-                <button className="btn-action" id="btn-d" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'D'])}} disabled={combatEnCours}>🛡️ Défense</button>
-                <button className="btn-action" id="btn-e" onClick={() => {if (actionsJoueur.length < 5) setActionsJoueur([...actionsJoueur, 'E'])}} disabled={combatEnCours}>💨 Esquive</button>
+                <button className="btn-action" id="btn-a" onClick={() => {if (peutAjouterAction('A')) setActionsJoueur([...actionsJoueur, 'A'])}} disabled={!peutAjouterAction('A')}>⚔️ Attaque</button>
+                <button className="btn-action" id="btn-p" onClick={() => {if (peutAjouterAction('P')) setActionsJoueur([...actionsJoueur, 'P'])}} disabled={!peutAjouterAction('P')}>🎯 Précise</button>
+                <button className="btn-action" id="btn-d" onClick={() => {if (peutAjouterAction('D')) setActionsJoueur([...actionsJoueur, 'D'])}} disabled={!peutAjouterAction('D')}>🛡️ Défense</button>
+                <button className="btn-action" id="btn-e" onClick={() => {if (peutAjouterAction('E')) setActionsJoueur([...actionsJoueur, 'E'])}} disabled={!peutAjouterAction('E')}>💨 Esquive</button>
             </div>
             
             <div className="controles-systeme">

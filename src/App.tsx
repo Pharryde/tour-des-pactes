@@ -23,6 +23,7 @@ const getImageCinematique = (idPacte: string) => {
         case "Pacte de la Vie": return "/images/boss_vie.png";
         case "Pacte de l'Ombre": return "/images/boss_ombre.png";
         case "Pacte du Temps": return "/images/boss_temps.png";
+        case "Pacte de la Fluidité": return "/images/boss_fluidite.png"; 
         default: return "/images/boss_default.png";
     }
 };
@@ -64,6 +65,18 @@ function App() {
   const [bestiaire, setBestiaire] = useLocalStorage<{normal: number, boss: number, evolue: number, final: number}>('tdp_bestiaire', { normal: 0, boss: 0, evolue: 0, final: 0 });
 
   const [aConnuBuff, setAConnuBuff] = useLocalStorage<boolean>('tdp_a_connu_buff', false);
+
+  const nbConnaissancesActuelles = 
+      (xpTotal > 0 ? 1 : 0) +
+      (aConnuBuff ? 1 : 0) +
+      (pactesDebloques.some(p => p.includes("Pacte du Combo")) ? 1 : 0) +
+      (pactesDebloques.some(p => p.includes("Pacte du Temps")) ? 1 : 0) +
+      (pactesDebloques.some(p => p.includes("Pacte de l'Ombre")) ? 1 : 0) +
+      (pactesDebloques.some(p => p.includes("Pacte de la Fluidité")) ? 1 : 0) +
+      (pactesDebloques.includes("Pacte de l'Armure II") ? 1 : 0);
+
+  const [connaissancesVues, setConnaissancesVues] = useLocalStorage<number>('tdp_tuto_vues', 0);
+  const aNouveauteTuto = nbConnaissancesActuelles > connaissancesVues;
 
   useEffect(() => {
     const demarrer = async () => { 
@@ -122,6 +135,7 @@ function App() {
         actionsPossibles: ['A', 'P', 'D', 'E'] 
     };
     
+    // Application propre de tous les pactes via le registry
     setJoueur(appliquerPactesSurJoueur(herosBase, pactesEquipes));
     
     const melange = [...donneesBaseEtages]
@@ -345,7 +359,15 @@ function App() {
   return (
     <ErrorBoundary>
         <div className="jeu-container">
-          {ecran === 'ecran-hub' && <Hub onLancerRun={gererLancerRun} onChangeEcran={setEcran} xpTotal={xpTotal} />}
+          {ecran === 'ecran-hub' && (
+              <Hub 
+                  onLancerRun={gererLancerRun} 
+                  onChangeEcran={setEcran} 
+                  xpTotal={xpTotal} 
+                  aNouveauteTuto={aNouveauteTuto}
+                  marquerTutoLu={() => setConnaissancesVues(nbConnaissancesActuelles)}
+              />
+          )}
           
           {ecran === 'ecran-tuto' && (
               <Tuto 

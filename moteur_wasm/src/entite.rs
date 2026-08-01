@@ -41,6 +41,10 @@ pub struct Entite {
     
     #[serde(default)] pub bloque_esquive_opposant: bool,
     #[serde(default)] pub degats_armure_restante_fin_tour: bool,
+
+    // --- NOUVEAU : ANTI-COMBO ---
+    #[serde(default)] pub limite_combo_max: Option<i32>,
+    #[serde(default)] pub annule_bonus_combo: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

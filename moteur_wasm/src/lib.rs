@@ -11,7 +11,7 @@ use crate::boss_data::get_tous_les_etages;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EtapeCombat {
-    pub est_action: bool, // NOUVEAU
+    pub est_action: bool,
     pub log: String,
     pub joueur_pv: i32,
     pub joueur_armure: i32,
@@ -55,7 +55,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     if let Some(regen) = monstre.regen_armure_tour {
         monstre.armure += regen;
         etapes.push(EtapeCombat { 
-            est_action: false, // NOUVEAU : C'est un simple log de texte
+            est_action: false,
             log: format!("<span class=\"log-mort\">🔥 Le passif du Boss s'active : +{} Armure !</span>", regen), 
             joueur_pv: joueur.pv, 
             joueur_armure: joueur.armure,
@@ -74,7 +74,20 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         gerer_combo(&mut combo_m_type, &mut combo_m_count, act_m);
 
         let mut val_j = get_valeur_action(act_j, combo_j_count, &joueur);
-        let val_m = get_valeur_action(act_m, combo_m_count, &monstre);
+        let mut val_m = get_valeur_action(act_m, combo_m_count, &monstre);
+
+        // --- NOUVEAU : CASSAGE DE COMBO ---
+        let mut log_annulation_j = "";
+        if monstre.annule_bonus_combo && combo_j_count > 1 {
+            val_j = get_valeur_action(act_j, 1, &joueur); // Override
+            log_annulation_j = " <span class=\"log-mort\">(Votre combo est brisé)</span>";
+        }
+
+        let mut log_annulation_m = "";
+        if joueur.annule_bonus_combo && combo_m_count > 1 {
+            val_m = get_valeur_action(act_m, 1, &monstre); // Override
+            log_annulation_m = " <span class=\"log-mort\">(Le combo ennemi est brisé)</span>";
+        }
 
         let mut mult_esquive_j = 1;
         if i == 4 && joueur.action_fin_tour_doublee { if *act_j == ActionType::E { mult_esquive_j = 2; } else { val_j *= 2; } }
@@ -92,8 +105,22 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         let d_monstre = calculer_degats(act_j, val_j, &monstre, joueur.bloque_esquive_opposant, joueur.degats_precis_doubles);
 
         let mut log_action = format!("Action {} : Vous {} vs {} {}", i+1, symbole(act_j), monstre.nom, symbole(act_m));
-        if combo_j_count > 1 && *act_j != ActionType::E { log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_j_count, val_j)); }
-        if combo_m_count > 1 && *act_m != ActionType::E { log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_m_count, val_m)); }
+        
+        if combo_j_count > 1 && *act_j != ActionType::E {
+            if monstre.annule_bonus_combo {
+                log_action.push_str(log_annulation_j);
+            } else {
+                log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_j_count, val_j));
+            }
+        }
+        
+        if combo_m_count > 1 && *act_m != ActionType::E {
+            if joueur.annule_bonus_combo {
+                log_action.push_str(log_annulation_m);
+            } else {
+                log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_m_count, val_m));
+            }
+        }
         
         if d_joueur.esquive { log_action.push_str(" <br>💨 Vous esquivez !"); }
         else if d_joueur.dmg_arm > 0 || d_joueur.dmg_pv > 0 {
@@ -108,7 +135,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         }
         
         etapes.push(EtapeCombat { 
-            est_action: true, // NOUVEAU : C'est une vraie action de combat pour React
+            est_action: true,
             log: log_action, 
             joueur_pv: joueur.pv, 
             joueur_armure: joueur.armure, 

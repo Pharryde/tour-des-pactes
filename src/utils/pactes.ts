@@ -74,6 +74,22 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
     "Pacte du Temps II": {
         desc: "(3e Action x3)",
         appliquer: (j) => { j.actionTroisiemeTriplee = true; }
+    },
+    // --- NOUVEAU : PACTE DE LA FLUIDITÉ ---
+    "Pacte de la Fluidité": {
+        desc: "(Max 3 actions identiques)",
+        // L'effet technique (limiteComboMax = 3) est déjà géré directement dans App.tsx 
+        // car il modifie un comportement fondamental du joueur pour l'arène.
+        // On pourrait le mettre ici si on uniformisait l'architecture, 
+        // mais pour l'instant cela suffit pour l'affichage !
+        appliquer: (j) => { j.limiteComboMax = 3; }
+    },
+    "Pacte de la Fluidité II": {
+        desc: "(Max 2 act., Casse Combo Ennemi)",
+        appliquer: (j) => { 
+            j.limiteComboMax = 2; 
+            j.annuleBonusCombo = true;
+        }
     }
 };
 // ============================================================================
