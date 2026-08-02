@@ -1,7 +1,7 @@
 // src/hooks/useGameState.ts
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite, StructureEtage, Competences, Bestiaire } from '../types';
+import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
 import { melangerEtages, genererMessageBuff } from '../utils/etages';
 import { calculerRecompenseCombat } from '../utils/recompenses';
@@ -38,6 +38,16 @@ export function useGameState() {
     const [aConnuBuff, setAConnuBuff] = useLocalStorage<boolean>('tdp_a_connu_buff', false);
     const [connaissancesVues, setConnaissancesVues] = useLocalStorage<number>('tdp_tuto_vues', 0);
     const [pactesVus, setPactesVus] = useLocalStorage<number>('tdp_pactes_vus', 0);
+    const [premierePartieFaite, setPremierePartieFaite] = useLocalStorage<boolean>('tdp_premiere_partie_faite', false);
+
+    // --- Statistiques de la run en cours (remises à zéro à chaque lancement), pour l'écran de fin ---
+    const [monstresTuesRun, setMonstresTuesRun] = useLocalStorage<number>('tdp_monstres_tues_run', 0);
+    const [pactesDebloquesRun, setPactesDebloquesRun] = useLocalStorage<string[]>('tdp_pactes_debloques_run', []);
+    const [degatsInfligesRun, setDegatsInfligesRun] = useLocalStorage<number>('tdp_degats_infliges_run', 0);
+    const [degatsBloquesRun, setDegatsBloquesRun] = useLocalStorage<number>('tdp_degats_bloques_run', 0);
+    const [degatsEsquivesRun, setDegatsEsquivesRun] = useLocalStorage<number>('tdp_degats_esquives_run', 0);
+    const [etageRecord, setEtageRecord] = useLocalStorage<number>('tdp_etage_record', 0);
+    const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
 
     const nbConnaissancesActuelles =
         (xpTotal > 0 ? 1 : 0) +
@@ -77,6 +87,26 @@ export function useGameState() {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
         setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
         window.localStorage.removeItem('tdp_active_combat_key');
+    };
+
+    // Fige les stats de la run qui vient de se terminer (mort ou victoire totale) AVANT que
+    // effacerRun() ne remette indexEtageActuel et les compteurs à zéro — sinon l'écran de fin
+    // n'aurait plus rien à afficher.
+    const capturerStatsFinRun = () => {
+        const etageAtteint = indexEtageActuel + 1;
+        const estNouveauRecord = etageAtteint > etageRecord;
+        if (estNouveauRecord) setEtageRecord(etageAtteint);
+
+        setStatsDerniereRun({
+            etageAtteint,
+            etageRecord: estNouveauRecord ? etageAtteint : etageRecord,
+            estNouveauRecord,
+            monstresTues: monstresTuesRun,
+            nouveauxPactes: pactesDebloquesRun,
+            degatsInfliges: degatsInfligesRun,
+            degatsBloques: degatsBloquesRun,
+            degatsEsquives: degatsEsquivesRun,
+        });
     };
 
     const gererAbandon = () => {
@@ -119,12 +149,24 @@ export function useGameState() {
         // Application propre de tous les pactes via le registry
         setJoueur(appliquerPactesSurJoueur(herosBase, pactesEquipes));
 
-        const melange = melangerEtages(donneesBaseEtages, pactesEquipes);
+        // Onboarding : les 2 premiers étages de la toute première partie sont toujours parmi
+        // Armure/Vie/Puissance Brute (mécaniques simples). Le drapeau se pose au lancement, pas
+        // à la fin, pour ne pas re-déclencher la règle si cette première run est abandonnée.
+        const estPremierePartie = !premierePartieFaite;
+        const melange = melangerEtages(donneesBaseEtages, pactesEquipes, estPremierePartie);
+        if (estPremierePartie) setPremierePartieFaite(true);
 
         setListeEtages(melange);
         setIndexEtageActuel(0);
         setIndexSalle(0);
         setEnCombatPacte(false);
+
+        // Remise à zéro des stats de la nouvelle run.
+        setMonstresTuesRun(0);
+        setPactesDebloquesRun([]);
+        setDegatsInfligesRun(0);
+        setDegatsBloquesRun(0);
+        setDegatsEsquivesRun(0);
 
         const messageBuff = genererMessageBuff(melange[0], pactesEquipes);
         if (messageBuff) setAConnuBuff(true);
@@ -138,7 +180,12 @@ export function useGameState() {
     };
 
     const gererPassageEtageSuivant = () => {
-        if (indexEtageActuel >= listeEtages.length - 1) { setVictoireTotale(true); setEcran('ecran-fin'); effacerRun(); }
+        if (indexEtageActuel >= listeEtages.length - 1) {
+            setVictoireTotale(true);
+            capturerStatsFinRun();
+            setEcran('ecran-fin');
+            effacerRun();
+        }
         else { setEcran('ecran-repos'); }
     };
 
@@ -179,10 +226,17 @@ export function useGameState() {
 
     const ajouterLogGlobal = (log: string) => setHistoriqueLogs(prev => [...prev, log]);
 
+    const ajouterStatsTour = (degatsInfliges: number, degatsBloques: number, degatsEsquives: number) => {
+        setDegatsInfligesRun(prev => prev + degatsInfliges);
+        setDegatsBloquesRun(prev => prev + degatsBloques);
+        setDegatsEsquivesRun(prev => prev + degatsEsquives);
+    };
+
     const gererRecompenseCombat = () => {
         const recompense = calculerRecompenseCombat(listeEtages[indexEtageActuel], indexSalle, enCombatPacte, typeCombatPacte, pactesEquipes);
 
         setMonstresTues(prev => prev + 1);
+        setMonstresTuesRun(prev => prev + 1);
         setBestiaire(prev => ({ ...prev, [recompense.typeMonstre]: prev[recompense.typeMonstre] + 1 }));
         setXpTotal(prev => prev + recompense.gainXp);
         setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${recompense.gainXp} point(s) d'XP !</div>`]);
@@ -191,6 +245,7 @@ export function useGameState() {
     const gererDefaite = () => {
         setLogsMort(extraireLogsDuDernierTour(lireHistoriqueLogsPersistant()));
         setVictoireTotale(false);
+        capturerStatsFinRun();
         setEcran('ecran-fin');
         effacerRun();
     };
@@ -198,7 +253,10 @@ export function useGameState() {
     const gererDeblocagePacte = (nomPacteCourant: string) => {
         setEnCombatPacte(false);
         const nomFinal = typeCombatPacte === 'lvl2' ? nomPacteCourant + " II" : nomPacteCourant;
-        if (!pactesDebloques.includes(nomFinal)) setPactesDebloques([...pactesDebloques, nomFinal]);
+        if (!pactesDebloques.includes(nomFinal)) {
+            setPactesDebloques([...pactesDebloques, nomFinal]);
+            setPactesDebloquesRun(prev => [...prev, nomFinal]);
+        }
 
         setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ VOUS AVEZ ARRACHÉ LE ${nomFinal.toUpperCase()} !</span>`]);
         setTimeout(() => { gererPassageEtageSuivant(); }, 2000);
@@ -297,6 +355,7 @@ export function useGameState() {
         enCombatPacte,
         typeCombatPacte,
         logsMort,
+        statsDerniereRun,
 
         // Pactes
         pactesDebloques,
@@ -314,6 +373,7 @@ export function useGameState() {
 
         // Actions
         ajouterLogGlobal,
+        ajouterStatsTour,
         marquerTutoLu,
         marquerPactesVus,
         gererAbandon,

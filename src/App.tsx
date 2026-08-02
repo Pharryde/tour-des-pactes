@@ -18,11 +18,11 @@ function App() {
       moteurPret, erreurMoteur,
       ecran, setEcran,
       listeEtages, indexEtageActuel, indexSalle,
-      joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort,
+      joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort, statsDerniereRun,
       pactesDebloques, pactesEquipes,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, aNouveauteTuto,
       aNouveauPacte, aPointsCompetenceDispo,
-      ajouterLogGlobal, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererLancerRun,
+      ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererLancerRun,
       gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, handleFinDeCombat,
   } = useGameState();
 
@@ -97,7 +97,7 @@ function App() {
           )}
 
           {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
-          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} logsMort={logsMort} />}
+          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} logsMort={logsMort} stats={statsDerniereRun} />}
           {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} onChoix={gererChoixRepos} />}
 
           {ecran === 'ecran-choix-boss' && (
@@ -132,6 +132,7 @@ function App() {
                 pactesEquipes={pactesEquipes}
                 logsGlobaux={historiqueLogs}
                 ajouterLogGlobal={ajouterLogGlobal}
+                ajouterStatsTour={ajouterStatsTour}
                 onFinDeCombat={handleFinDeCombat}
                 onAbandon={gererAbandon}
                 enCombatPacte={enCombatPacte}

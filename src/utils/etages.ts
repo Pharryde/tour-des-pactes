@@ -50,8 +50,22 @@ function melangerAleatoirement<T>(tableau: T[]): T[] {
     return resultat;
 }
 
-export function melangerEtages(etages: StructureEtage[], pactesEquipes: string[]): StructureEtage[] {
-    return melangerAleatoirement(etages)
+// Pour la toute première partie d'un joueur, les 2 premiers étages sont toujours pris parmi ces
+// 3 pactes (mécaniques simples, sans effet de statut caché/temporel) pour un onboarding en douceur.
+const PACTES_ETAGES_DEBUTANT = ["Pacte de l'Armure", "Pacte de la Vie", "Pacte de la Puissance Brute"];
+
+function ordonnerEtages(etages: StructureEtage[], estPremierePartie: boolean): StructureEtage[] {
+    if (!estPremierePartie) return melangerAleatoirement(etages);
+
+    const debutants = melangerAleatoirement(etages.filter(e => PACTES_ETAGES_DEBUTANT.includes(e.idPacte)));
+    const autres = etages.filter(e => !PACTES_ETAGES_DEBUTANT.includes(e.idPacte));
+
+    // Les 2 premiers étages "débutant" ouvrent la run ; le 3e (s'il existe) rejoint le reste du mélange.
+    return [...debutants.slice(0, 2), ...melangerAleatoirement([...debutants.slice(2), ...autres])];
+}
+
+export function melangerEtages(etages: StructureEtage[], pactesEquipes: string[], estPremierePartie: boolean = false): StructureEtage[] {
+    return ordonnerEtages(etages, estPremierePartie)
         .map((etage, index) => {
             const numeroEtage = index + 1;
             const palierProgression = Math.floor(numeroEtage / 2);

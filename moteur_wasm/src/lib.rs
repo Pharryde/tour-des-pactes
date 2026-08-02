@@ -19,6 +19,11 @@ pub struct EtapeCombat {
     pub monstre_pv: i32,
     pub monstre_armure: i32,
     pub monstre_niv_esquive: i32,
+
+    // --- NOUVEAU : stats cumulables côté run (écran de fin) ---
+    pub degats_infliges: i32,  // PV retirés au monstre par le joueur sur ce step
+    pub degats_bloques: i32,   // dégâts absorbés par l'armure du joueur sur ce step
+    pub degats_esquives: i32,  // dégâts évités par l'esquive du joueur sur ce step
 }
 
 #[derive(Serialize)]
@@ -62,15 +67,18 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
 
     if let Some(regen) = monstre.regen_armure_tour {
         monstre.armure += regen;
-        etapes.push(EtapeCombat { 
+        etapes.push(EtapeCombat {
             est_action: false,
-            log: format!("<span class=\"log-mort\">🔥 Le passif du Boss s'active : +{} Armure !</span>", regen), 
-            joueur_pv: joueur.pv, 
+            log: format!("<span class=\"log-mort\">🔥 Le passif du Boss s'active : +{} Armure !</span>", regen),
+            joueur_pv: joueur.pv,
             joueur_armure: joueur.armure,
             joueur_niv_esquive: joueur.niv_esquive as i32,
-            monstre_pv: monstre.pv, 
+            monstre_pv: monstre.pv,
             monstre_armure: monstre.armure,
-            monstre_niv_esquive: monstre.niv_esquive as i32
+            monstre_niv_esquive: monstre.niv_esquive as i32,
+            degats_infliges: 0,
+            degats_bloques: 0,
+            degats_esquives: 0,
         });
     }
 
@@ -142,25 +150,53 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             log_action.push_str(&format!(" <br>💥 L'ennemi perd {} PV.", d_monstre.dmg_pv));
         }
         
-        etapes.push(EtapeCombat { 
+        etapes.push(EtapeCombat {
             est_action: true,
-            log: log_action, 
-            joueur_pv: joueur.pv, 
-            joueur_armure: joueur.armure, 
+            log: log_action,
+            joueur_pv: joueur.pv,
+            joueur_armure: joueur.armure,
             joueur_niv_esquive: joueur.niv_esquive as i32,
-            monstre_pv: monstre.pv, 
+            monstre_pv: monstre.pv,
             monstre_armure: monstre.armure,
-            monstre_niv_esquive: monstre.niv_esquive as i32
+            monstre_niv_esquive: monstre.niv_esquive as i32,
+            degats_infliges: d_monstre.dmg_pv,
+            degats_bloques: d_joueur.dmg_arm,
+            degats_esquives: d_joueur.degats_evites,
         });
     }
 
     let mut logs_fin_tour = Vec::new();
     if joueur.pv > 0 && monstre.pv > 0 {
+        // Ces dégâts de fin de tour ("Pointes d'Acier" / Pacte de l'Armure II) doivent, comme
+        // une Attaque normale, être d'abord absorbés par l'armure ACTUELLE de la cible avant de
+        // toucher ses PV — auparavant ils ignoraient totalement l'armure de la cible.
         if monstre.degats_armure_restante_fin_tour && monstre.armure > 0 {
-            joueur.pv -= monstre.armure; logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ Pointes d'Acier : Le Gardien vous inflige des dégâts égaux à son armure restante (-{} PV).</span>", monstre.armure));
+            let degats = monstre.armure;
+            let absorbe = degats.min(joueur.armure);
+            joueur.armure -= absorbe;
+            let pv_perdus = degats - absorbe;
+            joueur.pv -= pv_perdus;
+
+            if pv_perdus > 0 {
+                let detail_absorption = if absorbe > 0 { format!(", {} absorbés par votre armure", absorbe) } else { String::new() };
+                logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ Pointes d'Acier : Le Gardien vous inflige des dégâts égaux à son armure restante (-{} PV{}).</span>", pv_perdus, detail_absorption));
+            } else {
+                logs_fin_tour.push(format!("<span class=\"log-tour\">🛡️ Pointes d'Acier : Votre armure absorbe entièrement l'assaut du Gardien (-{} armure).</span>", absorbe));
+            }
         }
         if joueur.degats_armure_restante_fin_tour && joueur.armure > 0 {
-            monstre.pv -= joueur.armure; logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ Pacte de l'Armure II : Vous infligez des dégâts égaux à votre armure restante (-{} PV).</span>", joueur.armure));
+            let degats = joueur.armure;
+            let absorbe = degats.min(monstre.armure);
+            monstre.armure -= absorbe;
+            let pv_perdus = degats - absorbe;
+            monstre.pv -= pv_perdus;
+
+            if pv_perdus > 0 {
+                let detail_absorption = if absorbe > 0 { format!(", {} absorbés par son armure", absorbe) } else { String::new() };
+                logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ Pacte de l'Armure II : Vous infligez des dégâts égaux à votre armure restante (-{} PV{}).</span>", pv_perdus, detail_absorption));
+            } else {
+                logs_fin_tour.push(format!("<span class=\"log-tour\">🛡️ Pacte de l'Armure II : Son armure absorbe entièrement votre assaut (-{} armure).</span>", absorbe));
+            }
         }
         if let Some(x) = monstre.regen_pv_chaque_x_tours {
             if tour_actuel % x == 0 {

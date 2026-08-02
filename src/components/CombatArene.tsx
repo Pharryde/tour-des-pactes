@@ -20,6 +20,7 @@ interface CombatAreneProps {
     pactesEquipes: string[];
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
+    ajouterStatsTour: (degatsInfliges: number, degatsBloques: number, degatsEsquives: number) => void;
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
@@ -27,7 +28,7 @@ interface CombatAreneProps {
 
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
-    pactesEquipes, logsGlobaux, ajouterLogGlobal, onFinDeCombat, onAbandon,
+    pactesEquipes, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
     enCombatPacte
 }: CombatAreneProps) {
 
@@ -163,11 +164,15 @@ export function CombatArene({
 
         const currentJoueur = { ...joueur }; const currentMonstre = { ...monstre };
         const localComboJ = { ...comboAffichageJ }; const localComboM = { ...comboAffichageM };
-        
+
         let indexDesActionsCombats = 0;
+        let degatsInfligesTour = 0; let degatsBloquesTour = 0; let degatsEsquivesTour = 0;
 
         for (let i = 0; i < resultat.etapes.length; i++) {
             const etape = resultat.etapes[i];
+            degatsInfligesTour += etape.degatsInfliges;
+            degatsBloquesTour += etape.degatsBloques;
+            degatsEsquivesTour += etape.degatsEsquives;
 
             if (etape.estAction) {
                 const actJ = actionsJoueur[indexDesActionsCombats];
@@ -207,6 +212,8 @@ export function CombatArene({
 
             await attendreEtape(etape.estAction ? 300 : 600);
         }
+
+        ajouterStatsTour(degatsInfligesTour, degatsBloquesTour, degatsEsquivesTour);
 
         if (resultat.logsFinTour.length > 0) {
             for (const logFin of resultat.logsFinTour) { ajouterLogGlobal(logFin); }

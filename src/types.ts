@@ -67,6 +67,9 @@ export interface EtapeCombat {
     monstrePv: number;
     monstreArmure: number;
     monstreNivEsquive: number;
+    degatsInfliges: number;
+    degatsBloques: number;
+    degatsEsquives: number;
 }
 
 export interface StructureEtage {
@@ -76,4 +79,17 @@ export interface StructureEtage {
     bossNormal: Entite;
     bossHeroique: Entite;
     bossHeroiqueLvl2: Entite;
+}
+
+// Statistiques figées d'une run, capturées au moment de la mort/victoire (avant la remise à zéro
+// de l'état de run) pour être affichées sur l'écran de fin.
+export interface StatsRun {
+    etageAtteint: number;
+    etageRecord: number;
+    estNouveauRecord: boolean;
+    monstresTues: number;
+    nouveauxPactes: string[];
+    degatsInfliges: number;
+    degatsBloques: number;
+    degatsEsquives: number;
 }
