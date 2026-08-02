@@ -5,6 +5,9 @@ import { genererBadgesPactes } from '../utils/pactes';
 import { jouer_tour } from 'moteur_wasm';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { chargerEtatCombat, usePersisterCombat } from '../hooks/useCombatResume';
+import { ANIMATIONS, animationPourAction, animationResolution, type NomAnimation } from '../utils/animationsJoueur';
+import { ANIMATIONS_MONSTRE, animationMonstrePourAction, animationResolutionMonstre, type NomAnimationMonstre } from '../utils/animationsMonstre';
+import { SpriteAnime } from './SpriteAnime';
 
 interface CombatAreneProps {
     joueurInitial: Entite;
@@ -45,6 +48,8 @@ export function CombatArene({
 
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
+    const [spriteJoueur, setSpriteJoueur] = useState<NomAnimation>('idle');
+    const [spriteMonstre, setSpriteMonstre] = useState<NomAnimationMonstre>('idle');
 
     const [modeResolution, setModeResolution] = useLocalStorage<'auto'|'manuel'>('tdp_mode_reso', 'auto');
     const [vitesseResolution, setVitesseResolution] = useLocalStorage<number>('tdp_vitesse_reso', 1);
@@ -116,6 +121,11 @@ export function CombatArene({
         }
     };
 
+    // Transition brève TOUJOURS automatique (même en mode manuel) entre le beat 1 (action du
+    // joueur) et le beat 2 (résolution) d'une même action : un seul "Suivant" doit suffire pour
+    // faire avancer une action entière, pas un par sprite affiché.
+    const attendreBeat = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms / vitesseRef.current));
+
     const peutAjouterAction = (action: ActionType) => {
         if (combatEnCours || actionsJoueur.length >= 5) return false;
         
@@ -146,6 +156,8 @@ export function CombatArene({
             ajouterLogGlobal(`<div class="log-mort">❌ Une erreur critique est survenue lors de la résolution (Panique WASM). Le tour a été annulé pour éviter un blocage.</div>`);
             setActionsJoueur([]);
             setCombatEnCours(false);
+            setSpriteJoueur('idle');
+            setSpriteMonstre('idle');
             return;
         }
 
@@ -156,31 +168,44 @@ export function CombatArene({
 
         for (let i = 0; i < resultat.etapes.length; i++) {
             const etape = resultat.etapes[i];
-            
+
             if (etape.estAction) {
                 const actJ = actionsJoueur[indexDesActionsCombats];
                 const actM = actionsMonstre[indexDesActionsCombats];
-                
+
                 if (localComboJ.type === actJ) localComboJ.count++; else { localComboJ.type = actJ; localComboJ.count = 1; }
                 if (localComboM.type === actM) localComboM.count++; else { localComboM.type = actM; localComboM.count = 1; }
-                
+
                 indexDesActionsCombats++;
+
+                // Beat 1 : chacun exécute sa propre action programmée.
+                setSpriteJoueur(animationPourAction(actJ));
+                setSpriteMonstre(animationMonstrePourAction(actM));
+                await attendreBeat(300);
             }
 
             setComboAffichageJ({...localComboJ}); setComboAffichageM({...localComboM});
             ajouterLogGlobal(etape.log);
-            
-            currentJoueur.pv = etape.joueurPv; 
+
+            const pvJoueurAvant = currentJoueur.pv;
+            const pvMonstreAvant = currentMonstre.pv;
+            currentJoueur.pv = etape.joueurPv;
             currentJoueur.armure = etape.joueurArmure;
-            currentJoueur.nivEsquive = etape.joueurNivEsquive ?? currentJoueur.nivEsquive; 
-            
-            currentMonstre.pv = etape.monstrePv; 
+            currentJoueur.nivEsquive = etape.joueurNivEsquive ?? currentJoueur.nivEsquive;
+
+            currentMonstre.pv = etape.monstrePv;
             currentMonstre.armure = etape.monstreArmure;
             currentMonstre.nivEsquive = etape.monstreNivEsquive ?? currentMonstre.nivEsquive;
-            
+
             setJoueur({ ...currentJoueur }); setMonstre({ ...currentMonstre });
-            
-            await attendreEtape(600); 
+
+            // Beat 2 : résolution de l'action adverse sur chacun (encaissé ou défendu/neutre).
+            if (etape.estAction) {
+                setSpriteJoueur(animationResolution(pvJoueurAvant, etape.joueurPv));
+                setSpriteMonstre(animationResolutionMonstre(pvMonstreAvant, etape.monstrePv));
+            }
+
+            await attendreEtape(etape.estAction ? 300 : 600);
         }
 
         if (resultat.logsFinTour.length > 0) {
@@ -201,20 +226,27 @@ export function CombatArene({
         setMonstre(resultat.monstre);
 
         if (resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
+            setSpriteJoueur('mort');
+            setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 DOUBLE KO ! Vous avez emporté ${resultat.monstre.nom} avec vous !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
-            onFinDeCombat(false, resultat.joueur, true); 
+            onFinDeCombat(false, resultat.joueur, true);
         } else if (resultat.joueur.pv <= 0) {
+            setSpriteJoueur('mort');
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000 / vitesseRef.current));
             onFinDeCombat(false, resultat.joueur, false);
         } else if (resultat.monstre.pv <= 0) {
+            setSpriteJoueur('idle');
+            setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 ${resultat.monstre.nom} est mort !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
             onFinDeCombat(true, resultat.joueur, false);
         } else {
+            setSpriteJoueur('idle');
+            setSpriteMonstre('idle');
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
             setComboAffichageJ({type: null, count: 0}); setComboAffichageM({type: null, count: 0});
-            setActionsJoueur([]); setActionsMonstre([]); 
+            setActionsJoueur([]); setActionsMonstre([]);
             setTourActuel(t => t + 1); setCombatEnCours(false);
         }
     };
@@ -271,15 +303,24 @@ export function CombatArene({
 
             <div className="arene">
                 <div className="entite">
-                    <h2>🧑 {joueur.nom}</h2>
+                    <div className="sprite-cadre">
+                        <SpriteAnime key={spriteJoueur} definition={ANIMATIONS[spriteJoueur]} />
+                    </div>
+                    <h2>{joueur.nom}</h2>
                     <div className="stats">
                         <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({joueur.paliersEsquive[Math.min(joueur.nivEsquive, 3)]}%)</span>
                     </div>
                     <div className="stats-base">⚔️ {joueur.baseA} | 🎯 {joueur.baseP} | 🛡️ {joueur.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageJ)}</span>
+                    <div className="actions-box">
+                        {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
+                    </div>
                 </div>
 
                 <div className="entite">
+                    <div className="sprite-cadre">
+                        <SpriteAnime key={spriteMonstre} definition={ANIMATIONS_MONSTRE[spriteMonstre]} />
+                    </div>
                     <h2>{titreMonstreFinal}</h2>
                     <div className="stats">
                         <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({monstre.paliersEsquive[Math.min(monstre.nivEsquive, 3)]}%)</span>
@@ -294,10 +335,6 @@ export function CombatArene({
                         ))}
                     </div>
                 </div>
-            </div>
-
-            <div className="actions-box actions-box--joueur">
-                {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
             </div>
 
             <div className="controles">

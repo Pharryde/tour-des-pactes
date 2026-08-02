@@ -46,6 +46,7 @@ export function useGameState() {
         (pactesDebloques.some(p => p.includes("Pacte du Temps")) ? 1 : 0) +
         (pactesDebloques.some(p => p.includes("Pacte de l'Ombre")) ? 1 : 0) +
         (pactesDebloques.some(p => p.includes("Pacte de la Fluidité")) ? 1 : 0) +
+        (pactesDebloques.some(p => p.includes("Pacte de la Puissance Brute")) ? 1 : 0) +
         (pactesDebloques.includes("Pacte de l'Armure II") ? 1 : 0);
 
     const aNouveauteTuto = nbConnaissancesActuelles > connaissancesVues;

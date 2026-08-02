@@ -86,9 +86,21 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
     },
     "Pacte de la Fluidité II": {
         desc: "(Max 2 act., Casse Combo Ennemi)",
-        appliquer: (j) => { 
-            j.limiteComboMax = 2; 
+        appliquer: (j) => {
+            j.limiteComboMax = 2;
             j.annuleBonusCombo = true;
+        }
+    },
+    // --- NOUVEAU : PACTE DE LA PUISSANCE BRUTE ---
+    "Pacte de la Puissance Brute": {
+        desc: "(+10% Dégâts d'Attaque)",
+        appliquer: (j) => { j.bonusDegatsAttaquePourcentage = 10; }
+    },
+    "Pacte de la Puissance Brute II": {
+        desc: "(+20% Dégâts d'Attaque, +1 Combo/Palier)",
+        appliquer: (j) => {
+            j.bonusDegatsAttaquePourcentage = 20;
+            j.bonusComboAttaquePalier = 1;
         }
     }
 };

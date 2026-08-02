@@ -45,6 +45,10 @@ pub struct Entite {
     // --- NOUVEAU : ANTI-COMBO ---
     #[serde(default)] pub limite_combo_max: Option<i32>,
     #[serde(default)] pub annule_bonus_combo: bool,
+
+    // --- NOUVEAU : PUISSANCE BRUTE ---
+    #[serde(default)] pub bonus_degats_attaque_pourcentage: Option<i32>,
+    #[serde(default)] pub bonus_combo_attaque_palier: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

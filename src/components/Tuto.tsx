@@ -14,6 +14,7 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, onRetour
     const connaitOmbre = pactesDebloques.some(p => p.includes("Pacte de l'Ombre"));
     const connaitTemps = pactesDebloques.some(p => p.includes("Pacte du Temps"));
     const connaitFluidite = pactesDebloques.some(p => p.includes("Pacte de la Fluidité"));
+    const connaitPuissanceBrute = pactesDebloques.some(p => p.includes("Pacte de la Puissance Brute"));
 
     return (
         <div className="ecran tuto-ecran">
@@ -105,6 +106,16 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, onRetour
                             <h2>Courant Continu</h2>
                             <p>
                                 L'eau ne stagne jamais. Ce pacte modifie les lois du combat en empêchant <b>physiquement</b> l'exécution de séries d'actions trop longues. Sous sa forme finale, il annule même les multiplicateurs de dégâts d'un début de combo adverse.
+                            </p>
+                        </div>
+                    )}
+
+                    {connaitPuissanceBrute && (
+                        <div className="tuto-carte tuto-carte-puissance">
+                            <span className="tuto-badge">Découverte : Pacte de la Puissance Brute</span>
+                            <h2>Force Écrasante</h2>
+                            <p>
+                                Certains Gardiens ne savent plus viser : ils frappent sans finesse, uniquement à l'Attaque brute. Ce Pacte amplifie vos propres coups d'Attaque, et sous sa forme finale, chaque palier de combo martelé au corps-à-corps devient encore plus dévastateur.
                             </p>
                         </div>
                     )}

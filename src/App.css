@@ -30,6 +30,30 @@
     gap: 20px;
 }
 
+/* --- SPRITES ANIMÉS (héros + monstre) --- */
+/* Cadre de hauteur fixe commun aux deux personnages : leurs feuilles de sprites ont des hauteurs
+   de frame différentes (84px pour le héros, 64px pour le monstre), donc sans ce cadre partagé le
+   contenu sous chaque sprite (nom, stats, combo, actions) se décale différemment d'une carte à
+   l'autre. 84px = la plus grande hauteur de frame connue, sert de référence fixe. */
+.sprite-cadre {
+    --sprite-echelle: 2;
+    height: calc(84px * var(--sprite-echelle));
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 6px;
+}
+.sprite-anime {
+    width: calc(var(--sprite-largeur-frame) * var(--sprite-echelle));
+    height: calc(var(--sprite-hauteur-frame) * var(--sprite-echelle));
+    background-image: var(--sprite-fichier);
+    background-repeat: no-repeat;
+    background-size: calc(var(--sprite-largeur-frame) * var(--sprite-frames) * var(--sprite-echelle)) calc(var(--sprite-hauteur-frame) * var(--sprite-echelle));
+    background-position: calc(var(--sprite-frame-index) * var(--sprite-largeur-frame) * var(--sprite-echelle) * -1) 0;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+}
+
 /* Boutons d'annulation et fin de tour centrés et de taille propre sur PC */
 .controles-systeme {
     display: flex;
@@ -52,11 +76,23 @@
         padding: 6px;
     }
 
+    .sprite-cadre {
+        --sprite-echelle: 1.15;
+        margin-bottom: 2px;
+    }
+
     /* Réduction des textes pour que le côte à côte fonctionne */
+    /* Hauteur réservée pour 2 lignes : certains noms de monstres (ex: "Traqueur Invisible")
+       passent sur 2 lignes en mobile alors que "Héros" tient sur 1, ce qui décale sinon tout
+       le contenu sous le titre différemment entre les deux cartes. */
     .arene .entite h2 {
         font-size: 1rem;
         margin-bottom: 5px;
         text-align: center;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     .arene .entite .stats, 
     .arene .entite .stats-base, 
@@ -125,8 +161,6 @@
 .btn-suivant-manuel { background-color: #89b4fa; color: #11111b; font-weight: bold; font-size: 0.8em; padding: 2px 8px; }
 
 .pacte-aucun { color: #a6adc8; }
-
-.actions-box--joueur { margin-top: 15px; min-height: 40px; }
 
 /* ======================================================= */
 /* --- HUB : PASTILLE DE NOTIFICATION --- */
@@ -373,6 +407,7 @@
 .tuto-carte-temps { --tuto-accent: #89dceb; background-color: #1e1e2e; }
 .tuto-carte-ombre { --tuto-accent: #cba6f7; background-color: #1e1e2e; }
 .tuto-carte-fluidite { --tuto-accent: #74c7ec; background-color: #1e1e2e; }
+.tuto-carte-puissance { --tuto-accent: #eba0ac; background-color: #1e1e2e; }
 .tuto-carte-armure { --tuto-accent: #a6e3a1; background-color: #1e1e2e; }
 
 @media (max-width: 768px) {

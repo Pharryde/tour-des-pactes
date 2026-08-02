@@ -23,7 +23,7 @@ pub fn gerer_combo(combo_type: &mut Option<ActionType>, combo_count: &mut i32, a
 
 pub fn get_valeur_action(action: &ActionType, count: i32, entite: &Entite) -> i32 {
     let mut multiplier = 1.0;
-    
+
     // Lecture propre du multiplicateur si on est en situation de combo
     if count > 1 {
         multiplier = entite.combo_multiplicateur.unwrap_or(1.0);
@@ -31,13 +31,27 @@ pub fn get_valeur_action(action: &ActionType, count: i32, entite: &Entite) -> i3
 
     // Le match affecte directement la valeur de base, sans variable inutile
     let base_val = match action {
-        ActionType::A => entite.base_a + (count - 1) * 5,
+        ActionType::A => {
+            // Pacte de la Puissance Brute II : +N dégâts supplémentaires par palier de combo,
+            // en plus du bonus de combo standard (+5/palier).
+            let bonus_combo_pacte = entite.bonus_combo_attaque_palier.unwrap_or(0) * (count - 1);
+            entite.base_a + (count - 1) * 5 + bonus_combo_pacte
+        },
         ActionType::P => entite.base_p + (count - 1) * 2,
         ActionType::D => entite.base_d + (count - 1) * 5,
         ActionType::E => 0,
     };
 
-    (base_val as f32 * multiplier) as i32
+    let valeur = (base_val as f32 * multiplier) as i32;
+
+    // Pacte de la Puissance Brute (I/II) : +10%/+20% dégâts sur l'Attaque, appliqué après le combo.
+    if *action == ActionType::A {
+        if let Some(pct) = entite.bonus_degats_attaque_pourcentage {
+            return (valeur as f32 * (1.0 + pct as f32 / 100.0)) as i32;
+        }
+    }
+
+    valeur
 }
 
 pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, defenseur: &Entite, bloque_esquive: bool, degats_precis_doubles: bool) -> ResultatDegats {

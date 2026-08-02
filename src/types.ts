@@ -50,8 +50,12 @@ export interface Entite {
     pertePvBaseMax?: boolean;
 
     // --- NOUVEAU : ANTI-COMBO ---
-    limiteComboMax?: number; 
-    annuleBonusCombo?: boolean; 
+    limiteComboMax?: number;
+    annuleBonusCombo?: boolean;
+
+    // --- NOUVEAU : PUISSANCE BRUTE ---
+    bonusDegatsAttaquePourcentage?: number;
+    bonusComboAttaquePalier?: number;
 }
 
 export interface EtapeCombat {

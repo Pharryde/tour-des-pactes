@@ -26,6 +26,21 @@ export function buffEntite(entite: Entite, multiplicateur: number): Entite {
     };
 }
 
+// Chaque étage PAIR de la run (le 2e, le 4e, ...) augmente durablement la puissance de TOUS les
+// monstres (mobs et boss) à partir de ce point : le palier ne redescend jamais et s'additionne
+// au fil de la progression. Le bonus d'esquive ne modifie que les paliers atteints via l'action
+// Esquive (indices 1 à 3) — jamais le palier 0, pour rester "non passif" comme demandé.
+export function buffProgressionEtage(entite: Entite, palier: number): Entite {
+    if (palier <= 0) return entite;
+    return {
+        ...entite,
+        baseA: entite.baseA + 2 * palier,
+        baseD: entite.baseD + 2 * palier,
+        baseP: entite.baseP + 1 * palier,
+        paliersEsquive: entite.paliersEsquive.map((p, i) => i === 0 ? p : Math.min(100, p + 2 * palier)),
+    };
+}
+
 function melangerAleatoirement<T>(tableau: T[]): T[] {
     const resultat = [...tableau];
     for (let i = resultat.length - 1; i > 0; i--) {
@@ -37,16 +52,22 @@ function melangerAleatoirement<T>(tableau: T[]): T[] {
 
 export function melangerEtages(etages: StructureEtage[], pactesEquipes: string[]): StructureEtage[] {
     return melangerAleatoirement(etages)
-        .map(etage => {
+        .map((etage, index) => {
+            const numeroEtage = index + 1;
+            const palierProgression = Math.floor(numeroEtage / 2);
+
             let mult = 1;
             if (pactesEquipes.includes(etage.idPacte + " II")) mult = 1.2;
             else if (pactesEquipes.includes(etage.idPacte)) mult = 1.1;
 
-            if (mult === 1) return etage;
+            if (mult === 1 && palierProgression === 0) return etage;
 
             return {
                 ...etage,
-                monstres: etage.monstres.map(m => buffEntite(m, mult))
+                monstres: etage.monstres.map(m => buffProgressionEtage(buffEntite(m, mult), palierProgression)),
+                bossNormal: buffProgressionEtage(etage.bossNormal, palierProgression),
+                bossHeroique: buffProgressionEtage(etage.bossHeroique, palierProgression),
+                bossHeroiqueLvl2: buffProgressionEtage(etage.bossHeroiqueLvl2, palierProgression),
             };
         });
 }
