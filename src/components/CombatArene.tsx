@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import type { Entite, ActionType } from '../types';
-import { genererActionsMonstre, SYMBOLES } from '../utils/combat';
+import { genererActionsMonstre, corrigerActionsPourLimiteCombo, SYMBOLES } from '../utils/combat';
 import { genererBadgesPactes } from '../utils/pactes';
 import { jouer_tour } from 'moteur_wasm';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { chargerEtatCombat, usePersisterCombat } from '../hooks/useCombatResume';
 
 interface CombatAreneProps {
     joueurInitial: Entite;
@@ -21,36 +22,26 @@ interface CombatAreneProps {
     enCombatPacte: boolean;
 }
 
-const lireCache = <T,>(cle: string, defaut: T): T => {
-    try { const item = window.localStorage.getItem(cle); return item ? JSON.parse(item) : defaut; } 
-    catch { return defaut; }
-};
-
-export function CombatArene({ 
-    joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles, 
+export function CombatArene({
+    joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
     pactesEquipes, logsGlobaux, ajouterLogGlobal, onFinDeCombat, onAbandon,
     enCombatPacte
 }: CombatAreneProps) {
-    
-    const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
-    const isResume = lireCache('tdp_active_combat_key', '') === combatKey;
 
-    const [joueur, setJoueur] = useState<Entite>(() => isResume ? lireCache('tdp_c_joueur', joueurInitial) : joueurInitial);
-    const [monstre, setMonstre] = useState<Entite>(() => isResume ? lireCache('tdp_c_monstre', monstreInitial) : monstreInitial);
-    const [tourActuel, setTourActuel] = useState<number>(() => isResume ? lireCache('tdp_c_tour', 1) : 1);
-    const [actionsMonstre, setActionsMonstre] = useState<ActionType[]>(() => isResume ? lireCache('tdp_c_actions_m', []) : []);
-    const [actionsJoueur, setActionsJoueur] = useState<ActionType[]>(() => isResume ? lireCache('tdp_c_actions_j', []) : []);
+    const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
+
+    const [etatInitial] = useState(() => chargerEtatCombat(combatKey, {
+        joueur: joueurInitial, monstre: monstreInitial, tourActuel: 1, actionsMonstre: [], actionsJoueur: []
+    }));
+
+    const [joueur, setJoueur] = useState<Entite>(etatInitial.joueur);
+    const [monstre, setMonstre] = useState<Entite>(etatInitial.monstre);
+    const [tourActuel, setTourActuel] = useState<number>(etatInitial.tourActuel);
+    const [actionsMonstre, setActionsMonstre] = useState<ActionType[]>(etatInitial.actionsMonstre);
+    const [actionsJoueur, setActionsJoueur] = useState<ActionType[]>(etatInitial.actionsJoueur);
     const [combatEnCours, setCombatEnCours] = useState(false);
 
-    useEffect(() => {
-        if (combatEnCours) return; 
-        window.localStorage.setItem('tdp_active_combat_key', JSON.stringify(combatKey));
-        window.localStorage.setItem('tdp_c_joueur', JSON.stringify(joueur));
-        window.localStorage.setItem('tdp_c_monstre', JSON.stringify(monstre));
-        window.localStorage.setItem('tdp_c_tour', JSON.stringify(tourActuel));
-        window.localStorage.setItem('tdp_c_actions_m', JSON.stringify(actionsMonstre));
-        window.localStorage.setItem('tdp_c_actions_j', JSON.stringify(actionsJoueur));
-    }, [combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, combatEnCours]);
+    usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, combatEnCours);
 
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
@@ -71,34 +62,15 @@ export function CombatArene({
         }
     }, [logsGlobaux]);
     
-    useEffect(() => { 
-        if (actionsMonstre.length === 0 && !combatEnCours) {
-            let generated = genererActionsMonstre(monstre);
-            
-            // --- CORRECTION : Le joueur applique son Pacte Lvl 1/2 sur le monstre ---
-            const limiteAdverse = joueur.limiteComboMax ?? 5;
-            
-            if (limiteAdverse < 5) {
-                let actionsCorrigees: ActionType[] = [];
-                for (let i = 0; i < 5; i++) {
-                    let act = generated[i];
-                    let actionsSuite = 0;
-                    for (let j = actionsCorrigees.length - 1; j >= 0; j--) {
-                        if (actionsCorrigees[j] === act) actionsSuite++; else break;
-                    }
-                    
-                    if (actionsSuite >= limiteAdverse) {
-                        const alternatives = ['A', 'P', 'D', 'E'].filter(a => a !== act) as ActionType[];
-                        act = alternatives[Math.floor(Math.random() * alternatives.length)];
-                    }
-                    actionsCorrigees.push(act);
-                }
-                setActionsMonstre(actionsCorrigees);
-            } else {
-                setActionsMonstre(generated);
-            }
-        }
-    }, [actionsMonstre.length, monstre, combatEnCours, joueur.limiteComboMax]);
+    // Ajustement d'état pendant le rendu (pattern recommandé par React) plutôt qu'un setState
+    // dans un useEffect : dès qu'un nouveau tour démarre (actionsMonstre vidées), on tire les
+    // actions du monstre. La condition redevient fausse dès que l'état est mis à jour, donc pas
+    // de boucle de rendu infinie.
+    if (actionsMonstre.length === 0 && !combatEnCours) {
+        const generated = genererActionsMonstre(monstre);
+        // Le joueur applique son Pacte Lvl 1/2 sur le monstre
+        setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5));
+    }
 
     const formatterCombo = (comboObj: {type: ActionType|null, count: number}) => {
         if(comboObj.count <= 1 || comboObj.type === 'E' || comboObj.type === null) return "Aucun";
@@ -177,8 +149,8 @@ export function CombatArene({
             return;
         }
 
-        let currentJoueur = { ...joueur }; let currentMonstre = { ...monstre };
-        let localComboJ = { ...comboAffichageJ }; let localComboM = { ...comboAffichageM };
+        const currentJoueur = { ...joueur }; const currentMonstre = { ...monstre };
+        const localComboJ = { ...comboAffichageJ }; const localComboM = { ...comboAffichageM };
         
         let indexDesActionsCombats = 0;
 
@@ -212,7 +184,7 @@ export function CombatArene({
         }
 
         if (resultat.logsFinTour.length > 0) {
-            for (let logFin of resultat.logsFinTour) { ajouterLogGlobal(logFin); }
+            for (const logFin of resultat.logsFinTour) { ajouterLogGlobal(logFin); }
             await attendreEtape(600);
         }
 
@@ -256,32 +228,32 @@ export function CombatArene({
     const badges = genererBadgesPactes(pactesEquipes);
 
     return (
-        <div className="arene-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', position: 'relative', height: '100%' }}>
-            
+        <div className="arene-wrapper">
+
             <div className="combat-header">
-                <div className="combat-header-actions" style={{ flexWrap: 'wrap' }}>
-                    <button 
-                        onClick={() => { if (window.confirm("Abandonner l'ascension en cours ?")) onAbandon(); }} 
-                        style={{ padding: '6px 12px', fontSize: '0.85em', background: 'transparent', border: '1px solid #f38ba8', color: '#f38ba8', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                <div className="combat-header-actions">
+                    <button
+                        onClick={() => { if (window.confirm("Abandonner l'ascension en cours ?")) onAbandon(); }}
+                        className="btn-abandonner"
                         disabled={combatEnCours}
                     >
                         🏳️ Abandonner
                     </button>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
-                        <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Vitesse</span>
-                        <button className="btn-systeme" onClick={basculerVitesse} style={{ fontSize: '0.85em', padding: '2px 8px', fontWeight: 'bold' }}>
+
+                    <div className="combat-toggle-groupe">
+                        <span className="combat-toggle-label">Vitesse</span>
+                        <button className="btn-systeme btn-systeme--compact" onClick={basculerVitesse}>
                             x{vitesseResolution}
                         </button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#181825', padding: '4px 10px', borderRadius: '6px', border: '1px solid #313244' }}>
-                        <span style={{ fontSize: '0.85em', color: '#cdd6f4' }}>Mode</span>
-                        <button className="btn-systeme" onClick={basculerModeResolution} style={{ fontSize: '0.85em', padding: '2px 8px', fontWeight: 'bold' }}>
+                    <div className="combat-toggle-groupe">
+                        <span className="combat-toggle-label">Mode</span>
+                        <button className="btn-systeme btn-systeme--compact" onClick={basculerModeResolution}>
                             {modeResolution === 'auto' ? 'Auto' : 'Manuel'}
                         </button>
                         {modeResolution === 'manuel' && combatEnCours && attenteManuelle && (
-                            <button className="btn-systeme" onClick={etapeSuivanteManuelle} style={{ backgroundColor: '#89b4fa', color: '#11111b', fontWeight: 'bold', fontSize: '0.8em', padding: '2px 8px' }}>
+                            <button className="btn-systeme btn-suivant-manuel" onClick={etapeSuivanteManuelle}>
                                 ⏩ Suivant
                             </button>
                         )}
@@ -289,14 +261,14 @@ export function CombatArene({
                 </div>
 
                 <div className="combat-header-pactes">
-                    {badges.length === 0 ? <span style={{color: '#a6adc8'}}>Aucun Pacte</span> : badges.map(b => (
+                    {badges.length === 0 ? <span className="pacte-aucun">Aucun Pacte</span> : badges.map(b => (
                         <span key={b.nom} className="pacte-badge" title={b.desc}>{b.nom} {b.desc}</span>
                     ))}
                 </div>
             </div>
 
-            <div id="etage-info" style={{ textAlign: 'center', marginBottom: '15px' }}>{titreEtage}</div>
-            
+            <div id="etage-info">{titreEtage}</div>
+
             <div className="arene">
                 <div className="entite">
                     <h2>🧑 {joueur.nom}</h2>
@@ -324,37 +296,27 @@ export function CombatArene({
                 </div>
             </div>
 
-            <div className="actions-box" style={{ marginTop: '15px', minHeight: '40px' }}>
+            <div className="actions-box actions-box--joueur">
                 {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
             </div>
 
-            <div className="controles" style={{ marginTop: '15px' }}>
+            <div className="controles">
                 <button className="btn-action" id="btn-a" onClick={() => {if (peutAjouterAction('A')) setActionsJoueur([...actionsJoueur, 'A'])}} disabled={!peutAjouterAction('A')}>⚔️ Attaque</button>
                 <button className="btn-action" id="btn-p" onClick={() => {if (peutAjouterAction('P')) setActionsJoueur([...actionsJoueur, 'P'])}} disabled={!peutAjouterAction('P')}>🎯 Précise</button>
                 <button className="btn-action" id="btn-d" onClick={() => {if (peutAjouterAction('D')) setActionsJoueur([...actionsJoueur, 'D'])}} disabled={!peutAjouterAction('D')}>🛡️ Défense</button>
                 <button className="btn-action" id="btn-e" onClick={() => {if (peutAjouterAction('E')) setActionsJoueur([...actionsJoueur, 'E'])}} disabled={!peutAjouterAction('E')}>💨 Esquive</button>
             </div>
-            
+
             <div className="controles-systeme">
                 <button className="btn-systeme" onClick={effacerDerniereAction} disabled={combatEnCours || actionsJoueur.length === 0}>↩️ Annuler</button>
                 <button className="btn-systeme" onClick={validerTour} disabled={combatEnCours || actionsJoueur.length < 5}>▶️ Valider</button>
             </div>
 
-            <div id="log" style={{ 
-                flexGrow: 1, 
-                overflowY: 'auto', 
-                maxHeight: '250px', 
-                minHeight: '150px',
-                marginTop: '20px', 
-                padding: '10px',
-                border: '1px solid #313244',
-                borderRadius: '8px',
-                backgroundColor: '#11111b'
-            }}>
+            <div id="log">
                 {logsGlobaux.map((log, index) => (
                     <div key={index} dangerouslySetInnerHTML={{ __html: log }} />
                 ))}
-                <div ref={logEndRef} style={{ height: '1px' }} />
+                <div ref={logEndRef} className="log-anchor" />
             </div>
         </div>
     );

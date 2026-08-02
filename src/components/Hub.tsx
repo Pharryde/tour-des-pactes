@@ -6,13 +6,24 @@ interface HubProps {
     xpTotal: number;
     aNouveauteTuto: boolean;
     marquerTutoLu: () => void;
+    aNouveauPacte: boolean;
+    marquerPactesVus: () => void;
+    aPointsCompetenceDispo: boolean;
 }
 
-export function Hub({ onLancerRun, onChangeEcran, xpTotal, aNouveauteTuto, marquerTutoLu }: HubProps) {
-    
+export function Hub({
+    onLancerRun, onChangeEcran, xpTotal, aNouveauteTuto, marquerTutoLu,
+    aNouveauPacte, marquerPactesVus, aPointsCompetenceDispo
+}: HubProps) {
+
     const ouvrirTuto = () => {
         marquerTutoLu();
         onChangeEcran('ecran-tuto');
+    };
+
+    const ouvrirInventaire = () => {
+        marquerPactesVus();
+        onChangeEcran('ecran-inventaire');
     };
 
     return (
@@ -20,31 +31,27 @@ export function Hub({ onLancerRun, onChangeEcran, xpTotal, aNouveauteTuto, marqu
             <h1 className="titre-geant">Tour des Pactes</h1>
             <div className="menu-vertical">
                 <button className="btn-menu btn-jouer" onClick={onLancerRun}>▶️ Commencer l'Ascension</button>
-                <button className="btn-menu" onClick={() => onChangeEcran('ecran-inventaire')}>🎒 Inventaire des Pactes</button>
-                
-                {/* BOUTON TUTO - Pastille discrète */}
-                <button className="btn-menu" onClick={ouvrirTuto} style={{ position: 'relative' }}>
-                    📖 Les Archives (Tuto)
-                    {aNouveauteTuto && (
-                        <span 
-                            title="Nouvelle connaissance acquise"
-                            style={{ 
-                                position: 'absolute', 
-                                top: '8px', 
-                                right: '12px', 
-                                width: '8px',
-                                height: '8px',
-                                backgroundColor: '#f9e2af', // Jaune doré pastel très doux (Catppuccin Macchiato Yellow)
-                                borderRadius: '50%',
-                                boxShadow: '0 0 5px rgba(249, 226, 175, 0.6)'
-                            }}
-                        />
+
+                <button className="btn-menu" onClick={ouvrirInventaire}>
+                    🎒 Inventaire des Pactes
+                    {aNouveauPacte && (
+                        <span title="Nouveau Pacte débloqué" className="badge-nouveaute" />
                     )}
                 </button>
-                
+
+                <button className="btn-menu" onClick={ouvrirTuto}>
+                    📖 Les Archives (Tuto)
+                    {aNouveauteTuto && (
+                        <span title="Nouvelle connaissance acquise" className="badge-nouveaute" />
+                    )}
+                </button>
+
                 {xpTotal > 0 && (
                     <button className="btn-menu" onClick={() => onChangeEcran('ecran-arbre')}>
                         ✨ Arbre de Compétences
+                        {aPointsCompetenceDispo && (
+                            <span title="Point de compétence disponible" className="badge-nouveaute" />
+                        )}
                     </button>
                 )}
             </div>

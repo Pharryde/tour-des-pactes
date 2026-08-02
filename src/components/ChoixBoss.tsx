@@ -10,7 +10,7 @@ export function ChoixBoss({ aLvl1Equipe, estDernierEtage, onFuir, onCombattreLvl
     return (
         <div id="ecran-choix-boss" className="ecran">
             <h1 className="titre-geant texte-danger">⚠️ L'HEURE DU CHOIX ⚠️</h1>
-            <p className="texte-description" style={{ fontSize: '1.2em' }}>
+            <p className="texte-description texte-description--grand">
                 {aLvl1Equipe 
                     ? "Votre Pacte de Rang I entre en résonnance ! Le Gardien peut être réveillé dans sa Forme Héroïque de Niveau 2 pour arracher un fragment supérieur."
                     : "Vous pouvez continuer l'ascension sereinement, ou prendre un risque mortel : affronter sa Forme Héroïque pour lui arracher son Pacte."}

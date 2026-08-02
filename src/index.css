@@ -16,7 +16,7 @@ body {
 }
 
 h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
-#etage-info { color: #f38ba8; font-size: 1.1em; font-weight: bold; margin-bottom: 10px; }
+#etage-info { color: #f38ba8; font-size: 1.1em; font-weight: bold; margin-bottom: 15px; text-align: center; }
 
 /* --- GESTION DES ÉCRANS --- */
 .ecran {
@@ -28,8 +28,10 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
     animation: fadeIn 0.5s ease-in-out;
 }
 
-/* On centre tout sauf le combat */
-#ecran-hub, #ecran-inventaire, #ecran-fin, #ecran-choix-boss, #ecran-repos {
+/* On centre tout sauf le combat et l'inventaire (voir .inventaire-ecran : le centrage vertical
+   classique coupe le haut du contenu sans qu'on puisse y remonter dès que ça dépasse la hauteur
+   de l'écran, ex: beaucoup de Pactes débloqués). */
+#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos {
     align-items: center;
     justify-content: center;
 }
@@ -74,7 +76,7 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .actions-box { display: flex; justify-content: center; gap: 8px; margin-top: 10px; height: 35px;}
 .action-slot { width: 35px; height: 35px; background-color: #45475a; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
 
-.controles { margin: 10px 0; flex-shrink: 0; }
+.controles { margin: 15px 0 10px; flex-shrink: 0; }
 
 .btn-action { padding: 12px 15px; font-size: 1em; margin: 5px; cursor: pointer; border: none; border-radius: 5px; color: #11111b; font-weight: bold; transition: 0.2s; }
 .btn-action:hover { opacity: 0.8; }
@@ -83,20 +85,23 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .btn-systeme { padding: 12px 20px; font-size: 1.1em; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; background-color: #cba6f7; color: #11111b; margin: 5px;}
 .btn-systeme:disabled { background-color: #585b70; cursor: not-allowed; }
 
-#log { 
-    background-color: #11111b; 
-    padding: 10px 15px; 
-    border-radius: 10px; 
+#log {
+    background-color: #11111b;
+    padding: 10px;
+    border-radius: 8px;
     /* MAGIE ICI : Le log absorbe tout l'espace libre en bas de l'écran */
-    flex-grow: 1; 
-    overflow-y: auto; 
-    text-align: left; 
-    font-family: monospace; 
-    font-size: 1rem; 
-    border: 1px solid #45475a; 
-    margin-top: 5px;
+    flex-grow: 1;
+    overflow-y: auto;
+    max-height: 250px;
+    min-height: 150px;
+    text-align: left;
+    font-family: monospace;
+    font-size: 1rem;
+    border: 1px solid #313244;
+    margin-top: 20px;
     scroll-behavior: smooth; /* Rend le défilement automatique naturel */
 }
+.log-anchor { height: 1px; }
 
 .log-tour { color: #cba6f7; font-weight: bold; margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10px;}
 .log-combo { color: #fab387; font-weight: bold; }
@@ -116,6 +121,8 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .liste-pactes-align { text-align: left; }
 
 .texte-description { font-size: 1.1em; max-width: 600px; margin-bottom: 20px; text-align: center; }
+.texte-description--grand { font-size: 1.2em; }
+.repos-intro { margin-bottom: 20px; }
 .texte-fin { font-size: 1.5em; margin-bottom: 30px; }
 .texte-danger { color: #fab387; }
 .btn-danger { background-color: #f38ba8; color: #11111b; }
@@ -127,7 +134,7 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 /* --- ZONE DE REPOS --- */
 .repos-container { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
 .repos-col { display: flex; flex-direction: column; gap: 15px; justify-content: center; margin: 0; }
-.c-vert { color: #a6e3a1; } .c-rose { color: #f38ba8; }
+.c-vert { color: #a6e3a1; } .c-rose { color: #f38ba8; } .c-orange { color: #fab387; }
 .bg-vert { background-color: #a6e3a1 !important; color: #11111b !important; } .bg-orange { background-color: #fab387 !important; color: #11111b !important; }
 .bg-bleu { background-color: #89b4fa !important; color: #11111b !important; } .bg-violet { background-color: #cba6f7 !important; color: #11111b !important; }
 

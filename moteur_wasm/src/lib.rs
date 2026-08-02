@@ -36,17 +36,25 @@ fn symbole(act: &ActionType) -> &str {
 }
 
 #[wasm_bindgen]
-pub fn get_donnees_etages() -> JsValue {
+pub fn get_donnees_etages() -> Result<JsValue, JsValue> {
     let etages = get_tous_les_etages();
-    serde_wasm_bindgen::to_value(&etages).unwrap()
+    serde_wasm_bindgen::to_value(&etages).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 #[wasm_bindgen]
-pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: JsValue, actions_monstre_js: JsValue, tour_actuel: i32) -> JsValue {
-    let mut joueur: Entite = serde_wasm_bindgen::from_value(joueur_js).unwrap();
-    let mut monstre: Entite = serde_wasm_bindgen::from_value(monstre_js).unwrap();
-    let actions_joueur: Vec<ActionType> = serde_wasm_bindgen::from_value(actions_joueur_js).unwrap();
-    let actions_monstre: Vec<ActionType> = serde_wasm_bindgen::from_value(actions_monstre_js).unwrap();
+pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: JsValue, actions_monstre_js: JsValue, tour_actuel: i32) -> Result<JsValue, JsValue> {
+    let mut joueur: Entite = serde_wasm_bindgen::from_value(joueur_js)
+        .map_err(|e| JsValue::from_str(&format!("Données joueur invalides : {e}")))?;
+    let mut monstre: Entite = serde_wasm_bindgen::from_value(monstre_js)
+        .map_err(|e| JsValue::from_str(&format!("Données monstre invalides : {e}")))?;
+    let actions_joueur: Vec<ActionType> = serde_wasm_bindgen::from_value(actions_joueur_js)
+        .map_err(|e| JsValue::from_str(&format!("Actions joueur invalides : {e}")))?;
+    let actions_monstre: Vec<ActionType> = serde_wasm_bindgen::from_value(actions_monstre_js)
+        .map_err(|e| JsValue::from_str(&format!("Actions monstre invalides : {e}")))?;
+
+    if actions_joueur.len() != 5 || actions_monstre.len() != 5 {
+        return Err(JsValue::from_str("Chaque combattant doit avoir exactement 5 actions programmées."));
+    }
 
     let mut etapes = Vec::new();
     let mut combo_j_type: Option<ActionType> = None; let mut combo_j_count = 0;
@@ -173,5 +181,5 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     }
 
     let resultat = ResultatTour { joueur, monstre, actions_monstre, etapes, logs_fin_tour };
-    serde_wasm_bindgen::to_value(&resultat).unwrap()
+    serde_wasm_bindgen::to_value(&resultat).map_err(|e| JsValue::from_str(&e.to_string()))
 }

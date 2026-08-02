@@ -9,6 +9,15 @@ export interface Competences {
     esq: number;
 }
 
+export type TypeMonstre = 'normal' | 'boss' | 'evolue' | 'final';
+
+export interface Bestiaire {
+    normal: number;
+    boss: number;
+    evolue: number;
+    final: number;
+}
+
 export interface Entite {
     nom: string;
     pv: number;

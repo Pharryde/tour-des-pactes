@@ -108,7 +108,7 @@ export function appliquerPactesSurJoueur(joueur: Entite, pactesEquipes: string[]
 }
 
 export function calculerSoinRepos(pvMax: number, pactesEquipes: string[]): number {
-    let baseSoin = Math.floor(pvMax / 2);
+    const baseSoin = Math.floor(pvMax / 2);
     let multiplicateur = 1;
 
     pactesEquipes.forEach(nomPacte => {
@@ -124,7 +124,7 @@ export function calculerSoinRepos(pvMax: number, pactesEquipes: string[]): numbe
 }
 
 export function calculerGainPvMaxRepos(pactesEquipes: string[]): number {
-    let gainPvMax = 10;
+    const gainPvMax = 10;
     let multiplicateur = 1;
 
     pactesEquipes.forEach(nomPacte => {

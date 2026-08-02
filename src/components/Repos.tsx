@@ -8,7 +8,7 @@ export function Repos({ soin, gainPv, onChoix }: ReposProps) {
     return (
         <div id="ecran-repos" className="ecran">
             <h1>Zone de Repos</h1>
-            <p style={{ marginBottom: '20px' }}>Le chemin est dégagé pour l'instant. Choisissez une amélioration avant le prochain étage :</p>
+            <p className="repos-intro">Le chemin est dégagé pour l'instant. Choisissez une amélioration avant le prochain étage :</p>
             
             <div className="repos-container">
                 <div className="repos-col">

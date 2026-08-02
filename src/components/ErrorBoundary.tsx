@@ -37,18 +37,15 @@ export class ErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#11111b', color: '#cdd6f4', padding: '20px' }}>
-                    <h1 style={{ color: '#f38ba8', fontSize: '2em', marginBottom: '10px' }}>⚠️ Crash Système</h1>
-                    <p style={{ marginBottom: '20px', textAlign: 'center' }}>Une erreur critique s'est produite dans l'interface.</p>
-                    
-                    <div style={{ background: '#181825', border: '1px solid #313244', padding: '15px', borderRadius: '8px', marginBottom: '30px', color: '#f38ba8', fontFamily: 'monospace', maxWidth: '800px', wordWrap: 'break-word' }}>
+                <div className="crash-ecran">
+                    <h1 className="crash-titre">⚠️ Crash Système</h1>
+                    <p className="crash-message">Une erreur critique s'est produite dans l'interface.</p>
+
+                    <div className="crash-details">
                         {this.state.errorMsg}
                     </div>
 
-                    <button 
-                        onClick={this.handleHardReset}
-                        style={{ padding: '15px 30px', fontSize: '1.2em', backgroundColor: '#f38ba8', color: '#11111b', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
+                    <button onClick={this.handleHardReset} className="btn-crash-reset">
                         🔄 Effacer les sauvegardes et redémarrer
                     </button>
                 </div>
