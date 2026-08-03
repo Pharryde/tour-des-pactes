@@ -6,7 +6,7 @@ import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, pe
 import { melangerEtages, genererMessageBuff } from '../utils/etages';
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
-import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour } from '../utils/logs';
+import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
 import { useLocalStorage } from './useLocalStorage';
 
 // Regroupe tout l'état persistant de la partie (localStorage) et les règles qui le font évoluer.
@@ -41,11 +41,14 @@ export function useGameState() {
     const [premierePartieFaite, setPremierePartieFaite] = useLocalStorage<boolean>('tdp_premiere_partie_faite', false);
 
     // --- Statistiques de la run en cours (remises à zéro à chaque lancement), pour l'écran de fin ---
-    const [monstresTuesRun, setMonstresTuesRun] = useLocalStorage<number>('tdp_monstres_tues_run', 0);
-    const [pactesDebloquesRun, setPactesDebloquesRun] = useLocalStorage<string[]>('tdp_pactes_debloques_run', []);
-    const [degatsInfligesRun, setDegatsInfligesRun] = useLocalStorage<number>('tdp_degats_infliges_run', 0);
-    const [degatsBloquesRun, setDegatsBloquesRun] = useLocalStorage<number>('tdp_degats_bloques_run', 0);
-    const [degatsEsquivesRun, setDegatsEsquivesRun] = useLocalStorage<number>('tdp_degats_esquives_run', 0);
+    // Seuls les setters sont utilisés ici : capturerStatsFinRun() relit ces valeurs directement
+    // depuis localStorage (voir lireValeurPersistante) pour éviter le piège de la closure
+    // obsolète (même souci que lireHistoriqueLogsPersistant, voir utils/logs.ts).
+    const [, setMonstresTuesRun] = useLocalStorage<number>('tdp_monstres_tues_run', 0);
+    const [, setPactesDebloquesRun] = useLocalStorage<string[]>('tdp_pactes_debloques_run', []);
+    const [, setDegatsInfligesRun] = useLocalStorage<number>('tdp_degats_infliges_run', 0);
+    const [, setDegatsBloquesRun] = useLocalStorage<number>('tdp_degats_bloques_run', 0);
+    const [, setDegatsEsquivesRun] = useLocalStorage<number>('tdp_degats_esquives_run', 0);
     const [etageRecord, setEtageRecord] = useLocalStorage<number>('tdp_etage_record', 0);
     const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
 
@@ -101,11 +104,11 @@ export function useGameState() {
             etageAtteint,
             etageRecord: estNouveauRecord ? etageAtteint : etageRecord,
             estNouveauRecord,
-            monstresTues: monstresTuesRun,
-            nouveauxPactes: pactesDebloquesRun,
-            degatsInfliges: degatsInfligesRun,
-            degatsBloques: degatsBloquesRun,
-            degatsEsquives: degatsEsquivesRun,
+            monstresTues: lireValeurPersistante('tdp_monstres_tues_run', 0),
+            nouveauxPactes: lireValeurPersistante<string[]>('tdp_pactes_debloques_run', []),
+            degatsInfliges: lireValeurPersistante('tdp_degats_infliges_run', 0),
+            degatsBloques: lireValeurPersistante('tdp_degats_bloques_run', 0),
+            degatsEsquives: lireValeurPersistante('tdp_degats_esquives_run', 0),
         });
     };
 

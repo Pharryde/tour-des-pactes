@@ -1,17 +1,23 @@
 // src/utils/logs.ts
 
-// NOTE : on relit ces logs directement depuis le localStorage (et non depuis l'état React
-// "historiqueLogs") car la résolution d'un tour de combat est asynchrone (CombatArene attend
-// entre chaque étape). La fonction qui gère la défaite peut donc s'exécuter avec une closure
-// React obsolète, alors que le localStorage, lui, est toujours écrit de façon synchrone par
-// useLocalStorage à chaque mise à jour.
-export function lireHistoriqueLogsPersistant(): string[] {
+// NOTE : on relit ces valeurs directement depuis le localStorage (et non depuis l'état React) car
+// la résolution d'un tour de combat est asynchrone (CombatArene attend entre chaque étape) : le
+// callback onFinDeCombat qu'elle appelle reste lié à la closure React qui existait au moment du
+// clic sur "Valider", donc potentiellement obsolète vis-à-vis des toutes dernières mises à jour
+// (dégâts du tour fatal, log de mort...). Le localStorage, lui, est toujours écrit de façon
+// synchrone par useLocalStorage à chaque mise à jour, donc toujours à jour au moment de la lecture.
+export function lireValeurPersistante<T>(cle: string, defaut: T): T {
     try {
-        return JSON.parse(window.localStorage.getItem('tdp_historique_logs') || '[]');
+        const item = window.localStorage.getItem(cle);
+        return item ? JSON.parse(item) : defaut;
     } catch (error) {
-        console.error("Erreur lecture logs mort", error);
-        return [];
+        console.error(`Erreur lecture localStorage (${cle})`, error);
+        return defaut;
     }
+}
+
+export function lireHistoriqueLogsPersistant(): string[] {
+    return lireValeurPersistante('tdp_historique_logs', []);
 }
 
 export function extraireLogsDuDernierTour(logs: string[]): string[] {
