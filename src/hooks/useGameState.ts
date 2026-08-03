@@ -6,6 +6,7 @@ import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, pe
 import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
 import { construireMegaBoss } from '../utils/megaboss';
 import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
+import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } from '../utils/tutoCombat';
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
@@ -36,6 +37,9 @@ export function useGameState() {
     const [reposVisites, setReposVisites] = useLocalStorage<number>('tdp_repos_visites', 0);
     const [choixReposActifs, setChoixReposActifs] = useLocalStorage<ChoixRepos[] | null>('tdp_choix_repos_actifs', null);
     const [synergiesDecouvertes, setSynergiesDecouvertes] = useLocalStorage<Synergie[]>('tdp_synergies_decouvertes', []);
+    const [tutoIntroFait, setTutoIntroFait] = useLocalStorage<boolean>('tdp_tuto_intro_fait', false);
+    const [monstreTuto, setMonstreTuto] = useLocalStorage<Entite | null>('tdp_monstre_tuto', null);
+    const [aPacteChat, setAPacteChat] = useLocalStorage<boolean>('tdp_a_pacte_chat', false);
 
     const [monstresTues, setMonstresTues] = useLocalStorage<number>('tdp_monstres_tues', 0);
     const [competences, setCompetences] = useLocalStorage<Competences>('tdp_competences', { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
@@ -86,12 +90,27 @@ export function useGameState() {
                 await init();
                 setDonneesBaseEtages(get_donnees_etages());
                 setMoteurPret(true);
+
+                // Tutoriel d'introduction (Chat Mystérieux) : avant même le Hub, une seule fois
+                // dans la vie du joueur. Le drapeau se pose ICI (pas à la fin) pour ne jamais se
+                // redéclencher, même si le joueur l'abandonne en cours. Garde-fou pour les
+                // sauvegardes antérieures à cette fonctionnalité (drapeau absent) : ne se
+                // déclenche que si le joueur n'a strictement aucune progression, pour ne jamais
+                // interrompre une partie déjà en cours.
+                if (!tutoIntroFait && ecran === 'ecran-hub' && monstresTues === 0 && pactesDebloques.length === 0) {
+                    setTutoIntroFait(true);
+                    setJoueur(construireHerosTuto());
+                    setMonstreTuto(construireChatMysterieux());
+                    setHistoriqueLogs(DIALOGUE_CHAT_TUTO[1] ?? []);
+                    setEcran('ecran-tuto-intro');
+                }
             } catch (error) {
                 console.error("Le module WebAssembly a crashé à l'initialisation:", error);
                 setErreurMoteur(String(error));
             }
         };
         demarrer();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const effacerRun = () => {
@@ -123,6 +142,33 @@ export function useGameState() {
 
     const gererAbandon = () => {
         effacerRun();
+        setEcran('ecran-hub');
+    };
+
+    // Déclenché par CombatArene (onFinTutoriel) une fois les 4 tours scriptés du tutoriel
+    // d'introduction écoulés : on passe à l'écran de révélation plutôt qu'au flux victoire/défaite
+    // habituel, le Chat Mystérieux étant intuable par conception.
+    const gererFinTutoriel = (joueurRestant: Entite) => {
+        setJoueur(joueurRestant);
+        setMonstreTuto(null);
+        window.localStorage.removeItem('tdp_active_combat_key');
+        setEcran('ecran-tuto-conclusion');
+    };
+
+    // Clic sur "Commencer l'ascension" à l'écran de révélation : octroie le Pacte Niveau 0 (encart
+    // cosmétique dans l'Inventaire, cf. Inventaire.tsx) et retourne au Hub.
+    const gererConclusionTuto = () => {
+        setAPacteChat(true);
+        setJoueur(null);
+        setEcran('ecran-hub');
+    };
+
+    // "Abandonner" pendant le tutoriel : le drapeau tutoIntroFait est déjà posé au lancement, donc
+    // il ne se relancera pas — on saute simplement la suite (et le Pacte Niveau 0, purement cosmétique).
+    const gererAbandonTuto = () => {
+        setJoueur(null);
+        setMonstreTuto(null);
+        window.localStorage.removeItem('tdp_active_combat_key');
         setEcran('ecran-hub');
     };
 
@@ -431,10 +477,12 @@ export function useGameState() {
         enCombatMegaBoss,
         monstreMegaBoss,
         choixReposActifs,
+        monstreTuto,
 
         // Pactes
         pactesDebloques,
         pactesEquipes,
+        aPacteChat,
 
         // Progression méta (hors-run)
         monstresTues,
@@ -459,6 +507,9 @@ export function useGameState() {
         gererChoixRepos,
         declencherCombatPacte,
         gererDeclenchementMegaBoss,
+        gererFinTutoriel,
+        gererConclusionTuto,
+        gererAbandonTuto,
         handleFinDeCombat,
     };
 }

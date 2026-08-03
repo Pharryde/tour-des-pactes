@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import type { Entite, ActionType } from '../types';
+import type { Entite, ActionType, Competences } from '../types';
 import { genererActionsMonstre, corrigerActionsPourLimiteCombo, genererIndicesVisibles, calculerAttaqueAffichee, calculerPreciseAffichee, calculerPaliersEsquiveAffiches, SYMBOLES } from '../utils/combat';
+import { detailAttaque, detailPrecise, detailDefense } from '../utils/detailStats';
 import { tirerNouvelleForme, appliquerFormeMegaBoss } from '../utils/megaboss';
 import { genererBadgesPactes } from '../utils/pactes';
 import { jouer_tour } from 'moteur_wasm';
@@ -8,7 +9,9 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { chargerEtatCombat, usePersisterCombat } from '../hooks/useCombatResume';
 import { ANIMATIONS, animationPourAction, animationResolution, type NomAnimation } from '../utils/animationsJoueur';
 import { ANIMATIONS_MONSTRE, animationMonstrePourAction, animationResolutionMonstre, type NomAnimationMonstre } from '../utils/animationsMonstre';
+import { ANIMATIONS_CHAT } from '../utils/animationsChat';
 import { SpriteAnime } from './SpriteAnime';
+import { StatDetail } from './StatDetail';
 
 interface CombatAreneProps {
     joueurInitial: Entite;
@@ -19,6 +22,7 @@ interface CombatAreneProps {
     numeroSalle: number;
     totalSalles: number;
     pactesEquipes: string[];
+    competences: Competences;
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
     ajouterStatsTour: (degatsInfliges: number, degatsBloques: number, degatsEsquives: number) => void;
@@ -26,12 +30,20 @@ interface CombatAreneProps {
     onAbandon: () => void;
     enCombatPacte: boolean;
     formesMegaBoss?: Entite[];
+    // Tutoriel d'introduction (Chat Mystérieux) : actions du monstre scriptées tour par tour au
+    // lieu d'être tirées aléatoirement, dialogue injecté dans le log avant chaque tour, et fin de
+    // combat déclenchée après un nombre de tours fixe plutôt que par les PV (le PNJ est intuable).
+    estTutoriel?: boolean;
+    actionsMonstreScriptees?: ActionType[][];
+    actionsAutoriseesTuto?: ActionType[][];
+    dialogueTuto?: Record<number, string[]>;
+    onFinTutoriel?: (joueurRestant: Entite) => void;
 }
 
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
-    pactesEquipes, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
-    enCombatPacte, formesMegaBoss
+    pactesEquipes, competences, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
+    enCombatPacte, formesMegaBoss, estTutoriel, actionsMonstreScriptees, actionsAutoriseesTuto, dialogueTuto, onFinTutoriel
 }: CombatAreneProps) {
 
     const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
@@ -82,7 +94,7 @@ export function CombatArene({
             monstreDuTour = appliquerFormeMegaBoss(monstre, nouvelleForme);
             setMonstre(monstreDuTour);
         }
-        const generated = genererActionsMonstre(monstreDuTour);
+        const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour);
         // Le joueur applique son Pacte Lvl 1/2 sur le monstre
         setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5));
         setIndicesVisiblesMonstre(genererIndicesVisibles(monstreDuTour.actionsVisibles));
@@ -139,8 +151,9 @@ export function CombatArene({
 
     const peutAjouterAction = (action: ActionType) => {
         if (combatEnCours || actionsJoueur.length >= 5) return false;
-        
-        const limite = monstre.limiteComboMax ?? 5; 
+        if (actionsAutoriseesTuto && !actionsAutoriseesTuto[tourActuel - 1]?.includes(action)) return false;
+
+        const limite = monstre.limiteComboMax ?? 5;
         
         let actionsSuite = 0;
         for (let i = actionsJoueur.length - 1; i >= 0; i--) {
@@ -242,17 +255,19 @@ export function CombatArene({
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
-        if (resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
+        // Le PNJ du tutoriel ne peut jamais tuer ni être tué : il n'existe que pour dérouler son
+        // script sur un nombre de tours fixe, indépendamment des PV.
+        if (!estTutoriel && resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
             setSpriteJoueur('mort');
             setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 DOUBLE KO ! Vous avez emporté ${resultat.monstre.nom} avec vous !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
             onFinDeCombat(false, resultat.joueur, true);
-        } else if (resultat.joueur.pv <= 0) {
+        } else if (!estTutoriel && resultat.joueur.pv <= 0) {
             setSpriteJoueur('mort');
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000 / vitesseRef.current));
             onFinDeCombat(false, resultat.joueur, false);
-        } else if (resultat.monstre.pv <= 0) {
+        } else if (!estTutoriel && resultat.monstre.pv <= 0) {
             setSpriteJoueur('idle');
             setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 ${resultat.monstre.nom} est mort !</span>`);
@@ -264,7 +279,18 @@ export function CombatArene({
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
             setComboAffichageJ({type: null, count: 0}); setComboAffichageM({type: null, count: 0});
             setActionsJoueur([]); setActionsMonstre([]);
-            setTourActuel(t => t + 1); setCombatEnCours(false);
+
+            const prochainTour = tourActuel + 1;
+            if (estTutoriel && actionsMonstreScriptees && prochainTour > actionsMonstreScriptees.length) {
+                onFinTutoriel?.(resultat.joueur);
+                return;
+            }
+
+            if (dialogueTuto?.[prochainTour]) {
+                for (const ligne of dialogueTuto[prochainTour]) ajouterLogGlobal(ligne);
+            }
+
+            setTourActuel(prochainTour); setCombatEnCours(false);
         }
     };
 
@@ -272,8 +298,10 @@ export function CombatArene({
     if (numeroSalle === totalSalles - 1) {
         titreEtage = `Étage ${numeroEtage}/${totalEtages} : ${nomEtage} - 👑 SALLE DU BOSS`;
     }
-    
-    const titreMonstreFinal = numeroSalle === totalSalles - 1 ? monstre.nom : `👿 ${monstre.nom}`;
+    if (estTutoriel) titreEtage = "🐈 Une rencontre inattendue...";
+
+    const titreMonstreFinal = estTutoriel ? monstre.nom : (numeroSalle === totalSalles - 1 ? monstre.nom : `👿 ${monstre.nom}`);
+    const animationsMonstreActives = estTutoriel ? ANIMATIONS_CHAT : ANIMATIONS_MONSTRE;
     const badges = genererBadgesPactes(pactesEquipes);
 
     return (
@@ -282,7 +310,7 @@ export function CombatArene({
             <div className="combat-header">
                 <div className="combat-header-actions">
                     <button
-                        onClick={() => { if (window.confirm("Abandonner l'ascension en cours ?")) onAbandon(); }}
+                        onClick={() => { if (window.confirm(estTutoriel ? "Passer le tutoriel ?" : "Abandonner l'ascension en cours ?")) onAbandon(); }}
                         className="btn-abandonner"
                         disabled={combatEnCours}
                     >
@@ -327,7 +355,13 @@ export function CombatArene({
                     <div className="stats">
                         <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur)[Math.min(joueur.nivEsquive, 3)]}%)</span>
                     </div>
-                    <div className="stats-base">⚔️ {calculerAttaqueAffichee(joueur, actionsJoueur)} | 🎯 {calculerPreciseAffichee(joueur)} | 🛡️ {joueur.baseD}</div>
+                    <div className="stats-base">
+                        <StatDetail icone="⚔️" valeur={calculerAttaqueAffichee(joueur, actionsJoueur)} detail={detailAttaque(joueur, competences, actionsJoueur)} />
+                        {' | '}
+                        <StatDetail icone="🎯" valeur={calculerPreciseAffichee(joueur)} detail={detailPrecise(joueur, competences)} />
+                        {' | '}
+                        <StatDetail icone="🛡️" valeur={joueur.baseD} detail={detailDefense(joueur, competences, pactesEquipes)} />
+                    </div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageJ)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
@@ -336,7 +370,7 @@ export function CombatArene({
 
                 <div className="entite">
                     <div className="sprite-cadre">
-                        <SpriteAnime key={spriteMonstre} definition={ANIMATIONS_MONSTRE[spriteMonstre]} />
+                        <SpriteAnime key={spriteMonstre} definition={animationsMonstreActives[spriteMonstre]} />
                     </div>
                     <h2>{titreMonstreFinal}</h2>
                     <div className="stats">

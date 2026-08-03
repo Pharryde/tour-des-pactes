@@ -31,7 +31,7 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 /* On centre tout sauf le combat et l'inventaire (voir .inventaire-ecran : le centrage vertical
    classique coupe le haut du contenu sans qu'on puisse y remonter dès que ça dépasse la hauteur
    de l'écran, ex: beaucoup de Pactes débloqués). */
-#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair {
+#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair, #ecran-tuto-conclusion {
     align-items: center;
     justify-content: center;
 }
@@ -70,6 +70,33 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .pv { color: #a6e3a1; } .armure { color: #89b4fa; } .esquive { color: #f9e2af; } 
 
 .stats-base { font-size: 0.9em; background: #1e1e2e; padding: 5px; border-radius: 0 0 8px 8px; margin-bottom: 10px; color: #a6adc8; border: 1px solid #181825; border-top: none; }
+
+/* Détail du calcul d'une stat au survol (arbre de compétence, repos, pactes, synergies...). */
+.stat-detail { position: relative; cursor: help; border-bottom: 1px dotted #6c7086; }
+.stat-detail-bulle {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 8px;
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85em;
+    line-height: 1.5;
+    color: #cdd6f4;
+    text-align: left;
+    white-space: normal;
+    width: max-content;
+    max-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 30;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+.stat-detail:hover .stat-detail-bulle { opacity: 1; visibility: visible; }
 
 .combo { color: #fab387; display: block; margin-top: 10px; font-weight: bold;}
 

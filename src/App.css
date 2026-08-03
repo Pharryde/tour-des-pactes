@@ -481,6 +481,7 @@
     text-align: left;
     font-size: 1.4em;
 }
+.inventaire-section-titre--lvl0 { color: #f9e2af; }
 .inventaire-section-titre--lvl1 { color: #cba6f7; }
 .inventaire-section-titre--lvl2 { color: #f38ba8; }
 .inventaire-section-compteur { font-size: 0.6em; color: #a6adc8; font-weight: normal; margin-left: 10px; }
@@ -504,6 +505,24 @@
     border-color: #a6e3a1;
     box-shadow: 0 0 15px rgba(166, 227, 161, 0.2);
 }
+/* Pacte Niveau 0 (don du Chat Mystérieux) : cosmétique, jamais togglable. */
+.pacte-carte--speciale {
+    cursor: default;
+    border-color: #f9e2af;
+    box-shadow: 0 0 15px rgba(249, 226, 175, 0.2);
+}
+.pacte-carte--speciale:hover { transform: none; }
+.pacte-carte--speciale .pacte-carte-titre { color: #f9e2af; }
+.pacte-carte--speciale .pacte-carte-badge { background: #f9e2af; }
+
+/* 3 des 4 Pactes d'une synergie cachée déjà équipés, et le 4e est possédé : on l'illumine pour
+   aider le joueur à repérer la combinaison sans lui révéler la synergie elle-même. */
+@keyframes illumination-synergie {
+    0%, 100% { box-shadow: 0 0 12px rgba(249, 226, 175, 0.35); border-color: #f9e2af; }
+    50% { box-shadow: 0 0 26px rgba(249, 226, 175, 0.95); border-color: #fff2cc; }
+}
+.pacte-carte--suggere { animation: illumination-synergie 1.6s ease-in-out infinite; }
+.pacte-carte-badge--suggere { background: #f9e2af; top: auto; right: auto; bottom: -12px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 .pacte-carte-titre { margin: 0 0 15px 0; font-size: 1.2em; color: #cdd6f4; }
 .pacte-carte--equipe .pacte-carte-titre { color: #a6e3a1; }
 .pacte-carte-desc { margin: 0; font-size: 0.95em; color: #bac2de; min-height: 45px; line-height: 1.4; }

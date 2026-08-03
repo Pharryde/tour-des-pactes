@@ -27,12 +27,12 @@ export const SYNERGIES_REGISTRY: Record<Synergie, SynergieDef> = {
     },
     Tank: {
         titre: "Riposte Fluide",
-        description: "Chaque fois que vous réussissez une Esquive (E), l'ennemi subit des dégâts égaux à votre Armure actuelle et vous récupérez 10% de cette Armure en PV.",
+        description: "Chaque Esquive réussie redirige la force de l'ennemi contre lui : il subit des dégâts égaux à l'Armure actuelle et vous vous soignez de 10% de cette Armure en PV.",
         pactesRequis: ["Pacte de la Vie", "Pacte de l'Armure", "Pacte de l'Esquive", "Pacte de la Fluidité"],
     },
     Assassin: {
         titre: "Danse des Lames",
-        description: "Attaque (A) et Précise (P) fusionnent dans la même jauge de Combo (A-A-P-P-P compte comme un Combo x5), et la Précise bénéficie aussi des bonus de dégâts du Pacte de la Puissance Brute.",
+        description: "Attaque et Précise fusionnent dans la même jauge de Combo (A-A-P-P-P compte comme un Combo x5), et la Précise bénéficie aussi des bonus de dégâts du Pacte de la Puissance Brute.",
         pactesRequis: ["Pacte de la Puissance Brute", "Pacte du Temps", "Pacte de l'Ombre", "Pacte du Combo"],
     },
 };
@@ -44,4 +44,19 @@ function aLePacte(pactesEquipes: string[], nomBase: string): boolean {
 export function detecterSynergie(pactesEquipes: string[]): Synergie | null {
     const synergies = Object.keys(SYNERGIES_REGISTRY) as Synergie[];
     return synergies.find(s => SYNERGIES_REGISTRY[s].pactesRequis.every(p => aLePacte(pactesEquipes, p))) ?? null;
+}
+
+// Noms de base des Pactes qui compléteraient une synergie si le joueur en équipe déjà 3 des 4
+// requis — pour mettre en valeur le 4e dans l'Inventaire (uniquement s'il le possède déjà).
+export function pactesManquantsPourSynergie(pactesEquipes: string[]): string[] {
+    const manquants: string[] = [];
+    for (const synergie of Object.keys(SYNERGIES_REGISTRY) as Synergie[]) {
+        const { pactesRequis } = SYNERGIES_REGISTRY[synergie];
+        const nbEquipes = pactesRequis.filter(p => aLePacte(pactesEquipes, p)).length;
+        if (nbEquipes === 3) {
+            const manquant = pactesRequis.find(p => !aLePacte(pactesEquipes, p));
+            if (manquant) manquants.push(manquant);
+        }
+    }
+    return manquants;
 }

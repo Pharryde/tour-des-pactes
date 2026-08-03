@@ -9,10 +9,12 @@ import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
 import { SortieTour } from './components/SortieTour';
 import { EtagePair } from './components/EtagePair';
+import { TutoConclusion } from './components/TutoConclusion';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
 import { Tuto } from './components/Tuto';
 import { ArbreCompetences } from './components/ArbreCompetences';
+import { ACTIONS_CHAT_TUTO, ACTIONS_AUTORISEES_TUTO, DIALOGUE_CHAT_TUTO } from './utils/tutoCombat';
 import './App.css';
 
 function App() {
@@ -21,12 +23,13 @@ function App() {
       ecran, setEcran,
       listeEtages, indexEtageActuel, indexSalle,
       joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort, statsDerniereRun,
-      enCombatMegaBoss, monstreMegaBoss, choixReposActifs,
-      pactesDebloques, pactesEquipes,
+      enCombatMegaBoss, monstreMegaBoss, choixReposActifs, monstreTuto,
+      pactesDebloques, pactesEquipes, aPacteChat,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, aPointsCompetenceDispo,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererLancerRun,
-      gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss, handleFinDeCombat,
+      gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss,
+      gererFinTutoriel, gererConclusionTuto, gererAbandonTuto, handleFinDeCombat,
   } = useGameState();
 
   if (erreurMoteur) {
@@ -103,11 +106,12 @@ function App() {
               />
           )}
 
-          {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
+          {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} aPacteChat={aPacteChat} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
           {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} logsMort={logsMort} stats={statsDerniereRun} />}
           {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} />}
           {ecran === 'ecran-etage-pair' && <EtagePair onContinuer={() => setEcran('ecran-combat')} />}
+          {ecran === 'ecran-tuto-conclusion' && <TutoConclusion onContinuer={gererConclusionTuto} />}
 
           {ecran === 'ecran-choix-boss' && (
             <ChoixBoss
@@ -139,6 +143,7 @@ function App() {
                 numeroSalle={enCombatMegaBoss ? 0 : indexSalle}
                 totalSalles={enCombatMegaBoss ? 1 : etageActuel.monstres.length + 1}
                 pactesEquipes={pactesEquipes}
+                competences={competences}
                 logsGlobaux={historiqueLogs}
                 ajouterLogGlobal={ajouterLogGlobal}
                 ajouterStatsTour={ajouterStatsTour}
@@ -146,6 +151,34 @@ function App() {
                 onFinDeCombat={handleFinDeCombat}
                 onAbandon={gererAbandon}
                 enCombatPacte={enCombatPacte}
+              />
+            </div>
+          )}
+
+          {ecran === 'ecran-tuto-intro' && joueur && monstreTuto && (
+            <div id="ecran-combat" className="ecran" style={{ justifyContent: 'flex-start' }}>
+              <CombatArene
+                key="tuto-intro"
+                joueurInitial={joueur}
+                monstreInitial={monstreTuto}
+                nomEtage="Tutoriel"
+                numeroEtage={0}
+                totalEtages={0}
+                numeroSalle={0}
+                totalSalles={1}
+                pactesEquipes={[]}
+                competences={{ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 }}
+                logsGlobaux={historiqueLogs}
+                ajouterLogGlobal={ajouterLogGlobal}
+                ajouterStatsTour={() => {}}
+                onFinDeCombat={() => {}}
+                onAbandon={gererAbandonTuto}
+                enCombatPacte={false}
+                estTutoriel
+                actionsMonstreScriptees={ACTIONS_CHAT_TUTO}
+                actionsAutoriseesTuto={ACTIONS_AUTORISEES_TUTO}
+                dialogueTuto={DIALOGUE_CHAT_TUTO}
+                onFinTutoriel={gererFinTutoriel}
               />
             </div>
           )}
