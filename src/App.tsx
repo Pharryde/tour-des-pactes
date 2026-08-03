@@ -7,6 +7,8 @@ import { CombatArene } from './components/CombatArene';
 import { Fin } from './components/Fin';
 import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
+import { SortieTour } from './components/SortieTour';
+import { EtagePair } from './components/EtagePair';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
 import { Tuto } from './components/Tuto';
@@ -19,11 +21,12 @@ function App() {
       ecran, setEcran,
       listeEtages, indexEtageActuel, indexSalle,
       joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort, statsDerniereRun,
+      enCombatMegaBoss, monstreMegaBoss, choixReposActifs,
       pactesDebloques, pactesEquipes,
-      monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, aNouveauteTuto,
+      monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, aPointsCompetenceDispo,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererLancerRun,
-      gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, handleFinDeCombat,
+      gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss, handleFinDeCombat,
   } = useGameState();
 
   if (erreurMoteur) {
@@ -46,7 +49,10 @@ function App() {
   const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
   const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
 
-  if (etageActuel) {
+  if (enCombatMegaBoss) {
+      monstreActuel = monstreMegaBoss;
+  }
+  else if (etageActuel) {
       if (enCombatPacte) {
           monstreActuel = typeCombatPacte === 'lvl2' ? etageActuel.bossHeroiqueLvl2 : etageActuel.bossHeroique;
       }
@@ -82,6 +88,7 @@ function App() {
                   xpTotal={xpTotal}
                   bestiaire={bestiaire}
                   aConnuBuff={aConnuBuff}
+                  synergiesDecouvertes={synergiesDecouvertes}
                   onRetour={() => setEcran('ecran-hub')}
               />
           )}
@@ -98,7 +105,9 @@ function App() {
 
           {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
           {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} logsMort={logsMort} stats={statsDerniereRun} />}
-          {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} onChoix={gererChoixRepos} />}
+          {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
+          {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} />}
+          {ecran === 'ecran-etage-pair' && <EtagePair onContinuer={() => setEcran('ecran-combat')} />}
 
           {ecran === 'ecran-choix-boss' && (
             <ChoixBoss
@@ -121,18 +130,19 @@ function App() {
           {ecran === 'ecran-combat' && monstreActuel && joueur && (
             <div id="ecran-combat" className="ecran" style={{ justifyContent: 'flex-start' }}>
               <CombatArene
-                key={`${indexEtageActuel}-${indexSalle}-${enCombatPacte}`}
+                key={`${indexEtageActuel}-${indexSalle}-${enCombatPacte}-${enCombatMegaBoss}`}
                 joueurInitial={joueur}
                 monstreInitial={monstreActuel}
-                nomEtage={etageActuel.nom}
+                nomEtage={enCombatMegaBoss ? "La Sortie de la Tour" : etageActuel.nom}
                 numeroEtage={indexEtageActuel + 1}
                 totalEtages={listeEtages.length}
-                numeroSalle={indexSalle}
-                totalSalles={etageActuel.monstres.length + 1}
+                numeroSalle={enCombatMegaBoss ? 0 : indexSalle}
+                totalSalles={enCombatMegaBoss ? 1 : etageActuel.monstres.length + 1}
                 pactesEquipes={pactesEquipes}
                 logsGlobaux={historiqueLogs}
                 ajouterLogGlobal={ajouterLogGlobal}
                 ajouterStatsTour={ajouterStatsTour}
+                formesMegaBoss={enCombatMegaBoss ? listeEtages.map(e => e.bossHeroiqueLvl2) : undefined}
                 onFinDeCombat={handleFinDeCombat}
                 onAbandon={gererAbandon}
                 enCombatPacte={enCombatPacte}

@@ -8,6 +8,16 @@ pub enum ActionType {
     E,
 }
 
+// Synergies cachées : 4 Pactes précis équipés simultanément (peu importe leur niveau) au
+// lancement d'une run révèlent un bonus de combat propre au joueur (voir combat.rs / lib.rs).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum Synergie {
+    Guerrier,
+    Ninja,
+    Tank,
+    Assassin,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Entite {
@@ -21,12 +31,13 @@ pub struct Entite {
     pub base_d: i32,
     pub paliers_esquive: Vec<i32>,
     pub actions_possibles: Vec<ActionType>,
+    #[serde(default)] pub actions_visibles: Option<i32>,
 
     pub regen_armure_tour: Option<i32>,
     pub chance_combo: Option<i32>,
-    
+    #[serde(default)] pub chance_suite_defense: Option<i32>,
+
     #[serde(default)] pub combo_multiplicateur: Option<f32>,
-    #[serde(default)] pub actions_cachees: bool,
     #[serde(default)] pub degats_precis_doubles: bool,
     
     pub perte_pv_chaque_x_tours: Option<i32>,
@@ -49,6 +60,9 @@ pub struct Entite {
     // --- NOUVEAU : PUISSANCE BRUTE ---
     #[serde(default)] pub bonus_degats_attaque_pourcentage: Option<i32>,
     #[serde(default)] pub bonus_combo_attaque_palier: Option<i32>,
+
+    // --- NOUVEAU : SYNERGIES CACHÉES ---
+    #[serde(default)] pub synergie_active: Option<Synergie>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

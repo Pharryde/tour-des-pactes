@@ -31,7 +31,7 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 /* On centre tout sauf le combat et l'inventaire (voir .inventaire-ecran : le centrage vertical
    classique coupe le haut du contenu sans qu'on puisse y remonter dès que ça dépasse la hauteur
    de l'écran, ex: beaucoup de Pactes débloqués). */
-#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos {
+#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair {
     align-items: center;
     justify-content: center;
 }
@@ -80,6 +80,9 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 
 .btn-action { padding: 12px 15px; font-size: 1em; margin: 5px; cursor: pointer; border: none; border-radius: 5px; color: #11111b; font-weight: bold; transition: 0.2s; }
 .btn-action:hover { opacity: 0.8; }
+/* !important nécessaire pour passer devant les .bg-* (elles-mêmes en !important, voir plus bas) */
+.btn-action:disabled { background-color: #45475a !important; color: #6c7086 !important; cursor: not-allowed; opacity: 1; }
+.btn-action:disabled:hover { opacity: 1; }
 #btn-a { background-color: #f38ba8; } #btn-p { background-color: #fab387; } #btn-d { background-color: #89b4fa; } #btn-e { background-color: #a6e3a1; }
 
 .btn-systeme { padding: 12px 20px; font-size: 1.1em; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; background-color: #cba6f7; color: #11111b; margin: 5px;}

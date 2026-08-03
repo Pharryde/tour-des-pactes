@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 // NOUVEAU : Modifie cette constante (ex: "1.1") quand tu changes tes structures de données (Entite, Ecran...)
 // Cela forcera le nettoyage automatique des sauvegardes obsolètes chez les joueurs.
-const APP_VERSION = "1.0";
+const APP_VERSION = "1.1";
 
 try {
     if (window.localStorage.getItem('tdp_version') !== APP_VERSION) {

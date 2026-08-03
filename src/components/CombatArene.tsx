@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import type { Entite, ActionType } from '../types';
-import { genererActionsMonstre, corrigerActionsPourLimiteCombo, SYMBOLES } from '../utils/combat';
+import { genererActionsMonstre, corrigerActionsPourLimiteCombo, genererIndicesVisibles, calculerAttaqueAffichee, calculerPreciseAffichee, calculerPaliersEsquiveAffiches, SYMBOLES } from '../utils/combat';
+import { tirerNouvelleForme, appliquerFormeMegaBoss } from '../utils/megaboss';
 import { genererBadgesPactes } from '../utils/pactes';
 import { jouer_tour } from 'moteur_wasm';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -24,18 +25,19 @@ interface CombatAreneProps {
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
+    formesMegaBoss?: Entite[];
 }
 
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
     pactesEquipes, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
-    enCombatPacte
+    enCombatPacte, formesMegaBoss
 }: CombatAreneProps) {
 
     const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
 
     const [etatInitial] = useState(() => chargerEtatCombat(combatKey, {
-        joueur: joueurInitial, monstre: monstreInitial, tourActuel: 1, actionsMonstre: [], actionsJoueur: []
+        joueur: joueurInitial, monstre: monstreInitial, tourActuel: 1, actionsMonstre: [], actionsJoueur: [], indicesVisiblesMonstre: [0, 1, 2, 3, 4]
     }));
 
     const [joueur, setJoueur] = useState<Entite>(etatInitial.joueur);
@@ -43,9 +45,10 @@ export function CombatArene({
     const [tourActuel, setTourActuel] = useState<number>(etatInitial.tourActuel);
     const [actionsMonstre, setActionsMonstre] = useState<ActionType[]>(etatInitial.actionsMonstre);
     const [actionsJoueur, setActionsJoueur] = useState<ActionType[]>(etatInitial.actionsJoueur);
+    const [indicesVisiblesMonstre, setIndicesVisiblesMonstre] = useState<number[]>(etatInitial.indicesVisiblesMonstre);
     const [combatEnCours, setCombatEnCours] = useState(false);
 
-    usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, combatEnCours);
+    usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, combatEnCours);
 
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
@@ -70,12 +73,19 @@ export function CombatArene({
     
     // Ajustement d'état pendant le rendu (pattern recommandé par React) plutôt qu'un setState
     // dans un useEffect : dès qu'un nouveau tour démarre (actionsMonstre vidées), on tire les
-    // actions du monstre. La condition redevient fausse dès que l'état est mis à jour, donc pas
-    // de boucle de rendu infinie.
+    // actions du monstre (et, pour le Gardien Absolu, sa nouvelle forme). La condition redevient
+    // fausse dès que l'état est mis à jour, donc pas de boucle de rendu infinie.
     if (actionsMonstre.length === 0 && !combatEnCours) {
-        const generated = genererActionsMonstre(monstre);
+        let monstreDuTour = monstre;
+        if (formesMegaBoss && formesMegaBoss.length > 0) {
+            const nouvelleForme = tirerNouvelleForme(formesMegaBoss, monstre.nom);
+            monstreDuTour = appliquerFormeMegaBoss(monstre, nouvelleForme);
+            setMonstre(monstreDuTour);
+        }
+        const generated = genererActionsMonstre(monstreDuTour);
         // Le joueur applique son Pacte Lvl 1/2 sur le monstre
         setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5));
+        setIndicesVisiblesMonstre(genererIndicesVisibles(monstreDuTour.actionsVisibles));
     }
 
     const formatterCombo = (comboObj: {type: ActionType|null, count: number}) => {
@@ -315,9 +325,9 @@ export function CombatArene({
                     </div>
                     <h2>{joueur.nom}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({joueur.paliersEsquive[Math.min(joueur.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur)[Math.min(joueur.nivEsquive, 3)]}%)</span>
                     </div>
-                    <div className="stats-base">⚔️ {joueur.baseA} | 🎯 {joueur.baseP} | 🛡️ {joueur.baseD}</div>
+                    <div className="stats-base">⚔️ {calculerAttaqueAffichee(joueur, actionsJoueur)} | 🎯 {calculerPreciseAffichee(joueur)} | 🛡️ {joueur.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageJ)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
@@ -330,14 +340,14 @@ export function CombatArene({
                     </div>
                     <h2>{titreMonstreFinal}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({monstre.paliersEsquive[Math.min(monstre.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre)[Math.min(monstre.nivEsquive, 3)]}%)</span>
                     </div>
-                    <div className="stats-base">⚔️ {monstre.baseA} | 🎯 {monstre.baseP} | 🛡️ {monstre.baseD}</div>
+                    <div className="stats-base">⚔️ {calculerAttaqueAffichee(monstre)} | 🎯 {calculerPreciseAffichee(monstre)} | 🛡️ {monstre.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageM)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => (
                             <div key={i} className="action-slot">
-                                {actionsMonstre[i] ? (monstre.actionsCachees ? '❓' : SYMBOLES[actionsMonstre[i]]) : ''}
+                                {actionsMonstre[i] ? (indicesVisiblesMonstre.includes(i) ? SYMBOLES[actionsMonstre[i]] : '❓') : ''}
                             </div>
                         ))}
                     </div>

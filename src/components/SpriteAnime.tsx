@@ -9,21 +9,23 @@ interface Props {
 const DUREE_FRAME_MS = 90;
 
 export function SpriteAnime({ definition, miroir = false }: Props) {
-    const [frame, setFrame] = useState(0);
+    const debut = definition.frameDebut ?? 0;
+    const fin = definition.frameFin ?? definition.frames - 1;
+    const [frame, setFrame] = useState(debut);
 
     useEffect(() => {
         const id = setInterval(() => {
             setFrame(f => {
-                if (f + 1 >= definition.frames) {
-                    if (definition.bouclage) return 0;
+                if (f + 1 > fin) {
+                    if (definition.bouclage) return debut;
                     clearInterval(id);
-                    return definition.frames - 1;
+                    return fin;
                 }
                 return f + 1;
             });
         }, DUREE_FRAME_MS);
         return () => clearInterval(id);
-    }, [definition.fichier, definition.frames, definition.bouclage]);
+    }, [definition.fichier, definition.frames, definition.bouclage, debut, fin]);
 
     return (
         <div

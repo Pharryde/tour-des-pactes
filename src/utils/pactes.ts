@@ -45,11 +45,13 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
     },
     "Pacte de l'Esquive": {
         desc: "(+10% Paliers Esquive)",
-        appliquer: (j) => { j.paliersEsquive = [0, 60, 85, 100]; }
+        // On ajoute au tableau déjà présent (au lieu de l'écraser) pour ne pas effacer le bonus
+        // des points de compétence Esquive investis par le joueur. Le palier 0 ne bouge jamais.
+        appliquer: (j) => { j.paliersEsquive = j.paliersEsquive.map((p, i) => i === 0 ? p : Math.min(100, p + 10)); }
     },
     "Pacte de l'Esquive II": {
         desc: "(+30% Paliers Esquive)",
-        appliquer: (j) => { j.paliersEsquive = [0, 80, 100, 100]; }
+        appliquer: (j) => { j.paliersEsquive = j.paliersEsquive.map((p, i) => i === 0 ? p : Math.min(100, p + 30)); }
     },
     "Pacte du Combo": {
         desc: "(*1.5 Multiplicateur Combo)",
@@ -64,8 +66,11 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
         appliquer: (j) => { j.degatsPrecisDoubles = true; }
     },
     "Pacte de l'Ombre II": {
-        desc: "(Bloque Esquive Ennemi)",
-        appliquer: (j) => { j.bloqueEsquiveOpposant = true; }
+        desc: "(Bloque Esquive Ennemi, Dégâts Précis x2)",
+        appliquer: (j) => {
+            j.bloqueEsquiveOpposant = true;
+            j.degatsPrecisDoubles = true;
+        }
     },
     "Pacte du Temps": {
         desc: "(5e Action x2)",

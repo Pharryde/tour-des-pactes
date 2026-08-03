@@ -1,9 +1,11 @@
 // src/hooks/useGameState.ts
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun } from '../types';
+import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
-import { melangerEtages, genererMessageBuff } from '../utils/etages';
+import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
+import { construireMegaBoss } from '../utils/megaboss';
+import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
@@ -29,6 +31,11 @@ export function useGameState() {
     const [enCombatPacte, setEnCombatPacte] = useLocalStorage<boolean>('tdp_combat_pacte', false);
     const [typeCombatPacte, setTypeCombatPacte] = useLocalStorage<'lvl1' | 'lvl2'>('tdp_type_pacte', 'lvl1');
     const [logsMort, setLogsMort] = useLocalStorage<string[]>('tdp_logs_mort', []);
+    const [enCombatMegaBoss, setEnCombatMegaBoss] = useLocalStorage<boolean>('tdp_combat_megaboss', false);
+    const [monstreMegaBoss, setMonstreMegaBoss] = useLocalStorage<Entite | null>('tdp_monstre_megaboss', null);
+    const [reposVisites, setReposVisites] = useLocalStorage<number>('tdp_repos_visites', 0);
+    const [choixReposActifs, setChoixReposActifs] = useLocalStorage<ChoixRepos[] | null>('tdp_choix_repos_actifs', null);
+    const [synergiesDecouvertes, setSynergiesDecouvertes] = useLocalStorage<Synergie[]>('tdp_synergies_decouvertes', []);
 
     const [monstresTues, setMonstresTues] = useLocalStorage<number>('tdp_monstres_tues', 0);
     const [competences, setCompetences] = useLocalStorage<Competences>('tdp_competences', { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
@@ -60,7 +67,8 @@ export function useGameState() {
         (pactesDebloques.some(p => p.includes("Pacte de l'Ombre")) ? 1 : 0) +
         (pactesDebloques.some(p => p.includes("Pacte de la Fluidité")) ? 1 : 0) +
         (pactesDebloques.some(p => p.includes("Pacte de la Puissance Brute")) ? 1 : 0) +
-        (pactesDebloques.includes("Pacte de l'Armure II") ? 1 : 0);
+        (pactesDebloques.includes("Pacte de l'Armure II") ? 1 : 0) +
+        synergiesDecouvertes.length;
 
     const aNouveauteTuto = nbConnaissancesActuelles > connaissancesVues;
     const marquerTutoLu = () => setConnaissancesVues(nbConnaissancesActuelles);
@@ -89,6 +97,7 @@ export function useGameState() {
     const effacerRun = () => {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
         setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
+        setEnCombatMegaBoss(false); setMonstreMegaBoss(null);
         window.localStorage.removeItem('tdp_active_combat_key');
     };
 
@@ -149,6 +158,11 @@ export function useGameState() {
             actionsPossibles: ['A', 'P', 'D', 'E']
         };
 
+        // Synergies cachées : 4 Pactes précis équipés (peu importe leur niveau) au lancement
+        // révèlent un bonus de combat secret pour toute la run (voir utils/synergies.ts).
+        const synergieActive = detecterSynergie(pactesEquipes);
+        if (synergieActive) herosBase.synergieActive = synergieActive;
+
         // Application propre de tous les pactes via le registry
         setJoueur(appliquerPactesSurJoueur(herosBase, pactesEquipes));
 
@@ -170,13 +184,30 @@ export function useGameState() {
         setDegatsInfligesRun(0);
         setDegatsBloquesRun(0);
         setDegatsEsquivesRun(0);
+        setReposVisites(0);
+        setChoixReposActifs(null);
 
         const messageBuff = genererMessageBuff(melange[0], pactesEquipes);
         if (messageBuff) setAConnuBuff(true);
 
+        let messagesSynergie: string[] = [];
+        if (synergieActive) {
+            const def = SYNERGIES_REGISTRY[synergieActive];
+            if (!synergiesDecouvertes.includes(synergieActive)) {
+                setSynergiesDecouvertes(prev => [...prev, synergieActive]);
+                messagesSynergie = [
+                    `<br><b style="color: #f9e2af;">🔮✨ SECRET DÉCOUVERT : Synergie ${synergieActive} — ${def.titre} !</b>`,
+                    `<span class="log-tour">${def.description}</span>`,
+                ];
+            } else {
+                messagesSynergie = [`<br><b style="color: #f9e2af;">🔮 Synergie ${synergieActive} active : ${def.titre}.</b>`];
+            }
+        }
+
         setHistoriqueLogs([
             `<b>🎲 Nouvelle Ascension ! Vous entrez dans l'Étage 1.</b>`,
             ...(messageBuff ? [messageBuff] : []),
+            ...messagesSynergie,
             `<br><b>⚔️ Combat : ${melange[0].monstres[0].nom} approche !</b>`
         ]);
         setEcran('ecran-combat');
@@ -184,15 +215,44 @@ export function useGameState() {
 
     const gererPassageEtageSuivant = () => {
         if (indexEtageActuel >= listeEtages.length - 1) {
-            setVictoireTotale(true);
-            capturerStatsFinRun();
-            setEcran('ecran-fin');
-            effacerRun();
+            setEcran('ecran-sortie-tour');
         }
-        else { setEcran('ecran-repos'); }
+        else {
+            // 1ère zone de repos de la run : les 5 choix sont disponibles. Ensuite, seuls 3
+            // (tirés aléatoirement à chaque visite) restent utilisables, les 2 autres sont grisés.
+            const toutesLesOptions: ChoixRepos[] = ['soin', 'pv', 'atk', 'pre', 'def'];
+            setChoixReposActifs(reposVisites === 0 ? null : melangerAleatoirement(toutesLesOptions).slice(0, 3));
+            setReposVisites(v => v + 1);
+            setEcran('ecran-repos');
+        }
     };
 
-    const gererChoixRepos = (choix: 'soin' | 'atk' | 'pre' | 'def' | 'pv') => {
+    // Déclenché depuis l'écran "Sortie de la Tour" : fait apparaître le Gardien Absolu, agglomérat
+    // de tous les Gardiens de Niveau II de la run, avant la victoire totale.
+    const gererDeclenchementMegaBoss = () => {
+        setMonstreMegaBoss(construireMegaBoss(listeEtages));
+        setHistoriqueLogs(prev => [
+            ...prev,
+            `<br><b style="color: #f38ba8;">🌪️ Les Gardiens vaincus convergent en une seule et unique entité !</b>`
+        ]);
+        setEnCombatMegaBoss(true);
+        setEcran('ecran-combat');
+    };
+
+    const gererFinMegaBoss = (victoire: boolean, joueurRestant: Entite) => {
+        if (!victoire) {
+            gererDefaite();
+            return;
+        }
+        setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0 });
+        setXpTotal(prev => prev + 10);
+        setVictoireTotale(true);
+        capturerStatsFinRun();
+        setEcran('ecran-fin');
+        effacerRun();
+    };
+
+    const gererChoixRepos = (choix: ChoixRepos) => {
         if (!joueur) return;
         const j = { ...joueur };
         if (choix === 'soin') { j.pv = Math.min(j.pvMax, j.pv + calculerSoinRepos(j.pvMax, pactesEquipes)); }
@@ -213,7 +273,11 @@ export function useGameState() {
         setJoueur(j);
         setIndexEtageActuel(i => i + 1);
         setIndexSalle(0);
-        setEcran('ecran-combat');
+
+        // Un étage PAIR marque un nouveau palier de puissance des monstres (voir buffProgressionEtage) :
+        // on prévient le joueur via un écran dédié, sans détailler les stats concrètes.
+        const numeroProchainEtage = indexEtageActuel + 2;
+        setEcran(numeroProchainEtage % 2 === 0 ? 'ecran-etage-pair' : 'ecran-combat');
     };
 
     // Remplace les deux handlers onCombattreLvl1/onCombattreLvl2 (auparavant dupliqués dans App.tsx).
@@ -311,6 +375,11 @@ export function useGameState() {
     };
 
     const handleFinDeCombat = (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false) => {
+        if (enCombatMegaBoss) {
+            gererFinMegaBoss(victoire, joueurRestant);
+            return;
+        }
+
         if (victoire || doubleKO) {
             gererRecompenseCombat();
         }
@@ -359,6 +428,9 @@ export function useGameState() {
         typeCombatPacte,
         logsMort,
         statsDerniereRun,
+        enCombatMegaBoss,
+        monstreMegaBoss,
+        choixReposActifs,
 
         // Pactes
         pactesDebloques,
@@ -370,6 +442,7 @@ export function useGameState() {
         xpTotal,
         bestiaire,
         aConnuBuff,
+        synergiesDecouvertes,
         aNouveauteTuto,
         aNouveauPacte,
         aPointsCompetenceDispo,
@@ -385,6 +458,7 @@ export function useGameState() {
         gererPassageEtageSuivant,
         gererChoixRepos,
         declencherCombatPacte,
+        gererDeclenchementMegaBoss,
         handleFinDeCombat,
     };
 }

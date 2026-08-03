@@ -1,6 +1,10 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import type { Competences } from '../types';
 import { calculerPointsCompetence, calculerProchainPalier, getPalierPrecedent, calculerPointsDepenses } from '../utils/competences';
+import { SpriteAnime } from './SpriteAnime';
+import { ANIMATION_FORGE } from '../utils/animationsForge';
+
+const DUREE_ANIMATION_FORGE_MS = 2000;
 
 interface Props {
     xpTotal: number;
@@ -36,10 +40,15 @@ function LigneComp({ nom, icone, cout, effet, niveau, ptsDispo, onModifier }: Li
 }
 
 export function ArbreCompetences({ xpTotal, competences, setCompetences, monstresTues, onRetour }: Props) {
+    // Brouillon local : les changements ne sont propagés (et persistés) qu'au clic sur "Valider",
+    // pour que le joueur puisse composer sa répartition avant de la confirmer.
+    const [brouillon, setBrouillon] = useState<Competences>(competences);
+    const [forgeActive, setForgeActive] = useState(false);
 
     const ptsTotal = calculerPointsCompetence(xpTotal);
-    const ptsDepenses = calculerPointsDepenses(competences);
+    const ptsDepenses = calculerPointsDepenses(brouillon);
     const ptsDispo = ptsTotal - ptsDepenses;
+    const aChangements = JSON.stringify(brouillon) !== JSON.stringify(competences);
 
     // Logique pour la barre de progression d'XP
     const prochainPalier = calculerProchainPalier(xpTotal);
@@ -48,20 +57,35 @@ export function ArbreCompetences({ xpTotal, competences, setCompetences, monstre
     const xpAcquiseDansPalier = xpTotal - palierPrecedent;
     const pourcentageProgress = (xpAcquiseDansPalier / xpRequisePourPalier) * 100;
 
-    useEffect(() => {
-        if (ptsDispo < 0) setCompetences({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
-    }, [ptsDispo, setCompetences]);
+    // Ajustement d'état pendant le rendu plutôt qu'un setState dans un useEffect : la condition
+    // redevient fausse d'elle-même dès que le brouillon est remis à zéro (ptsDepenses retombe à 0).
+    if (ptsDispo < 0) {
+        setBrouillon({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
+    }
 
     const modifier = (stat: keyof Competences, cout: number, direction: 1 | -1) => {
         if (direction === 1 && ptsDispo >= cout) {
-            setCompetences({ ...competences, [stat]: (competences[stat] || 0) + 1 });
-        } else if (direction === -1 && (competences[stat] || 0) > 0) {
-            setCompetences({ ...competences, [stat]: (competences[stat] || 0) - 1 });
+            setBrouillon({ ...brouillon, [stat]: (brouillon[stat] || 0) + 1 });
+        } else if (direction === -1 && (brouillon[stat] || 0) > 0) {
+            setBrouillon({ ...brouillon, [stat]: (brouillon[stat] || 0) - 1 });
         }
+    };
+
+    const valider = () => {
+        setCompetences(brouillon);
+        setForgeActive(true);
+        setTimeout(() => setForgeActive(false), DUREE_ANIMATION_FORGE_MS);
     };
 
     return (
         <div className="ecran arbre-ecran">
+            {forgeActive && (
+                <div className="forge-anim-cotes" aria-hidden="true">
+                    <SpriteAnime definition={ANIMATION_FORGE} />
+                    <SpriteAnime definition={ANIMATION_FORGE} miroir />
+                </div>
+            )}
+
             <h1 className="arbre-titre">✨ Éclats d'Âme</h1>
             <p className="arbre-soustitre">Vous avez vaincu {monstresTues} monstre(s). Utilisez leur essence pour vous renforcer.</p>
 
@@ -84,19 +108,28 @@ export function ArbreCompetences({ xpTotal, competences, setCompetences, monstre
                 <span className="points-dispo-valeur">Points Disponibles : <strong>{ptsDispo}</strong> / {ptsTotal}</span>
             </div>
 
+            {forgeActive && (
+                <div className="forge-anim-mobile" aria-hidden="true">
+                    <SpriteAnime definition={ANIMATION_FORGE} />
+                </div>
+            )}
+
             <div className="arbre-competences-liste">
-                <LigneComp icone="❤️" nom="Vitalité" cout={1} effet="+10 PV Max par niveau" niveau={competences.pv || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('pv', 1, dir)} />
-                <LigneComp icone="🛡️" nom="Peau de Fer" cout={1} effet="+1 Défense de base" niveau={competences.def || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('def', 1, dir)} />
-                <LigneComp icone="⚔️" nom="Force Brute" cout={1} effet="+1 Attaque de base" niveau={competences.atk || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('atk', 1, dir)} />
-                <LigneComp icone="🎯" nom="Œil de Faucon" cout={2} effet="+1 Précision de base" niveau={competences.pre || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('pre', 2, dir)} />
-                <LigneComp icone="💨" nom="Réflexes" cout={1} effet="+5% d'Esquive max (si action utilisée)" niveau={competences.esq || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('esq', 1, dir)} />
+                <LigneComp icone="❤️" nom="Vitalité" cout={1} effet="+10 PV Max par niveau" niveau={brouillon.pv || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('pv', 1, dir)} />
+                <LigneComp icone="🛡️" nom="Peau de Fer" cout={1} effet="+1 Défense de base" niveau={brouillon.def || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('def', 1, dir)} />
+                <LigneComp icone="⚔️" nom="Force Brute" cout={1} effet="+1 Attaque de base" niveau={brouillon.atk || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('atk', 1, dir)} />
+                <LigneComp icone="🎯" nom="Œil de Faucon" cout={2} effet="+1 Précision de base" niveau={brouillon.pre || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('pre', 2, dir)} />
+                <LigneComp icone="💨" nom="Réflexes" cout={1} effet="+5% d'Esquive max (si action utilisée)" niveau={brouillon.esq || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('esq', 1, dir)} />
             </div>
 
             <div className="arbre-footer">
-                <button onClick={() => setCompetences({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 })} className="btn-reset-arbre">
+                <button onClick={() => setBrouillon({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 })} className="btn-menu btn-danger">
                     🔄 Réinitialiser l'Arbre
                 </button>
-                <button onClick={onRetour} className="btn-retour">
+                <button onClick={valider} disabled={!aChangements} className="btn-menu btn-jouer">
+                    ⚒️ Valider
+                </button>
+                <button onClick={onRetour} className="btn-menu">
                     🔙 Retour au Hub
                 </button>
             </div>

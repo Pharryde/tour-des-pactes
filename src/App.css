@@ -446,6 +446,7 @@
 .tuto-carte-fluidite { --tuto-accent: #74c7ec; background-color: #1e1e2e; }
 .tuto-carte-puissance { --tuto-accent: #eba0ac; background-color: #1e1e2e; }
 .tuto-carte-armure { --tuto-accent: #a6e3a1; background-color: #1e1e2e; }
+.tuto-carte-synergie { --tuto-accent: #f9e2af; background-color: #1e1e2e; }
 
 @media (max-width: 768px) {
     .tuto-ecran { padding: 1rem; }
@@ -545,29 +546,29 @@
     letter-spacing: 2px;
     text-align: center;
 }
-.arbre-soustitre { color: #a6adc8; margin-bottom: 20px; font-style: italic; text-align: center; }
+.arbre-soustitre { color: #a6adc8; margin-bottom: 24px; font-style: italic; text-align: center; }
 
-.xp-barre-box {
+/* Même langage de carte pour la barre d'XP et le compteur de points (fond/bordure identiques,
+   même largeur que la liste de compétences juste en dessous) — auparavant le compteur avait une
+   bordure épaisse et une largeur différente qui le désalignaient visuellement du reste. */
+.xp-barre-box, .points-dispo-box {
     width: 100%;
     max-width: 600px;
     background-color: #1e1e2e;
     border: 1px solid #313244;
-    padding: 15px;
     border-radius: 12px;
-    margin-bottom: 20px;
     box-sizing: border-box;
 }
+.xp-barre-box { padding: 15px; margin-bottom: 16px; }
 .xp-barre-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9em; color: #cdd6f4; }
 .xp-barre-piste { width: 100%; height: 12px; background-color: #11111b; border-radius: 6px; overflow: hidden; }
 .xp-barre-remplissage { height: 100%; background-color: #cba6f7; transition: width 0.3s ease; }
 .xp-barre-footer { text-align: center; font-size: 0.8em; color: #a6adc8; margin-top: 8px; }
 
 .points-dispo-box {
-    background-color: #181825;
-    border: 2px solid #a6e3a1;
+    border-left: 4px solid #a6e3a1;
     padding: 15px 30px;
-    border-radius: 12px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 .points-dispo-valeur { font-size: 1.5em; font-weight: bold; }
 .points-dispo-valeur strong { color: #a6e3a1; }
@@ -605,22 +606,54 @@
 .ligne-comp-btn--plus { color: #a6e3a1; }
 .ligne-comp-btn:disabled { color: #6c7086; cursor: not-allowed; }
 
+/* Les boutons du pied de page réutilisent le vocabulaire partagé (.btn-menu + variante de couleur,
+   comme "Retourner au Menu" sur l'écran de fin) plutôt que des styles propres à cet écran, pour
+   rester cohérent avec le reste du jeu. */
 .arbre-footer { display: flex; gap: 20px; margin-top: 30px; flex-wrap: wrap; justify-content: center; }
-.btn-reset-arbre {
-    padding: 15px 30px;
-    font-size: 1.1em;
-    background-color: transparent;
-    color: #f38ba8;
-    border: 2px solid #f38ba8;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
+.btn-menu:disabled, .btn-menu:disabled:hover {
+    background-color: #585b70;
+    color: #6c7086;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Animation du forgeron jouée après validation. Sur bureau, le sprite est centré dans l'espace
+   vide entre le bord de l'écran et la colonne de contenu (600px) — pas collé au contenu, pas
+   collé au bord — et grandit avec la largeur de cet espace (moitié de sa largeur, entre 0.6x et
+   2.2x). Sur mobile, une seule instance s'affiche sous le compteur de points (deux emplacements
+   dans le JSX, un seul visible selon le breakpoint). */
+.forge-anim-cotes {
+    --gouttiere: calc((100vw - 600px) / 2);
+    --sprite-echelle: clamp(0.6, calc(var(--gouttiere) * 0.5 / 96px), 2.2);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 20;
+}
+.forge-anim-cotes .sprite-anime {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.forge-anim-cotes .sprite-anime:first-child { left: calc(var(--gouttiere) / 2 - (48px * var(--sprite-echelle))); }
+.forge-anim-cotes .sprite-anime:last-child { right: calc(var(--gouttiere) / 2 - (48px * var(--sprite-echelle))); }
+
+.forge-anim-mobile {
+    --sprite-echelle: 1.3;
+    display: none;
+    justify-content: center;
+    margin-top: 10px;
 }
 
 @media (max-width: 768px) {
     .arbre-titre { font-size: 1.6em; }
     .arbre-footer { flex-direction: column; width: 100%; max-width: 320px; }
     .arbre-footer button { width: 100%; }
+    .forge-anim-cotes { display: none; }
+    .forge-anim-mobile { display: flex; }
 }
 
 /* ======================================================= */

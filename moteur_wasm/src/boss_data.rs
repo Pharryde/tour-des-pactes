@@ -26,10 +26,11 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         base_d,
         paliers_esquive: paliers,
         actions_possibles: actions,
+        actions_visibles: None,
         regen_armure_tour: None,
         chance_combo: None,
+        chance_suite_defense: None,
         combo_multiplicateur: None,
-        actions_cachees: false,
         degats_precis_doubles: false,
         perte_pv_chaque_x_tours: None,
         perte_pv_pourcentage: None,
@@ -44,15 +45,23 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         annule_bonus_combo: false,
         bonus_degats_attaque_pourcentage: None,
         bonus_combo_attaque_palier: None,
+        synergie_active: None,
     }
 }
 
 pub fn get_etage_armure() -> StructureEtage {
+    // Plus une forme est avancée, plus elle a de chances d'enchaîner ses Défenses (ActionType::D)
+    // d'une action à l'autre, pour finir le tour avec une grosse réserve d'armure — et donc
+    // déclencher plus souvent Pointes d'Acier (dégâts de fin de tour égaux à l'armure restante).
+    let mut boss_n = creer_base(&nom_boss("Le Mur de Fer"), 80, 10, 6, 15, esquive_std(), kit_sans_esquive());
+    boss_n.chance_suite_defense = Some(25);
+
     let mut boss_h = creer_base(&nom_boss_evolue("Le Mur de Fer"), 100, 12, 5, 15, esquive_std(), kit_sans_esquive());
-    boss_h.armure = 5; boss_h.regen_armure_tour = Some(5);
+    boss_h.armure = 5; boss_h.regen_armure_tour = Some(5); boss_h.chance_suite_defense = Some(33);
 
     let mut boss_h2 = creer_base(&nom_boss_finale("Le Mur de Fer"), 100, 12, 5, 15, esquive_std(), kit_sans_esquive());
     boss_h2.armure = 5; boss_h2.regen_armure_tour = Some(5); boss_h2.degats_armure_restante_fin_tour = true;
+    boss_h2.chance_suite_defense = Some(50);
 
     StructureEtage {
         id_pacte: "Pacte de l'Armure".to_string(),
@@ -62,7 +71,7 @@ pub fn get_etage_armure() -> StructureEtage {
             creer_base("Sentinelle Lourde", 40, 10, 4, 12, esquive_std(), kit_sans_esquive()),
             creer_base("Chevalier d'Élite", 50, 10, 4, 12, esquive_std(), kit_sans_esquive()),
         ],
-        boss_normal: creer_base(&nom_boss("Le Mur de Fer"), 80, 10, 6, 15, esquive_std(), kit_sans_esquive()),
+        boss_normal: boss_n,
         boss_heroique: boss_h,
         boss_heroique_lvl2: boss_h2,
     }
@@ -102,6 +111,14 @@ pub fn get_etage_combo() -> StructureEtage {
 }
 
 pub fn get_etage_vie() -> StructureEtage {
+    // Régénération de L'Anomalie : 10% de ses PV max tous les 5 tours en forme évoluée (Niveau I),
+    // tous les 3 tours en forme finale (Niveau II) — plus le combat s'éternise, plus elle se soigne vite.
+    let mut boss_h = creer_base(&nom_boss_evolue("L'Anomalie"), 200, 12, 5, 12, esquive_std(), kit_sans_precise());
+    boss_h.regen_pv_chaque_x_tours = Some(5); boss_h.regen_pv_pourcentage = Some(10);
+
+    let mut boss_h2 = creer_base(&nom_boss_finale("L'Anomalie"), 300, 12, 5, 12, esquive_std(), kit_sans_precise());
+    boss_h2.regen_pv_chaque_x_tours = Some(3); boss_h2.regen_pv_pourcentage = Some(10);
+
     StructureEtage {
         id_pacte: "Pacte de la Vie".to_string(),
         nom: "Étage de la Vie".to_string(),
@@ -111,19 +128,21 @@ pub fn get_etage_vie() -> StructureEtage {
             creer_base("Goliath Sans Visage", 100, 10, 4, 10, esquive_std(), kit_sans_precise()),
         ],
         boss_normal: creer_base(&nom_boss("L'Anomalie"), 160, 10, 5, 12, esquive_std(), kit_sans_precise()),
-        boss_heroique: creer_base(&nom_boss_evolue("L'Anomalie"), 200, 12, 5, 12, esquive_std(), kit_sans_precise()),
-        boss_heroique_lvl2: creer_base(&nom_boss_finale("L'Anomalie"), 300, 12, 5, 12, esquive_std(), kit_sans_precise()),
+        boss_heroique: boss_h,
+        boss_heroique_lvl2: boss_h2,
     }
 }
 
 pub fn get_etage_ombre() -> StructureEtage {
-    let mut ombre = creer_base("Ombre Rôdeuse", 35, 10, 4, 10, esquive_std(), kit_complet()); ombre.actions_cachees = true;
-    let mut traqueur = creer_base("Traqueur Invisible", 45, 10, 4, 10, esquive_std(), kit_complet()); traqueur.actions_cachees = true;
-    let mut spectre = creer_base("Spectre de la Tour", 60, 10, 4, 10, esquive_std(), kit_complet()); spectre.actions_cachees = true;
+    // Plus l'adversaire est avancé, moins il révèle de ses 5 actions à venir : 3/5 sans pacte
+    // (mobs + boss normal), 2/5 face au Gardien évolué (défi Niveau I), 1/5 face à sa forme finale.
+    let mut ombre = creer_base("Ombre Rôdeuse", 35, 10, 4, 10, esquive_std(), kit_complet()); ombre.actions_visibles = Some(3);
+    let mut traqueur = creer_base("Traqueur Invisible", 45, 10, 4, 10, esquive_std(), kit_complet()); traqueur.actions_visibles = Some(3);
+    let mut spectre = creer_base("Spectre de la Tour", 60, 10, 4, 10, esquive_std(), kit_complet()); spectre.actions_visibles = Some(3);
 
-    let mut boss = creer_base(&nom_boss("Le Cauchemar"), 90, 10, 4, 10, esquive_std(), kit_complet()); boss.actions_cachees = true;
-    let mut boss_h = creer_base(&nom_boss_evolue("Le Cauchemar"), 120, 12, 5, 12, esquive_std(), kit_complet()); boss_h.actions_cachees = true;
-    let mut boss_h2 = creer_base(&nom_boss_finale("Le Cauchemar"), 120, 12, 5, 12, vec![30, 50, 75, 100], kit_complet()); boss_h2.actions_cachees = true;
+    let mut boss = creer_base(&nom_boss("Le Cauchemar"), 90, 10, 4, 10, esquive_std(), kit_complet()); boss.actions_visibles = Some(3);
+    let mut boss_h = creer_base(&nom_boss_evolue("Le Cauchemar"), 120, 12, 5, 12, esquive_std(), kit_complet()); boss_h.actions_visibles = Some(2);
+    let mut boss_h2 = creer_base(&nom_boss_finale("Le Cauchemar"), 120, 12, 5, 12, vec![30, 50, 75, 100], kit_complet()); boss_h2.actions_visibles = Some(1);
 
     StructureEtage {
         id_pacte: "Pacte de l'Ombre".to_string(), nom: "Étage de l'Ombre".to_string(),
@@ -140,7 +159,6 @@ pub fn get_etage_temps() -> StructureEtage {
 
     let mut boss_h2 = creer_base(&nom_boss_finale("Chronos"), 115, 12, 5, 12, esquive_std(), kit_complet());
     boss_h2.perte_pv_chaque_x_tours = Some(3); boss_h2.perte_pv_pourcentage = Some(10); boss_h2.perte_pv_base_max = true;
-    boss_h2.regen_pv_chaque_x_tours = Some(4); boss_h2.regen_pv_pourcentage = Some(10);
 
     StructureEtage {
         id_pacte: "Pacte du Temps".to_string(), nom: "Étage du Temps".to_string(),
@@ -193,9 +211,9 @@ pub fn get_etage_puissance_brute() -> StructureEtage {
         id_pacte: "Pacte de la Puissance Brute".to_string(),
         nom: "Étage de la Puissance Brute".to_string(),
         monstres: vec![
-            creer_base("Brute Hargneuse", 35, 14, 4, 6, esquive_std(), kit_sans_precise()),
-            creer_base("Berserker des Cavernes", 45, 16, 4, 6, esquive_std(), kit_sans_precise()),
-            creer_base("Colosse Écumant", 55, 18, 4, 8, esquive_std(), kit_sans_precise()),
+            creer_base("Brute Hargneuse", 35, 12, 4, 6, esquive_std(), kit_sans_precise()),
+            creer_base("Berserker des Cavernes", 45, 12, 4, 6, esquive_std(), kit_sans_precise()),
+            creer_base("Colosse Écumant", 55, 14, 4, 8, esquive_std(), kit_sans_precise()),
         ],
         boss_normal: creer_base(&nom_boss("Le Poing Primordial"), 90, 16, 5, 12, esquive_std(), kit_sans_precise()),
         boss_heroique: creer_base(&nom_boss_evolue("Le Poing Primordial"), 120, 20, 5, 12, esquive_std(), kit_sans_precise()),

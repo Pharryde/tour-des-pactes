@@ -8,6 +8,7 @@ export interface EtatCombat {
     tourActuel: number;
     actionsMonstre: ActionType[];
     actionsJoueur: ActionType[];
+    indicesVisiblesMonstre: number[];
 }
 
 const CLE_COMBAT_ACTIF = 'tdp_active_combat_key';
@@ -17,6 +18,7 @@ const CLES_ETAT: { [K in keyof EtatCombat]: string } = {
     tourActuel: 'tdp_c_tour',
     actionsMonstre: 'tdp_c_actions_m',
     actionsJoueur: 'tdp_c_actions_j',
+    indicesVisiblesMonstre: 'tdp_c_indices_visibles_m',
 };
 
 function lireCache<T>(cle: string, defaut: T): T {
@@ -40,6 +42,7 @@ export function chargerEtatCombat(combatKey: string, defauts: EtatCombat): EtatC
         tourActuel: lireCache(CLES_ETAT.tourActuel, defauts.tourActuel),
         actionsMonstre: lireCache(CLES_ETAT.actionsMonstre, defauts.actionsMonstre),
         actionsJoueur: lireCache(CLES_ETAT.actionsJoueur, defauts.actionsJoueur),
+        indicesVisiblesMonstre: lireCache(CLES_ETAT.indicesVisiblesMonstre, defauts.indicesVisiblesMonstre),
     };
 }
 
@@ -53,6 +56,7 @@ export function usePersisterCombat(
     tourActuel: number,
     actionsMonstre: ActionType[],
     actionsJoueur: ActionType[],
+    indicesVisiblesMonstre: number[],
     enPause: boolean
 ) {
     useEffect(() => {
@@ -63,5 +67,6 @@ export function usePersisterCombat(
         window.localStorage.setItem(CLES_ETAT.tourActuel, JSON.stringify(tourActuel));
         window.localStorage.setItem(CLES_ETAT.actionsMonstre, JSON.stringify(actionsMonstre));
         window.localStorage.setItem(CLES_ETAT.actionsJoueur, JSON.stringify(actionsJoueur));
-    }, [combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, enPause]);
+        window.localStorage.setItem(CLES_ETAT.indicesVisiblesMonstre, JSON.stringify(indicesVisiblesMonstre));
+    }, [combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, enPause]);
 }

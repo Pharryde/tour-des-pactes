@@ -1,14 +1,16 @@
-import type { Bestiaire } from '../types';
+import type { Bestiaire, Synergie } from '../types';
+import { SYNERGIES_REGISTRY } from '../utils/synergies';
 
 interface Props {
     pactesDebloques: string[];
     xpTotal: number;
     bestiaire: Bestiaire;
     aConnuBuff: boolean;
+    synergiesDecouvertes: Synergie[];
     onRetour: () => void;
 }
 
-export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, onRetour }: Props) {
+export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, onRetour }: Props) {
     const connaitCombo = pactesDebloques.some(p => p.includes("Pacte du Combo"));
     const connaitArmureRenvoi = pactesDebloques.includes("Pacte de l'Armure II");
     const connaitOmbre = pactesDebloques.some(p => p.includes("Pacte de l'Ombre"));
@@ -129,6 +131,14 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, onRetour
                             </p>
                         </div>
                     )}
+
+                    {synergiesDecouvertes.map(synergie => (
+                        <div key={synergie} className="tuto-carte tuto-carte-synergie">
+                            <span className="tuto-badge">Secret découvert : Synergie {synergie}</span>
+                            <h2>{SYNERGIES_REGISTRY[synergie].titre}</h2>
+                            <p>{SYNERGIES_REGISTRY[synergie].description}</p>
+                        </div>
+                    ))}
                 </div>
             </div>
 

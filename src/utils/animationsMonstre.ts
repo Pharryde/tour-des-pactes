@@ -2,16 +2,19 @@
 import type { ActionType } from '../types';
 import type { DefinitionAnimation } from './animations';
 
-export type NomAnimationMonstre = 'idle' | 'attaque' | 'attaqueSpeciale' | 'fuite' | 'coup' | 'mort';
+export type NomAnimationMonstre = 'idle' | 'attaque' | 'fuite' | 'coup' | 'mort';
 
 // Feuilles de sprites 80x64/frame (Forest Monsters FREE - Mushroom, variante with VFX). Un seul
 // monstre pour l'instant : tous les monstres du jeu empruntent ce même sprite. Le pack ne fournit
-// pas de posture de blocage/esquive dédiée : on retombe sur idle/run pour ces cas.
+// pas de posture de blocage/esquive dédiée.
+// attack.png contient en réalité 2 mouvements distincts sur ses 10 frames : un bond/esquive bas
+// au sol (F0-F9 en entier, utilisé ici pour l'Esquive) puis un coup de griffe (F5-F9, la fin du
+// mouvement, utilisé pour l'Attaque et la Précise) — d'où le partage du même fichier entre ces
+// animations.
 export const ANIMATIONS_MONSTRE: Record<NomAnimationMonstre, DefinitionAnimation> = {
     idle: { fichier: '/sprites/mushroom/idle.png', frames: 7, largeurFrame: 80, hauteurFrame: 64, bouclage: true },
-    attaque: { fichier: '/sprites/mushroom/attack.png', frames: 10, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
-    attaqueSpeciale: { fichier: '/sprites/mushroom/attack-stun.png', frames: 24, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
-    fuite: { fichier: '/sprites/mushroom/run.png', frames: 8, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
+    attaque: { fichier: '/sprites/mushroom/attack.png', frames: 10, frameDebut: 5, frameFin: 9, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
+    fuite: { fichier: '/sprites/mushroom/attack.png', frames: 10, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
     coup: { fichier: '/sprites/mushroom/hit.png', frames: 5, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
     mort: { fichier: '/sprites/mushroom/die.png', frames: 15, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
 };
@@ -20,7 +23,7 @@ export const ANIMATIONS_MONSTRE: Record<NomAnimationMonstre, DefinitionAnimation
 export function animationMonstrePourAction(action: ActionType): NomAnimationMonstre {
     switch (action) {
         case 'A': return 'attaque';
-        case 'P': return 'attaqueSpeciale';
+        case 'P': return 'attaque';
         case 'D': return 'idle';
         case 'E': return 'fuite';
     }

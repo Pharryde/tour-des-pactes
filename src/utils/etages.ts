@@ -30,10 +30,14 @@ export function buffEntite(entite: Entite, multiplicateur: number): Entite {
 // monstres (mobs et boss) à partir de ce point : le palier ne redescend jamais et s'additionne
 // au fil de la progression. Le bonus d'esquive ne modifie que les paliers atteints via l'action
 // Esquive (indices 1 à 3) — jamais le palier 0, pour rester "non passif" comme demandé.
-export function buffProgressionEtage(entite: Entite, palier: number): Entite {
+// bonusPvParPalier : +10 PV pour un monstre normal, +20 PV pour un boss (peu importe sa forme).
+export function buffProgressionEtage(entite: Entite, palier: number, bonusPvParPalier: number): Entite {
     if (palier <= 0) return entite;
+    const bonusPv = bonusPvParPalier * palier;
     return {
         ...entite,
+        pv: entite.pv + bonusPv,
+        pvMax: entite.pvMax + bonusPv,
         baseA: entite.baseA + 2 * palier,
         baseD: entite.baseD + 2 * palier,
         baseP: entite.baseP + 1 * palier,
@@ -41,7 +45,7 @@ export function buffProgressionEtage(entite: Entite, palier: number): Entite {
     };
 }
 
-function melangerAleatoirement<T>(tableau: T[]): T[] {
+export function melangerAleatoirement<T>(tableau: T[]): T[] {
     const resultat = [...tableau];
     for (let i = resultat.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -78,10 +82,10 @@ export function melangerEtages(etages: StructureEtage[], pactesEquipes: string[]
 
             return {
                 ...etage,
-                monstres: etage.monstres.map(m => buffProgressionEtage(buffEntite(m, mult), palierProgression)),
-                bossNormal: buffProgressionEtage(etage.bossNormal, palierProgression),
-                bossHeroique: buffProgressionEtage(etage.bossHeroique, palierProgression),
-                bossHeroiqueLvl2: buffProgressionEtage(etage.bossHeroiqueLvl2, palierProgression),
+                monstres: etage.monstres.map(m => buffProgressionEtage(buffEntite(m, mult), palierProgression, 10)),
+                bossNormal: buffProgressionEtage(etage.bossNormal, palierProgression, 20),
+                bossHeroique: buffProgressionEtage(etage.bossHeroique, palierProgression, 20),
+                bossHeroiqueLvl2: buffProgressionEtage(etage.bossHeroiqueLvl2, palierProgression, 20),
             };
         });
 }
