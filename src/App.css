@@ -515,6 +515,14 @@
 .pacte-carte--speciale .pacte-carte-titre { color: #f9e2af; }
 .pacte-carte--speciale .pacte-carte-badge { background: #f9e2af; }
 
+/* Pacte pas encore arraché à un Gardien : emplacement visible mais grisé, effet caché. */
+.pacte-carte--verrouille {
+    cursor: default;
+    opacity: 0.45;
+    filter: grayscale(1);
+}
+.pacte-carte--verrouille:hover { transform: none; }
+
 /* 3 des 4 Pactes d'une synergie cachée déjà équipés, et le 4e est possédé : on l'illumine pour
    aider le joueur à repérer la combinaison sans lui révéler la synergie elle-même. */
 @keyframes illumination-synergie {
