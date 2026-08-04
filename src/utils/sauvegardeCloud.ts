@@ -3,6 +3,7 @@
 // vérité immédiate (voir useLocalStorage.ts) ; ce module ne fait que pousser/tirer un instantané
 // JSON de ce qui s'y trouve déjà, identifié par un utilisateur Supabase anonyme.
 import { supabase } from './supabaseClient';
+import { obtenirTokenTurnstile } from './turnstile';
 
 // Clés localStorage gérées par useGameState.ts (progression de run + méta-progression + stats de
 // run) à synchroniser. Exclut volontairement `tdp_version` (détail d'implémentation purement
@@ -72,11 +73,23 @@ export function ecrireSnapshotLocal(snapshot: SnapshotSauvegarde) {
 
 // Réutilise la session Supabase existante (persistée par supabase-js dans son propre coin de
 // localStorage) ou en crée une nouvelle, anonyme — aucun compte/mot de passe requis côté joueur.
+// Le jeton Turnstile n'est demandé que lors de la toute première création de session par
+// navigateur (jamais au retour d'un joueur déjà connu), et son absence/échec ne bloque pas la
+// tentative — Supabase la rejettera lui-même si la protection captcha est active côté projet.
 export async function assurerSessionAnonyme(): Promise<string | null> {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) return session.user.id;
 
-    const { data, error } = await supabase.auth.signInAnonymously();
+    let captchaToken: string | undefined;
+    try {
+        captchaToken = await obtenirTokenTurnstile();
+    } catch (error) {
+        console.error("Vérification Turnstile indisponible:", error);
+    }
+
+    const { data, error } = await supabase.auth.signInAnonymously(
+        captchaToken ? { options: { captchaToken } } : undefined
+    );
     if (error) {
         console.error("Impossible de créer une session Supabase anonyme:", error);
         return null;
