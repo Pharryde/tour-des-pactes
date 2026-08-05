@@ -97,10 +97,13 @@ export async function assurerSessionAnonyme(): Promise<string | null> {
     return data.user?.id ?? null;
 }
 
+// `mis_a_jour_le` n'est volontairement pas envoyé : un déclencheur Postgres le renseigne côté
+// serveur (voir la migration de durcissement), ce qui évite qu'une horloge client faussée — ou
+// falsifiée — décide de l'horodatage de la sauvegarde.
 export async function pousserSauvegarde(userId: string, snapshot: SnapshotSauvegarde) {
     const { error } = await supabase
         .from('sauvegardes')
-        .upsert({ user_id: userId, donnees: snapshot, mis_a_jour_le: new Date().toISOString() });
+        .upsert({ user_id: userId, donnees: snapshot });
     if (error) console.error("Erreur d'envoi de la sauvegarde cloud:", error);
 }
 
