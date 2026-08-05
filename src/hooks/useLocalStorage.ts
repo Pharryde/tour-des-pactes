@@ -3,14 +3,19 @@ import { useState } from 'react';
 import { APP_VERSION } from '../utils/versionApp';
 
 try {
-    if (window.localStorage.getItem('tdp_version') !== APP_VERSION) {
+    const versionStockee = window.localStorage.getItem('tdp_version');
+    if (versionStockee !== APP_VERSION) {
         Object.keys(window.localStorage).forEach(key => {
             if (key.startsWith('tdp_')) {
                 window.localStorage.removeItem(key);
             }
         });
         window.localStorage.setItem('tdp_version', APP_VERSION);
-        console.warn("Mise à jour détectée : Les sauvegardes locales ont été purgées pour éviter les conflits.");
+        // Un premier visiteur n'a aucune version stockée : la "purge" ne supprime alors rien du
+        // tout, et l'avertir d'une mise à jour inexistante ne ferait qu'inquiéter pour rien.
+        if (versionStockee !== null) {
+            console.warn("Mise à jour détectée : Les sauvegardes locales ont été purgées pour éviter les conflits.");
+        }
     }
 } catch (error) {
     console.error("Erreur lors de la vérification de la version du cache:", error);

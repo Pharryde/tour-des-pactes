@@ -11,6 +11,7 @@ declare global {
                 callback: (token: string) => void;
                 'error-callback'?: () => void;
             }) => string;
+            remove: (widgetId: string) => void;
         };
     }
 }
@@ -51,11 +52,23 @@ export async function obtenirTokenTurnstile(): Promise<string> {
 
     return new Promise((resolve, reject) => {
         let echeance = 0;
-        // Retire le widget du DOM quelle que soit l'issue : sans ça, un défi qui ne rappelle jamais
-        // laisserait un conteneur orphelin à chaque tentative.
+
+        // Nettoie quelle que soit l'issue, sinon chaque tentative laisse un conteneur orphelin.
+        // Il faut passer par `turnstile.remove()` AVANT de retirer le nœud : arracher le conteneur
+        // du DOM sans prévenir Turnstile lui fait perdre la trace de son widget, et il s'en plaint
+        // ensuite en console ("Cannot find Widget ..."). Le nettoyage est différé d'un tour de
+        // boucle car en mode Invisible le callback peut se déclencher pendant `render()`, avant
+        // même que `idWidget` n'existe — le différé garantit qu'il est renseigné au moment du retrait.
         const terminer = () => {
             clearTimeout(echeance);
-            conteneur.remove();
+            setTimeout(() => {
+                try {
+                    if (idWidget) window.turnstile?.remove(idWidget);
+                } catch {
+                    // Widget déjà nettoyé par Turnstile : rien à faire.
+                }
+                conteneur.remove();
+            }, 0);
         };
 
         echeance = window.setTimeout(() => {
@@ -63,7 +76,7 @@ export async function obtenirTokenTurnstile(): Promise<string> {
             reject(new Error("Délai dépassé pour la vérification Turnstile"));
         }, DELAI_MAX_TOKEN_MS);
 
-        window.turnstile!.render(conteneur, {
+        const idWidget = window.turnstile!.render(conteneur, {
             sitekey: SITE_KEY,
             callback: (token) => { terminer(); resolve(token); },
             'error-callback': () => {
