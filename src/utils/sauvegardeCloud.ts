@@ -4,6 +4,7 @@
 // JSON de ce qui s'y trouve déjà, identifié par un utilisateur Supabase anonyme.
 import { supabase } from './supabaseClient';
 import { obtenirTokenTurnstile } from './turnstile';
+import { APP_VERSION } from './versionApp';
 
 // Clés localStorage gérées par useGameState.ts (progression de run + méta-progression + stats de
 // run) à synchroniser. Exclut volontairement `tdp_version` (détail d'implémentation purement
@@ -103,19 +104,30 @@ export async function assurerSessionAnonyme(): Promise<string | null> {
 export async function pousserSauvegarde(userId: string, snapshot: SnapshotSauvegarde) {
     const { error } = await supabase
         .from('sauvegardes')
-        .upsert({ user_id: userId, donnees: snapshot });
+        .upsert({ user_id: userId, donnees: snapshot, version: APP_VERSION });
     if (error) console.error("Erreur d'envoi de la sauvegarde cloud:", error);
 }
 
+// Une sauvegarde issue d'une autre version des structures de données est REFUSÉE plutôt que
+// restaurée : c'est ce qui donne son sens à l'incrément d'APP_VERSION. Sans ce refus, la purge
+// locale déclenchée par le changement de version serait immédiatement annulée par la restauration
+// cloud, qui réinjecterait les données obsolètes (et potentiellement incompatibles) juste après.
 export async function tirerSauvegarde(userId: string): Promise<SnapshotSauvegarde | null> {
     const { data, error } = await supabase
         .from('sauvegardes')
-        .select('donnees')
+        .select('donnees, version')
         .eq('user_id', userId)
         .maybeSingle();
     if (error) {
         console.error("Erreur de lecture de la sauvegarde cloud:", error);
         return null;
     }
-    return (data?.donnees as SnapshotSauvegarde | undefined) ?? null;
+    if (!data) return null;
+    if (data.version !== APP_VERSION) {
+        console.warn(
+            `Sauvegarde cloud ignorée : version "${data.version || 'inconnue'}" incompatible avec "${APP_VERSION}".`
+        );
+        return null;
+    }
+    return (data.donnees as SnapshotSauvegarde | undefined) ?? null;
 }

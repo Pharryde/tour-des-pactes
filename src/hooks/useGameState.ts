@@ -1,5 +1,5 @@
 // src/hooks/useGameState.ts
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
 import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
@@ -10,13 +10,8 @@ import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } fro
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
-import { assurerSessionAnonyme, ecrireSnapshotLocal, lireSnapshotLocal, pousserSauvegarde, tirerSauvegarde } from '../utils/sauvegardeCloud';
 import { useLocalStorage } from './useLocalStorage';
-
-// Cadence de la sauvegarde cloud : on attend une accalmie de DELAI_DEBOUNCE_MS, mais jamais plus
-// de DELAI_PLAFOND_MS sans écrire (cf. l'effet d'autosauvegarde plus bas).
-const DELAI_DEBOUNCE_MS = 3000;
-const DELAI_PLAFOND_MS = 30000;
+import { useSauvegardeCloud } from './useSauvegardeCloud';
 
 // Regroupe tout l'état persistant de la partie (localStorage) et les règles qui le font évoluer.
 // App.tsx n'a plus qu'à lire ce que ce hook expose pour choisir quel écran afficher.
@@ -24,10 +19,6 @@ export function useGameState() {
     const [moteurPret, setMoteurPret] = useState(false);
     const [erreurMoteur, setErreurMoteur] = useState<string | null>(null);
     const [donneesBaseEtages, setDonneesBaseEtages] = useState<StructureEtage[]>([]);
-    // Identifiant de l'utilisateur Supabase anonyme, une fois la session établie (voir l'effet de
-    // sauvegarde cloud plus bas). Reste `null` tant que la synchro n'est pas prête à pousser.
-    const [cloudUserId, setCloudUserId] = useState<string | null>(null);
-    const dernierePousseeRef = useRef(0);
 
     const [pactesDebloques, setPactesDebloques] = useLocalStorage<string[]>('tdp_pactes_debloques', []);
     const [pactesEquipes, setPactesEquipes] = useLocalStorage<string[]>('tdp_pactes_equipes', []);
@@ -123,77 +114,18 @@ export function useGameState() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Sauvegarde cloud (Supabase, mirroir asynchrone de localStorage — voir utils/sauvegardeCloud.ts) :
-    // établit une session anonyme au lancement, et si l'appareil est "vierge" (même garde-fou que le
-    // déclenchement du tutoriel, pour ne jamais écraser une partie locale déjà en cours) restaure la
-    // dernière sauvegarde cloud connue. Un rechargement de page (plutôt que 35 appels de setter
-    // individuels) suffit à réinitialiser proprement tous les `useState` depuis le localStorage
-    // fraîchement réécrit — ça ne peut arriver qu'une fois, au tout premier lancement sur un appareil.
-    useEffect(() => {
-        let annule = false;
-        const initialiserSauvegardeCloud = async () => {
-            const userId = await assurerSessionAnonyme();
-            if (!userId || annule) return;
-
-            const estVierge = !tutoIntroFait && monstresTues === 0 && pactesDebloques.length === 0;
-            if (estVierge) {
-                const sauvegarde = await tirerSauvegarde(userId);
-                if (annule) return;
-                if (sauvegarde) {
-                    ecrireSnapshotLocal(sauvegarde);
-                    window.location.reload();
-                    return;
-                }
-            }
-
-            // `cloudUserId` n'est renseigné qu'ICI, une fois la restauration tranchée : c'est lui qui
-            // arme l'autosauvegarde ci-dessous. S'il était posé avant l'appel réseau, un réseau lent
-            // (> DELAI_DEBOUNCE_MS) laisserait l'autosauvegarde pousser l'état local ENCORE VIDE et
-            // écraser la sauvegarde cloud avant même de l'avoir lue — exactement la perte de
-            // progression que cette fonctionnalité est censée empêcher.
-            if (!annule) setCloudUserId(userId);
-        };
-        initialiserSauvegardeCloud();
-        return () => { annule = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Autosauvegarde débouncée : à chaque changement d'état pertinent, on attend une accalmie avant
-    // de pousser un instantané complet (relu directement depuis localStorage, toujours à jour) vers
-    // Supabase — évite de spammer l'API à chaque frame d'un combat. Le plafond est indispensable :
-    // les dépendances ci-dessous changent à chaque tour de combat, donc un joueur qui enchaîne les
-    // actions plus vite que le debounce réarmerait le minuteur sans fin et ne sauvegarderait JAMAIS.
-    useEffect(() => {
-        if (!cloudUserId) return;
-        const depuisDernierePoussee = Date.now() - dernierePousseeRef.current;
-        const delai = depuisDernierePoussee >= DELAI_PLAFOND_MS ? 0 : DELAI_DEBOUNCE_MS;
-        const minuteur = setTimeout(() => {
-            dernierePousseeRef.current = Date.now();
-            pousserSauvegarde(cloudUserId, lireSnapshotLocal());
-        }, delai);
-        return () => clearTimeout(minuteur);
-    }, [
-        cloudUserId, pactesDebloques, pactesEquipes, ecran, listeEtages, joueur, indexEtageActuel,
-        indexSalle, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort,
-        enCombatMegaBoss, monstreMegaBoss, reposVisites, choixReposActifs, synergiesDecouvertes,
-        tutoIntroFait, monstreTuto, aPacteChat, monstresTues, competences, xpTotal, bestiaire,
-        aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
-    ]);
-
-    // Meilleur effort pour ne pas perdre les 3 dernières secondes de progression si le joueur ferme
-    // l'onglet avant la fin du debounce ci-dessus (pas de garantie stricte, `fetch` peut être annulé
-    // par le navigateur en pleine fermeture, mais couvre déjà le cas courant du changement d'onglet).
-    useEffect(() => {
-        if (!cloudUserId) return;
-        const gererVisibilite = () => {
-            if (document.visibilityState === 'hidden') {
-                dernierePousseeRef.current = Date.now();
-                pousserSauvegarde(cloudUserId, lireSnapshotLocal());
-            }
-        };
-        document.addEventListener('visibilitychange', gererVisibilite);
-        return () => document.removeEventListener('visibilitychange', gererVisibilite);
-    }, [cloudUserId]);
+    // Sauvegarde cloud (Supabase). La condition "vierge" est la même que celle qui déclenche le
+    // tutoriel : elle garantit qu'on ne restaure jamais par-dessus une partie locale en cours.
+    useSauvegardeCloud(
+        !tutoIntroFait && monstresTues === 0 && pactesDebloques.length === 0,
+        [
+            pactesDebloques, pactesEquipes, ecran, listeEtages, joueur, indexEtageActuel,
+            indexSalle, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort,
+            enCombatMegaBoss, monstreMegaBoss, reposVisites, choixReposActifs, synergiesDecouvertes,
+            tutoIntroFait, monstreTuto, aPacteChat, monstresTues, competences, xpTotal, bestiaire,
+            aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
+        ],
+    );
 
     const effacerRun = () => {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
