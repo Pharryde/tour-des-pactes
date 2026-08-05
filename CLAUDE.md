@@ -38,7 +38,7 @@ npm run preview        # sert le build de prod en local
 **Stack :** React 19 + TypeScript + Vite · Rust → WebAssembly (wasm-bindgen) · `localStorage` (source de vérité immédiate) + Supabase (sauvegarde cloud, miroir asynchrone)
 Pas de state manager externe, pas de router — état 100% dans un hook custom, écrans gérés par un type union.
 
-⚠️ **Dev local nécessite un `.env.local`** (non commité, voir `.gitignore` — règle `*.local`) avec `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` : `src/utils/supabaseClient.ts` appelle `createClient()` au niveau module, donc leur absence fait planter `npm run dev` immédiatement (pas juste un warning).
+⚠️ **Dev local nécessite un `.env.local`** (non commité, voir `.gitignore` — règle `*.local`) avec `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` et `VITE_TURNSTILE_SITE_KEY`. Attention à l'endroit où ça casse : `npm run dev` démarre **normalement** même sans ces variables (Vite ne les valide pas au démarrage et n'affiche aucune erreur). C'est la **page** qui casse au chargement dans le navigateur — écran blanc + erreur console — parce que `src/utils/supabaseClient.ts` appelle `createClient()` au niveau module. Ne pas chercher l'erreur dans le terminal : elle n'y apparaîtra jamais.
 
 **Dossiers clés :**
 - `moteur_wasm/src/` — moteur de combat (source de vérité des calculs)
