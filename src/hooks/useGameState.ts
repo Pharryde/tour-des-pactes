@@ -10,8 +10,16 @@ import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } fro
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
+import { effacerEtatCombat } from './useCombatResume';
 import { useLocalStorage } from './useLocalStorage';
 import { useSauvegardeCloud } from './useSauvegardeCloud';
+
+// Plafond du journal de combat. Sans lui, l'historique grossit sans fin sur toute une run, et le
+// coût devient quadratique : chaque ligne ajoutée re-sérialise le tableau ENTIER dans localStorage,
+// ajoute un nœud DOM de plus au journal rendu, et regonfle l'instantané poussé vers Supabase.
+// Aucun consommateur n'a besoin de l'historique complet — `extraireLogsDuDernierTour` (écran de
+// mort) ne lit que le dernier tour, très largement contenu dans cette fenêtre.
+const LIMITE_LOGS = 300;
 
 // Regroupe tout l'état persistant de la partie (localStorage) et les règles qui le font évoluer.
 // App.tsx n'a plus qu'à lire ce que ce hook expose pour choisir quel écran afficher.
@@ -28,7 +36,7 @@ export function useGameState() {
     const [joueur, setJoueur] = useLocalStorage<Entite | null>('tdp_joueur', null);
     const [indexEtageActuel, setIndexEtageActuel] = useLocalStorage<number>('tdp_index_etage', 0);
     const [indexSalle, setIndexSalle] = useLocalStorage<number>('tdp_index_salle', 0);
-    const [historiqueLogs, setHistoriqueLogs] = useLocalStorage<string[]>('tdp_historique_logs', []);
+    const [historiqueLogs, setHistoriqueLogsBrut] = useLocalStorage<string[]>('tdp_historique_logs', []);
     const [victoireTotale, setVictoireTotale] = useLocalStorage<boolean>('tdp_victoire', false);
     const [enCombatPacte, setEnCombatPacte] = useLocalStorage<boolean>('tdp_combat_pacte', false);
     const [typeCombatPacte, setTypeCombatPacte] = useLocalStorage<'lvl1' | 'lvl2'>('tdp_type_pacte', 'lvl1');
@@ -63,6 +71,15 @@ export function useGameState() {
     const [, setDegatsEsquivesRun] = useLocalStorage<number>('tdp_degats_esquives_run', 0);
     const [etageRecord, setEtageRecord] = useLocalStorage<number>('tdp_etage_record', 0);
     const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
+
+    // Toutes les écritures du journal passent par ici (une douzaine d'appelants) : c'est le seul
+    // endroit qui garantit le plafond, quel que soit le point d'ajout.
+    const setHistoriqueLogs = (valeur: string[] | ((precedent: string[]) => string[])) => {
+        setHistoriqueLogsBrut(precedent => {
+            const suivant = valeur instanceof Function ? valeur(precedent) : valeur;
+            return suivant.length > LIMITE_LOGS ? suivant.slice(-LIMITE_LOGS) : suivant;
+        });
+    };
 
     const nbConnaissancesActuelles =
         (xpTotal > 0 ? 1 : 0) +
@@ -131,7 +148,7 @@ export function useGameState() {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
         setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
         setEnCombatMegaBoss(false); setMonstreMegaBoss(null);
-        window.localStorage.removeItem('tdp_active_combat_key');
+        effacerEtatCombat();
     };
 
     // Fige les stats de la run qui vient de se terminer (mort ou victoire totale) AVANT que
@@ -165,7 +182,7 @@ export function useGameState() {
     const gererFinTutoriel = (joueurRestant: Entite) => {
         setJoueur(joueurRestant);
         setMonstreTuto(null);
-        window.localStorage.removeItem('tdp_active_combat_key');
+        effacerEtatCombat();
         setEcran('ecran-tuto-conclusion');
     };
 
@@ -182,7 +199,7 @@ export function useGameState() {
     const gererAbandonTuto = () => {
         setJoueur(null);
         setMonstreTuto(null);
-        window.localStorage.removeItem('tdp_active_combat_key');
+        effacerEtatCombat();
         setEcran('ecran-hub');
     };
 

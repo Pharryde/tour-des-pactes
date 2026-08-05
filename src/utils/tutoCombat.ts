@@ -6,8 +6,6 @@
 // plutôt que de simplement regarder le Chat la démontrer.
 import type { ActionType, Entite } from '../types';
 
-export const NOMBRE_TOURS_TUTO = 5;
-
 // Stats figées demandées : encaisse tout (12000 PV, 100 en Défense de base) et esquive toujours
 // (100% dès le 1er palier) — un PNJ conçu pour ne jamais représenter une menace réelle.
 export function construireChatMysterieux(): Entite {
@@ -70,9 +68,10 @@ export const ACTIONS_AUTORISEES_TUTO: ActionType[][] = [
     ['A'],
 ];
 
-// Dialogue injecté dans le log AVANT le tour indiqué (clé = numéro de tour, 1-indexé). Le tour
-// NOMBRE_TOURS_TUTO + 1 n'existe pas : c'est le signal de fin, géré directement par CombatArene
-// (la révélation finale et le don du Pacte se font sur l'écran de conclusion, voir TutoConclusion.tsx).
+// Dialogue injecté dans le log AVANT le tour indiqué (clé = numéro de tour, 1-indexé). Il n'y a
+// volontairement aucune entrée au-delà du dernier tour scripté : dépasser ACTIONS_CHAT_TUTO est le
+// signal de fin, géré directement par CombatArene (la révélation finale et le don du Pacte se font
+// sur l'écran de conclusion, voir TutoConclusion.tsx).
 export const DIALOGUE_CHAT_TUTO: Record<number, string[]> = {
     1: [
         `<br><b style="color: #f9e2af;">🐈 Un chat mystérieux vous barre la route, un sourire énigmatique aux lèvres...</b>`,

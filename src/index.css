@@ -134,7 +134,6 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .log-anchor { height: 1px; }
 
 .log-tour { color: #cba6f7; font-weight: bold; margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10px;}
-.log-combo { color: #fab387; font-weight: bold; }
 .log-mort { color: #f38ba8; font-weight: bold; font-size: 1.1em; }
 .log-reset { color: #6c7086; font-style: italic; margin-top: 5px; }
 
@@ -147,9 +146,6 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .btn-jouer { background-color: #a6e3a1; }
 .btn-jouer:hover { background-color: #94e2d5; }
 
-.inventaire-box { background-color: #313244; padding: 20px; border-radius: 10px; margin: 10px 0 20px 0; border: 2px dashed #6c7086; max-width: 600px; width: 100%; }
-.liste-pactes-align { text-align: left; }
-
 .texte-description { font-size: 1.1em; max-width: 600px; margin-bottom: 20px; text-align: center; }
 .texte-description--grand { font-size: 1.2em; }
 .repos-intro { margin-bottom: 20px; }
@@ -158,7 +154,6 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .btn-danger { background-color: #f38ba8; color: #11111b; }
 .btn-danger:hover { background-color: #eba0ac; }
 
-.pactes-actifs-box { background-color: #181825; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 1em; border: 1px solid #45475a; display: inline-block; }
 .pacte-badge { background-color: #a6e3a1; color: #11111b; padding: 3px 6px; border-radius: 4px; font-weight: bold; margin: 0 4px; font-size: 0.85em; display: inline-block; margin-top: 5px; }
 
 /* --- ZONE DE REPOS --- */

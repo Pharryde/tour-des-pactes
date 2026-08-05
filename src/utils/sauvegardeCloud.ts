@@ -8,7 +8,7 @@ import { APP_VERSION } from './versionApp';
 
 // Clés localStorage gérées par useGameState.ts (progression de run + méta-progression + stats de
 // run) à synchroniser. Exclut volontairement `tdp_version` (détail d'implémentation purement
-// local) et les clés `tdp_c_*`/`tdp_active_combat_key` de useCombatResume.ts, écrites à chaque
+// local) et la clé `tdp_combat_actif` de useCombatResume.ts, écrite à chaque
 // tick de combat non pausé — trop bavard et purement éphémère (reprise de combat après un refresh).
 const CLES_SYNCHRONISEES = [
     'tdp_pactes_debloques',

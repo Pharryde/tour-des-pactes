@@ -3,7 +3,7 @@ import type { Competences } from '../types';
 
 // Paliers d'XP fixes en dessous de 100 ; au-delà, un point tous les 100 XP. Un seul tableau de
 // référence pour éviter que les fonctions ci-dessous divergent entre elles.
-export const PALIERS_XP = [5, 10, 25, 50, 100];
+const PALIERS_XP = [5, 10, 25, 50, 100];
 
 export function calculerPointsCompetence(xp: number): number {
     let pts = PALIERS_XP.filter(palier => xp >= palier).length;

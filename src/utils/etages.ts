@@ -14,7 +14,7 @@ export function getImageCinematique(idPacte: string): string {
     }
 }
 
-export function buffEntite(entite: Entite, multiplicateur: number): Entite {
+function buffEntite(entite: Entite, multiplicateur: number): Entite {
     if (multiplicateur === 1) return entite;
     return {
         ...entite,

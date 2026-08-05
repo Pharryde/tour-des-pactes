@@ -11,39 +11,57 @@ export interface EtatCombat {
     indicesVisiblesMonstre: number[];
 }
 
-const CLE_COMBAT_ACTIF = 'tdp_active_combat_key';
-const CLES_ETAT: { [K in keyof EtatCombat]: string } = {
-    joueur: 'tdp_c_joueur',
-    monstre: 'tdp_c_monstre',
-    tourActuel: 'tdp_c_tour',
-    actionsMonstre: 'tdp_c_actions_m',
-    actionsJoueur: 'tdp_c_actions_j',
-    indicesVisiblesMonstre: 'tdp_c_indices_visibles_m',
-};
+// Un seul enregistrement pour tout le combat en cours. L'état était auparavant éclaté sur 7 clés
+// distinctes, donc 7 sérialisations + 7 écritures à CHAQUE tick de combat, alors qu'il n'a de sens
+// que pris d'un bloc (un état partiellement réécrit serait de toute façon incohérent).
+const CLE_COMBAT = 'tdp_combat_actif';
 
-function lireCache<T>(cle: string, defaut: T): T {
-    try {
-        const item = window.localStorage.getItem(cle);
-        return item ? JSON.parse(item) : defaut;
-    } catch {
-        return defaut;
-    }
+interface CombatPersiste {
+    cle: string;
+    etat: EtatCombat;
+}
+
+// Clés de l'ancien format éclaté. Elles ne sont plus jamais écrites : ce nettoyage unique évite de
+// laisser traîner indéfiniment des instantanés d'`Entite` orphelins chez les joueurs existants
+// (la purge de version, elle, n'interviendrait qu'au prochain incrément d'APP_VERSION).
+const CLES_OBSOLETES = [
+    'tdp_active_combat_key',
+    'tdp_c_joueur',
+    'tdp_c_monstre',
+    'tdp_c_tour',
+    'tdp_c_actions_m',
+    'tdp_c_actions_j',
+    'tdp_c_indices_visibles_m',
+];
+
+try {
+    CLES_OBSOLETES.forEach(cle => window.localStorage.removeItem(cle));
+} catch {
+    // localStorage indisponible : rien à nettoyer, la reprise de combat sera simplement inactive.
 }
 
 // Un combat ne reprend son état sauvegardé (utile après un rechargement de page en plein
-// combat) que si la clé active en cache correspond exactement à ce combat précis.
+// combat) que si la clé enregistrée correspond exactement à ce combat précis.
 export function chargerEtatCombat(combatKey: string, defauts: EtatCombat): EtatCombat {
-    const estReprise = lireCache(CLE_COMBAT_ACTIF, '') === combatKey;
-    if (!estReprise) return defauts;
+    try {
+        const brut = window.localStorage.getItem(CLE_COMBAT);
+        if (!brut) return defauts;
+        const persiste = JSON.parse(brut) as CombatPersiste;
+        return persiste.cle === combatKey ? persiste.etat : defauts;
+    } catch {
+        return defauts;
+    }
+}
 
-    return {
-        joueur: lireCache(CLES_ETAT.joueur, defauts.joueur),
-        monstre: lireCache(CLES_ETAT.monstre, defauts.monstre),
-        tourActuel: lireCache(CLES_ETAT.tourActuel, defauts.tourActuel),
-        actionsMonstre: lireCache(CLES_ETAT.actionsMonstre, defauts.actionsMonstre),
-        actionsJoueur: lireCache(CLES_ETAT.actionsJoueur, defauts.actionsJoueur),
-        indicesVisiblesMonstre: lireCache(CLES_ETAT.indicesVisiblesMonstre, defauts.indicesVisiblesMonstre),
-    };
+// Utilisé à la fin d'une run ou d'un combat : le prochain combat ne doit jamais reprendre l'état
+// du précédent. Passe par cette fonction plutôt que par le nom de la clé, qui reste interne ici.
+export function effacerEtatCombat() {
+    try {
+        window.localStorage.removeItem(CLE_COMBAT);
+    } catch {
+        // Rien à faire : au pire un état périmé subsiste, mais `chargerEtatCombat` le rejettera
+        // puisque sa clé de combat ne correspondra pas.
+    }
 }
 
 // Persiste un instantané du combat en cours pour permettre une reprise après rechargement.
@@ -61,12 +79,14 @@ export function usePersisterCombat(
 ) {
     useEffect(() => {
         if (enPause) return;
-        window.localStorage.setItem(CLE_COMBAT_ACTIF, JSON.stringify(combatKey));
-        window.localStorage.setItem(CLES_ETAT.joueur, JSON.stringify(joueur));
-        window.localStorage.setItem(CLES_ETAT.monstre, JSON.stringify(monstre));
-        window.localStorage.setItem(CLES_ETAT.tourActuel, JSON.stringify(tourActuel));
-        window.localStorage.setItem(CLES_ETAT.actionsMonstre, JSON.stringify(actionsMonstre));
-        window.localStorage.setItem(CLES_ETAT.actionsJoueur, JSON.stringify(actionsJoueur));
-        window.localStorage.setItem(CLES_ETAT.indicesVisiblesMonstre, JSON.stringify(indicesVisiblesMonstre));
+        const persiste: CombatPersiste = {
+            cle: combatKey,
+            etat: { joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre },
+        };
+        try {
+            window.localStorage.setItem(CLE_COMBAT, JSON.stringify(persiste));
+        } catch (error) {
+            console.error("Erreur d'écriture de l'état de combat:", error);
+        }
     }, [combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, enPause]);
 }
