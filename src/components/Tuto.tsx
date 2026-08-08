@@ -1,5 +1,6 @@
 import type { Bestiaire, Synergie } from '../types';
 import { SYNERGIES_REGISTRY } from '../utils/synergies';
+import { BENEDICTIONS_REGISTRY, LISTE_BENEDICTIONS } from '../utils/benedictions';
 
 interface Props {
     pactesDebloques: string[];
@@ -7,10 +8,11 @@ interface Props {
     bestiaire: Bestiaire;
     aConnuBuff: boolean;
     synergiesDecouvertes: Synergie[];
+    aBenedictionChat: boolean;
     onRetour: () => void;
 }
 
-export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, onRetour }: Props) {
+export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aBenedictionChat, onRetour }: Props) {
     const connaitCombo = pactesDebloques.some(p => p.includes("Pacte du Combo"));
     const connaitArmureRenvoi = pactesDebloques.includes("Pacte de l'Armure II");
     const connaitOmbre = pactesDebloques.some(p => p.includes("Pacte de l'Ombre"));
@@ -37,8 +39,8 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                     <ul>
                         <li>⚔️ <b>Attaque (A)</b> : Inflige des dégâts bruts équivalents à votre Force.</li>
                         <li>🎯 <b>Précise (P)</b> : Inflige des dégâts basés sur votre Précision en ignorant totalement l'armure ennemie.</li>
-                        <li>🛡️ <b>Défense (D)</b> : Génère de l'Armure temporaire pour absorber les coups ce tour-ci.</li>
-                        <li>💨 <b>Esquive (E)</b> : Augmente votre jauge d'esquive. Plus le niveau monte, plus vous avez de chances d'annuler complètement l'attaque adverse !</li>
+                        <li>🛡️ <b>Défense (D)</b> : Génère de l'Armure pour absorber les coups. Elle s'accumule et vous protège pendant tout le tour, puis <b>retombe à zéro à la fin de celui-ci</b> — rien ne se reporte sur le tour suivant.</li>
+                        <li>💨 <b>Esquive (E)</b> : Augmente votre jauge d'esquive d'un palier. Plus le niveau monte, plus vous avez de chances d'annuler complètement l'attaque adverse — jusqu'au <b>palier 3, le maximum</b>. Enchaîner l'Esquive au-delà n'apporte plus rien, et toute autre action fait redescendre la jauge.</li>
                     </ul>
                 </div>
 
@@ -129,6 +131,24 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                             <p>
                                 L'armure n'est pas qu'un outil défensif. À la fin du tour, toute l'armure que vous n'avez pas consommée pour vous défendre <b>explose</b>, renvoyant l'intégralité de sa valeur sous forme de dégâts à l'adversaire.
                             </p>
+                        </div>
+                    )}
+
+                    {aBenedictionChat && (
+                        <div className="tuto-carte tuto-carte-benediction">
+                            <span className="tuto-badge">Don du Chat : Bénédiction</span>
+                            <h2>La Roue de la Chance</h2>
+                            <p>
+                                L'Esprit de la Tour vous accompagne désormais. À <b>chaque entrée dans la Tour</b>, sa
+                                roue vous accorde au hasard l'un de ces six bonus, valable pour toute l'ascension :
+                            </p>
+                            <ul>
+                                {LISTE_BENEDICTIONS.map(cle => (
+                                    <li key={cle}>
+                                        {BENEDICTIONS_REGISTRY[cle].emoji} <b>{BENEDICTIONS_REGISTRY[cle].titre}</b> : {BENEDICTIONS_REGISTRY[cle].description}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 

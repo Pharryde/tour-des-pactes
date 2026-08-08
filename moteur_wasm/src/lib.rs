@@ -5,7 +5,7 @@ pub mod combat;
 use wasm_bindgen::prelude::*;
 use serde::Serialize;
 use crate::entite::{Entite, ActionType, Synergie};
-use crate::combat::{gerer_combo, get_valeur_action, calculer_degats};
+use crate::combat::{gerer_combo, get_valeur_action, calculer_degats, tenter_critique, MULTIPLICATEUR_CRITIQUE};
 use crate::boss_data::get_tous_les_etages;
 
 #[derive(Serialize)]
@@ -73,6 +73,26 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     // Ninja : une Esquive réussie arme un Coup Critique pour la PROCHAINE Précise du même tour.
     let mut ninja_crit_pret = false;
 
+    // Même champ que le passif d'armure des boss, côté joueur : c'est la Bénédiction "Pelage
+    // d'Acier" qui le lui accorde (l'armure retombant à 0 en fin de tour, il est bien re-crédité
+    // à chaque tour).
+    if let Some(regen) = joueur.regen_armure_tour {
+        joueur.armure += regen;
+        etapes.push(EtapeCombat {
+            est_action: false,
+            log: format!("<span class=\"log-tour\">🐈 Pelage d'Acier : +{} Armure pour ce tour !</span>", regen),
+            joueur_pv: joueur.pv,
+            joueur_armure: joueur.armure,
+            joueur_niv_esquive: joueur.niv_esquive as i32,
+            monstre_pv: monstre.pv,
+            monstre_armure: monstre.armure,
+            monstre_niv_esquive: monstre.niv_esquive as i32,
+            degats_infliges: 0,
+            degats_bloques: 0,
+            degats_esquives: 0,
+        });
+    }
+
     if let Some(regen) = monstre.regen_armure_tour {
         monstre.armure += regen;
         etapes.push(EtapeCombat {
@@ -137,6 +157,11 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         if i == 4 && joueur.action_fin_tour_doublee { if *act_j == ActionType::E { mult_esquive_j = 2; } else { val_j *= 2; } }
         if i == 2 && joueur.action_troisieme_triplee { if *act_j == ActionType::E { mult_esquive_j = 3; } else { val_j *= 3; } }
 
+        // Bénédiction "Griffe Acérée" : jet de critique en tout dernier, pour amplifier la valeur
+        // réellement portée par le coup (combos et multiplicateurs du Pacte du Temps compris).
+        let (val_critique, critique_benediction) = tenter_critique(val_j, act_j, &joueur);
+        val_j = val_critique;
+
         if *act_j == ActionType::D { joueur.armure += val_j; }
         if *act_j == ActionType::E { joueur.niv_esquive = std::cmp::min(3, joueur.niv_esquive + mult_esquive_j); }
         else { joueur.niv_esquive = joueur.niv_esquive.saturating_sub(1); }
@@ -153,8 +178,8 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         if *act_m == ActionType::E { monstre.niv_esquive = std::cmp::min(3, monstre.niv_esquive + 1); }
         else { monstre.niv_esquive = monstre.niv_esquive.saturating_sub(1); }
 
-        let d_joueur = calculer_degats(act_m, val_m, &joueur, monstre.bloque_esquive_opposant, monstre.degats_precis_doubles);
-        let d_monstre = calculer_degats(act_j, val_j, &monstre, joueur.bloque_esquive_opposant, joueur.degats_precis_doubles);
+        let d_joueur = calculer_degats(act_m, val_m, &monstre, &joueur);
+        let d_monstre = calculer_degats(act_j, val_j, &joueur, &monstre);
 
         let mut log_action = format!("Action {} : Vous {} vs {} {}", i+1, symbole(act_j), monstre.nom, symbole(act_m));
         
@@ -189,6 +214,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         }
         if ninja_critique {
             log_action.push_str(" <span class=\"log-mort\">💥 Coup Critique !</span>");
+        }
+        // Pas de valeur répétée ici : le log de combo affiche déjà le total final, crit inclus.
+        if critique_benediction {
+            log_action.push_str(&format!(" <span class=\"log-mort\">🐾 Griffe Acérée : Coup Critique (x{}) !</span>", MULTIPLICATEUR_CRITIQUE));
         }
 
         // Dégâts additionnels infligés au monstre par une riposte (Synergie Tank), ajoutés aux

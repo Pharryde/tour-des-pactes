@@ -91,15 +91,46 @@ pub fn get_valeur_action(action: &ActionType, count: i32, entite: &Entite) -> i3
     valeur
 }
 
-pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, defenseur: &Entite, bloque_esquive: bool, degats_precis_doubles: bool) -> ResultatDegats {
+// Multiplicateur d'un Coup Critique de la Bénédiction "Griffe Acérée" (150% des dégâts).
+pub const MULTIPLICATEUR_CRITIQUE: f32 = 1.5;
+
+// Chance d'esquive réellement appliquée au défenseur, tous modificateurs compris : le palier
+// courant (déjà amplifié par le Pacte du Combo), le bonus plat de la Bénédiction "Grâce Féline"
+// (actif même au palier 0, là où les paliers exigent d'avoir joué Esquive) et la réduction imposée
+// par l'attaquant ("Regard Hypnotique"). Neutraliser l'esquive (Pacte de l'Ombre II, Le Vent
+// Mortel) court-circuite tout le reste.
+pub fn chance_esquive(attaquant: &Entite, defenseur: &Entite) -> i32 {
+    if attaquant.bloque_esquive_opposant { return 0; }
+
+    let palier = paliers_esquive_effectifs(defenseur)[defenseur.niv_esquive.min(3)];
+    let brut = palier
+        + defenseur.bonus_esquive_flat.unwrap_or(0)
+        - attaquant.reduction_esquive_opposant.unwrap_or(0);
+    brut.clamp(0, 100)
+}
+
+// Bénédiction "Griffe Acérée" : chance fixe qu'une action offensive frappe en critique. Renvoie la
+// valeur éventuellement amplifiée et un drapeau, pour que l'appelant puisse l'annoncer dans le log.
+pub fn tenter_critique(valeur: i32, action: &ActionType, attaquant: &Entite) -> (i32, bool) {
+    if *action != ActionType::A && *action != ActionType::P { return (valeur, false); }
+
+    let chance = attaquant.chance_critique.unwrap_or(0);
+    if chance <= 0 || rand::thread_rng().gen_range(1..=100) > chance { return (valeur, false); }
+
+    ((valeur as f32 * MULTIPLICATEUR_CRITIQUE).round() as i32, true)
+}
+
+// L'attaquant est passé en entier (plutôt que ses drapeaux un par un) : c'est lui qui porte à la
+// fois le doublage de la Précise, la neutralisation de l'esquive et la réduction d'esquive adverse.
+pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, attaquant: &Entite, defenseur: &Entite) -> ResultatDegats {
     if *action_atk != ActionType::A && *action_atk != ActionType::P {
         return ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 };
     }
 
-    let chance_esquive = if bloque_esquive { 0 } else { paliers_esquive_effectifs(defenseur)[defenseur.niv_esquive as usize] };
+    let degats_precis_doubles = attaquant.degats_precis_doubles;
 
     let jet = rand::thread_rng().gen_range(1..=100);
-    if jet <= chance_esquive {
+    if jet <= chance_esquive(attaquant, defenseur) {
         let degats_potentiels = if *action_atk == ActionType::P && degats_precis_doubles { val_atk * 2 } else { val_atk };
         return ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: true, degats_evites: degats_potentiels };
     }

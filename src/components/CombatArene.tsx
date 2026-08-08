@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import type { Entite, ActionType, Competences } from '../types';
+import type { Entite, ActionType, Competences, BenedictionChat } from '../types';
+import { BENEDICTIONS_REGISTRY, POURCENTAGE_VIE_CHAT } from '../utils/benedictions';
 import { genererActionsMonstre, corrigerActionsPourLimiteCombo, genererIndicesVisibles, calculerAttaqueAffichee, calculerPreciseAffichee, calculerPaliersEsquiveAffiches, SYMBOLES } from '../utils/combat';
 import { detailAttaque, detailPrecise, detailDefense } from '../utils/detailStats';
 import { tirerNouvelleForme, appliquerFormeMegaBoss } from '../utils/megaboss';
@@ -30,6 +31,11 @@ interface CombatAreneProps {
     onAbandon: () => void;
     enCombatPacte: boolean;
     formesMegaBoss?: Entite[];
+    // Bénédiction du Chat tirée pour cette run : affichée en entête, et pour "Vie de Chat",
+    // consommée ici même — le joueur se relève au lieu de mourir (voir utils/benedictions.ts).
+    benedictionActive?: BenedictionChat | null;
+    peutRessusciter?: boolean;
+    onRessusciter?: () => void;
     // Tutoriel d'introduction (Chat Mystérieux) : actions du monstre scriptées tour par tour au
     // lieu d'être tirées aléatoirement, dialogue injecté dans le log avant chaque tour, et fin de
     // combat déclenchée après un nombre de tours fixe plutôt que par les PV (le PNJ est intuable).
@@ -43,7 +49,8 @@ interface CombatAreneProps {
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
     pactesEquipes, competences, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
-    enCombatPacte, formesMegaBoss, estTutoriel, actionsMonstreScriptees, actionsAutoriseesTuto, dialogueTuto, onFinTutoriel
+    enCombatPacte, formesMegaBoss, benedictionActive, peutRessusciter, onRessusciter,
+    estTutoriel, actionsMonstreScriptees, actionsAutoriseesTuto, dialogueTuto, onFinTutoriel
 }: CombatAreneProps) {
 
     const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
@@ -252,6 +259,16 @@ export function CombatArene({
             }
         }
 
+        // Bénédiction "Vie de Chat" : le joueur retombe sur ses pattes au lieu de mourir, une seule
+        // fois par ascension. Consommée AVANT les branches de fin de combat pour qu'un double KO se
+        // règle lui aussi en sa faveur (il se relève, l'adversaire reste mort).
+        if (!estTutoriel && resultat.joueur.pv <= 0 && peutRessusciter) {
+            resultat.joueur.pv = Math.max(1, Math.round(resultat.joueur.pvMax * POURCENTAGE_VIE_CHAT));
+            onRessusciter?.();
+            ajouterLogGlobal(`<div class="log-soin">🐈 Vie de Chat : vous retombez sur vos pattes et vous relevez avec ${resultat.joueur.pv} PV !</div>`);
+            await attendreEtape(600);
+        }
+
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
@@ -341,6 +358,16 @@ export function CombatArene({
                     {badges.length === 0 ? <span className="pacte-aucun">Aucun Pacte</span> : badges.map(b => (
                         <span key={b.nom} className="pacte-badge" title={b.desc}>{b.nom} {b.desc}</span>
                     ))}
+                    {benedictionActive && (
+                        <span
+                            className="pacte-badge benediction-badge"
+                            title={BENEDICTIONS_REGISTRY[benedictionActive].description}
+                            style={{ backgroundColor: BENEDICTIONS_REGISTRY[benedictionActive].couleur }}
+                        >
+                            {BENEDICTIONS_REGISTRY[benedictionActive].emoji} {BENEDICTIONS_REGISTRY[benedictionActive].titre}
+                            {benedictionActive === 'vieDeChat' && !peutRessusciter && ' (utilisée)'}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -353,7 +380,7 @@ export function CombatArene({
                     </div>
                     <h2>{joueur.nom}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur)[Math.min(joueur.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur, monstre.reductionEsquiveOpposant)[Math.min(joueur.nivEsquive, 3)]}%)</span>
                     </div>
                     <div className="stats-base">
                         <StatDetail icone="⚔️" valeur={calculerAttaqueAffichee(joueur, actionsJoueur)} detail={detailAttaque(joueur, competences, actionsJoueur)} />
@@ -374,7 +401,7 @@ export function CombatArene({
                     </div>
                     <h2>{titreMonstreFinal}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre)[Math.min(monstre.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre, joueur.reductionEsquiveOpposant)[Math.min(monstre.nivEsquive, 3)]}%)</span>
                     </div>
                     <div className="stats-base">⚔️ {calculerAttaqueAffichee(monstre)} | 🎯 {calculerPreciseAffichee(monstre)} | 🛡️ {monstre.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageM)}</span>

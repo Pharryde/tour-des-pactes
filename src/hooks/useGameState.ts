@@ -1,8 +1,9 @@
 // src/hooks/useGameState.ts
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie } from '../types';
+import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
+import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
 import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
 import { construireMegaBoss } from '../utils/megaboss';
 import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
@@ -49,6 +50,9 @@ export function useGameState() {
     const [tutoIntroFait, setTutoIntroFait] = useLocalStorage<boolean>('tdp_tuto_intro_fait', false);
     const [monstreTuto, setMonstreTuto] = useLocalStorage<Entite | null>('tdp_monstre_tuto', null);
     const [aPacteChat, setAPacteChat] = useLocalStorage<boolean>('tdp_a_pacte_chat', false);
+    const [aBenedictionChat, setABenedictionChat] = useLocalStorage<boolean>('tdp_benediction_chat', false);
+    const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
+    const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
     const [monstresTues, setMonstresTues] = useLocalStorage<number>('tdp_monstres_tues', 0);
     const [competences, setCompetences] = useLocalStorage<Competences>('tdp_competences', { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
@@ -90,6 +94,7 @@ export function useGameState() {
         (pactesDebloques.some(p => p.includes("Pacte de la Fluidité")) ? 1 : 0) +
         (pactesDebloques.some(p => p.includes("Pacte de la Puissance Brute")) ? 1 : 0) +
         (pactesDebloques.includes("Pacte de l'Armure II") ? 1 : 0) +
+        (aBenedictionChat ? 1 : 0) +
         synergiesDecouvertes.length;
 
     const aNouveauteTuto = nbConnaissancesActuelles > connaissancesVues;
@@ -141,6 +146,7 @@ export function useGameState() {
             enCombatMegaBoss, monstreMegaBoss, reposVisites, choixReposActifs, synergiesDecouvertes,
             tutoIntroFait, monstreTuto, aPacteChat, monstresTues, competences, xpTotal, bestiaire,
             aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
+            aBenedictionChat, benedictionActive, vieChatDispo,
         ],
     );
 
@@ -148,6 +154,8 @@ export function useGameState() {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
         setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
         setEnCombatMegaBoss(false); setMonstreMegaBoss(null);
+        // La bénédiction ne vaut que pour la run écoulée : la Roue est retournée à chaque entrée.
+        setBenedictionActive(null); setVieChatDispo(false);
         effacerEtatCombat();
     };
 
@@ -173,6 +181,19 @@ export function useGameState() {
 
     const gererAbandon = () => {
         effacerRun();
+        setEcran('ecran-hub');
+    };
+
+    // Bénédiction "Vie de Chat" consommée : CombatArene a relevé le joueur au lieu de le laisser
+    // mourir, il ne reste plus rien à dépenser pour le reste de la run.
+    const gererVieDeChatConsommee = () => setVieChatDispo(false);
+
+    // Sortie de l'écran de fin. La toute première run achevée (peu importe l'issue) fait apparaître
+    // le Chat Mystérieux, qui commente la performance du joueur avant de lui offrir sa Bénédiction.
+    const gererQuitterFin = () => setEcran(aBenedictionChat ? 'ecran-hub' : 'ecran-benediction');
+
+    const gererRecevoirBenediction = () => {
+        setABenedictionChat(true);
         setEcran('ecran-hub');
     };
 
@@ -214,7 +235,7 @@ export function useGameState() {
         }
     };
 
-    const gererLancerRun = () => {
+    const gererLancerRun = (benediction: BenedictionChat | null) => {
         const bonusEsq = (competences.esq || 0) * 5;
 
         const herosBase: Entite = {
@@ -240,8 +261,10 @@ export function useGameState() {
         const synergieActive = detecterSynergie(pactesEquipes);
         if (synergieActive) herosBase.synergieActive = synergieActive;
 
-        // Application propre de tous les pactes via le registry
-        setJoueur(appliquerPactesSurJoueur(herosBase, pactesEquipes));
+        // Application propre de tous les pactes via le registry, puis de la Bénédiction du Chat
+        // tirée à la Roue (celles qui ne touchent pas aux stats sont gérées plus bas / en combat).
+        setJoueur(appliquerBenedictionSurJoueur(appliquerPactesSurJoueur(herosBase, pactesEquipes), benediction));
+        setVieChatDispo(benediction === 'vieDeChat');
 
         // Onboarding : les 2 premiers étages de la toute première partie sont toujours parmi
         // Armure/Vie/Puissance Brute (mécaniques simples). Le drapeau se pose au lancement, pas
@@ -281,13 +304,30 @@ export function useGameState() {
             }
         }
 
+        const messageBenediction = benediction
+            ? [`<br><b style="color: #f9e2af;">🐈 Bénédiction du Chat : ${BENEDICTIONS_REGISTRY[benediction].titre} — ${BENEDICTIONS_REGISTRY[benediction].description}</b>`]
+            : [];
+
         setHistoriqueLogs([
             `<b>🎲 Nouvelle Ascension ! Vous entrez dans l'Étage 1.</b>`,
             ...(messageBuff ? [messageBuff] : []),
             ...messagesSynergie,
+            ...messageBenediction,
             `<br><b>⚔️ Combat : ${melange[0].monstres[0].nom} approche !</b>`
         ]);
         setEcran('ecran-combat');
+    };
+
+    // Entrée dans la Tour : une fois la Bénédiction du Chat obtenue, on passe systématiquement par
+    // la Roue de la Chance. Le tirage doit être connu AVANT de construire le héros (il modifie ses
+    // stats), d'où ce passage en deux temps — la Roue rend la main à gererLancerRun.
+    const gererDemarrerAscension = () => {
+        if (!aBenedictionChat) {
+            gererLancerRun(null);
+            return;
+        }
+        setBenedictionActive(tirerBenediction());
+        setEcran('ecran-roue');
     };
 
     const gererPassageEtageSuivant = () => {
@@ -322,7 +362,7 @@ export function useGameState() {
             return;
         }
         setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0 });
-        setXpTotal(prev => prev + 10);
+        setXpTotal(prev => prev + appliquerBonusXp(10, benedictionActive));
         setVictoireTotale(true);
         capturerStatsFinRun();
         setEcran('ecran-fin');
@@ -378,12 +418,13 @@ export function useGameState() {
 
     const gererRecompenseCombat = () => {
         const recompense = calculerRecompenseCombat(listeEtages[indexEtageActuel], indexSalle, enCombatPacte, typeCombatPacte, pactesEquipes);
+        const gainXp = appliquerBonusXp(recompense.gainXp, benedictionActive);
 
         setMonstresTues(prev => prev + 1);
         setMonstresTuesRun(prev => prev + 1);
         setBestiaire(prev => ({ ...prev, [recompense.typeMonstre]: prev[recompense.typeMonstre] + 1 }));
-        setXpTotal(prev => prev + recompense.gainXp);
-        setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${recompense.gainXp} point(s) d'XP !</div>`]);
+        setXpTotal(prev => prev + gainXp);
+        setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${gainXp} point(s) d'XP ${benedictionActive === 'apprentissage' ? '(Leçon du Maître : XP doublée) ' : ''}!</div>`]);
     };
 
     const gererDefaite = () => {
@@ -515,6 +556,11 @@ export function useGameState() {
         pactesEquipes,
         aPacteChat,
 
+        // Bénédiction du Chat
+        aBenedictionChat,
+        benedictionActive,
+        vieChatDispo,
+
         // Progression méta (hors-run)
         monstresTues,
         competences, setCompetences,
@@ -533,7 +579,11 @@ export function useGameState() {
         marquerPactesVus,
         gererAbandon,
         gererBasculerPacte,
+        gererDemarrerAscension,
         gererLancerRun,
+        gererVieDeChatConsommee,
+        gererQuitterFin,
+        gererRecevoirBenediction,
         gererPassageEtageSuivant,
         gererChoixRepos,
         declencherCombatPacte,

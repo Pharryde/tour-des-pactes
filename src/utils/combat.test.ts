@@ -94,6 +94,25 @@ describe('calculerPaliersEsquiveAffiches', () => {
         const entite = creerHeros({ comboMultiplicateur: 1.5 });
         expect(calculerPaliersEsquiveAffiches(entite)).toEqual([0, 50, 88, 100]);
     });
+
+    // Bénédiction "Grâce Féline" : le bonus est plat, donc il s'applique AUSSI au palier 0 (le
+    // joueur esquive un peu même sans avoir joué Esquive) — c'est là toute sa différence avec le
+    // Pacte de l'Esquive, qui ne relève que les paliers suivants.
+    it("décale tous les paliers, palier 0 compris, avec le bonus d'esquive plat", () => {
+        const entite = creerHeros({ bonusEsquiveFlat: 5 });
+        expect(calculerPaliersEsquiveAffiches(entite)).toEqual([5, 55, 80, 100]);
+    });
+
+    // Bénédiction "Regard Hypnotique" : la réduction vient de l'ADVERSAIRE, jamais de l'entité
+    // affichée, d'où le second paramètre.
+    it("retranche la réduction d'esquive imposée par l'adversaire", () => {
+        expect(calculerPaliersEsquiveAffiches(creerHeros(), 25)).toEqual([0, 25, 50, 75]);
+    });
+
+    it('borne le résultat entre 0 et 100 après décalage', () => {
+        const entite = creerHeros({ paliersEsquive: [0, 50, 75, 100], bonusEsquiveFlat: 5 });
+        expect(calculerPaliersEsquiveAffiches(entite, 60)).toEqual([0, 0, 20, 45]);
+    });
 });
 
 describe('corrigerActionsPourLimiteCombo', () => {

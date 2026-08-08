@@ -10,6 +10,8 @@ import { Repos } from './components/Repos';
 import { SortieTour } from './components/SortieTour';
 import { EtagePair } from './components/EtagePair';
 import { TutoConclusion } from './components/TutoConclusion';
+import { BenedictionChat } from './components/BenedictionChat';
+import { RoueChance } from './components/RoueChance';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
 import { Tuto } from './components/Tuto';
@@ -25,9 +27,11 @@ function App() {
       joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort, statsDerniereRun,
       enCombatMegaBoss, monstreMegaBoss, choixReposActifs, monstreTuto,
       pactesDebloques, pactesEquipes, aPacteChat,
+      aBenedictionChat, benedictionActive, vieChatDispo,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, aPointsCompetenceDispo,
-      ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererLancerRun,
+      ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte,
+      gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction,
       gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss,
       gererFinTutoriel, gererConclusionTuto, gererAbandonTuto, handleFinDeCombat,
   } = useGameState();
@@ -74,7 +78,7 @@ function App() {
         <div className="jeu-container">
           {ecran === 'ecran-hub' && (
               <Hub
-                  onLancerRun={gererLancerRun}
+                  onLancerRun={gererDemarrerAscension}
                   onChangeEcran={setEcran}
                   xpTotal={xpTotal}
                   aNouveauteTuto={aNouveauteTuto}
@@ -92,6 +96,7 @@ function App() {
                   bestiaire={bestiaire}
                   aConnuBuff={aConnuBuff}
                   synergiesDecouvertes={synergiesDecouvertes}
+                  aBenedictionChat={aBenedictionChat}
                   onRetour={() => setEcran('ecran-hub')}
               />
           )}
@@ -107,11 +112,13 @@ function App() {
           )}
 
           {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} aPacteChat={aPacteChat} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
-          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={() => setEcran('ecran-hub')} logsMort={logsMort} stats={statsDerniereRun} />}
-          {ecran === 'ecran-repos' && joueur && <Repos soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
+          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={gererQuitterFin} logsMort={logsMort} stats={statsDerniereRun} />}
+          {ecran === 'ecran-repos' && joueur && <Repos joueur={joueur} soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} />}
           {ecran === 'ecran-etage-pair' && <EtagePair onContinuer={() => setEcran('ecran-combat')} />}
           {ecran === 'ecran-tuto-conclusion' && <TutoConclusion onContinuer={gererConclusionTuto} />}
+          {ecran === 'ecran-benediction' && <BenedictionChat aVaincuLaTour={victoireTotale} onContinuer={gererRecevoirBenediction} />}
+          {ecran === 'ecran-roue' && benedictionActive && <RoueChance benediction={benedictionActive} onEntrer={() => gererLancerRun(benedictionActive)} />}
 
           {ecran === 'ecran-choix-boss' && (
             <ChoixBoss
@@ -151,6 +158,9 @@ function App() {
                 onFinDeCombat={handleFinDeCombat}
                 onAbandon={gererAbandon}
                 enCombatPacte={enCombatPacte}
+                benedictionActive={benedictionActive}
+                peutRessusciter={vieChatDispo}
+                onRessusciter={gererVieDeChatConsommee}
               />
             </div>
           )}

@@ -46,6 +46,10 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         bonus_degats_attaque_pourcentage: None,
         bonus_combo_attaque_palier: None,
         synergie_active: None,
+        // Réservées au joueur (Bénédictions du Chat) : aucun monstre n'en porte.
+        bonus_esquive_flat: None,
+        chance_critique: None,
+        reduction_esquive_opposant: None,
     }
 }
 

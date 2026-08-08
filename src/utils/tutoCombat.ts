@@ -82,10 +82,10 @@ export const DIALOGUE_CHAT_TUTO: Record<number, string[]> = {
         `<span class="log-tour">"Bien joué ! Passons à la Précise (🎯) : contrairement à l'Attaque, elle ignore totalement l'armure adverse et va droit aux PV. Seule la Précise est disponible ce tour-ci."</span>`,
     ],
     3: [
-        `<span class="log-tour">"Voyons maintenant la Défense (🛡️) : elle te construit une Armure temporaire qui absorbe les dégâts reçus ce tour-ci. Regarde comme mes attaques peinent à te blesser pendant que tu te protèges. Seule la Défense est disponible ce tour-ci."</span>`,
+        `<span class="log-tour">"Voyons maintenant la Défense (🛡️) : elle te construit une Armure qui absorbe les dégâts reçus. Cette Armure s'accumule et te protège pendant TOUT le tour — mais retiens bien ceci : elle retombe à zéro à la fin du tour. Rien ne se reporte sur le suivant, il faut la reconstruire à chaque fois. Regarde comme mes attaques peinent à te blesser pendant que tu te protèges. Seule la Défense est disponible ce tour-ci."</span>`,
     ],
     4: [
-        `<span class="log-tour">"À ton tour d'apprendre l'Esquive (💨) : chaque fois que tu l'utilises, ta jauge d'esquive monte d'un palier, augmentant tes chances d'annuler complètement une attaque adverse. Mais attention : dès que tu fais autre chose, elle redescend aussitôt — un guerrier avisé sait quand esquiver, et quand frapper. Seule l'Esquive est disponible ce tour-ci."</span>`,
+        `<span class="log-tour">"À ton tour d'apprendre l'Esquive (💨) : chaque fois que tu l'utilises, ta jauge d'esquive monte d'un palier, augmentant tes chances d'annuler complètement une attaque adverse. Il y a trois paliers, et le troisième est le maximum : au-delà, l'enchaîner encore ne te rapporte plus rien. Attention aussi : dès que tu fais autre chose, elle redescend aussitôt — un guerrier avisé sait quand esquiver, et quand frapper. Seule l'Esquive est disponible ce tour-ci."</span>`,
     ],
     5: [
         `<span class="log-tour">"Une dernière leçon avant que je ne te révèle quelque chose d'important. Enchaîner plusieurs fois LA MÊME action dans un même tour amplifie sa puissance à chaque répétition — c'est un Combo. Je te rends l'Attaque : martèle-la cinq fois d'affilée, et observe sa valeur grimper dans le journal de combat."</span>`,

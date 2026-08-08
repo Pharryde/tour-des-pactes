@@ -63,6 +63,15 @@ pub struct Entite {
 
     // --- NOUVEAU : SYNERGIES CACHÉES ---
     #[serde(default)] pub synergie_active: Option<Synergie>,
+
+    // --- NOUVEAU : BÉNÉDICTIONS DU CHAT (tirées à la Roue de la Chance, joueur uniquement) ---
+    // Points d'esquive ajoutés à TOUS les paliers, y compris le palier 0 : contrairement aux
+    // paliers, ce bonus protège même sans avoir joué Esquive (d'où "flat").
+    #[serde(default)] pub bonus_esquive_flat: Option<i32>,
+    // Chance en % qu'une Attaque/Précise devienne un Coup Critique (voir MULTIPLICATEUR_CRITIQUE).
+    #[serde(default)] pub chance_critique: Option<i32>,
+    // Points d'esquive retirés au DÉFENSEUR d'en face (l'inverse de bonus_esquive_flat).
+    #[serde(default)] pub reduction_esquive_opposant: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

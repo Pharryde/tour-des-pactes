@@ -36,11 +36,13 @@ export function calculerPreciseAffichee(entite: Entite): number {
     return valeur;
 }
 
-// Miroir de paliers_esquive_effectifs() côté moteur (combat.rs) : le Pacte du Combo amplifie
-// l'écart entre paliers consécutifs à partir du 2e (jamais le 1er, qui n'est jamais un combo) —
-// sans ceci l'affichage du % d'esquive resterait figé sur les paliers de base, comme pour ⚔️
+// Miroir de paliers_esquive_effectifs() + chance_esquive() côté moteur (combat.rs) : le Pacte du
+// Combo amplifie l'écart entre paliers consécutifs à partir du 2e (jamais le 1er, qui n'est jamais
+// un combo), puis les Bénédictions du Chat décalent le tout d'un bonus plat ("Grâce Féline",
+// visible dès le palier 0) ou de la réduction imposée par l'adversaire ("Regard Hypnotique").
+// Sans ceci l'affichage du % d'esquive resterait figé sur les paliers de base, comme pour ⚔️
 // avant calculerAttaqueAffichee.
-export function calculerPaliersEsquiveAffiches(entite: Entite): number[] {
+export function calculerPaliersEsquiveAffiches(entite: Entite, reductionAdverse = 0): number[] {
     const base = entite.paliersEsquive;
     const mult = entite.comboMultiplicateur ?? 1;
     const effectifs = [base[0] ?? 0, 0, 0, 0];
@@ -51,7 +53,10 @@ export function calculerPaliersEsquiveAffiches(entite: Entite): number[] {
         const deltaAjuste = i > 1 ? Math.round(delta * mult) : delta;
         effectifs[i] = Math.min(100, effectifs[i - 1] + deltaAjuste);
     }
-    return effectifs;
+
+    const decalage = (entite.bonusEsquiveFlat ?? 0) - reductionAdverse;
+    if (decalage === 0) return effectifs;
+    return effectifs.map(palier => Math.min(100, Math.max(0, palier + decalage)));
 }
 
 export function genererActionsMonstre(monstre: Entite): ActionType[] {

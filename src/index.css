@@ -157,11 +157,30 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .pacte-badge { background-color: #a6e3a1; color: #11111b; padding: 3px 6px; border-radius: 4px; font-weight: bold; margin: 0 4px; font-size: 0.85em; display: inline-block; margin-top: 5px; }
 
 /* --- ZONE DE REPOS --- */
+/* Récapitulatif des stats avant de choisir une amélioration : c'est l'unique écran où le joueur
+   décide d'une progression sans avoir l'arène (et ses stats) sous les yeux. */
+.repos-stats {
+    width: 100%;
+    max-width: 620px;
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+}
+.repos-stats-titre { font-size: 1em; color: #a6adc8; font-weight: normal; margin-bottom: 10px; }
+.repos-stats-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.repos-stat { display: flex; flex-direction: column; gap: 2px; background-color: #11111b; border-radius: 6px; padding: 8px 6px; }
+.repos-stat-valeur { font-size: 1.15em; font-weight: bold; }
+.repos-stat-label { font-size: 0.75em; color: #a6adc8; }
+.repos-stat-esquive { margin-top: 10px; font-size: 0.9em; color: #cdd6f4; }
+
 .repos-container { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
 .repos-col { display: flex; flex-direction: column; gap: 15px; justify-content: center; margin: 0; }
 .c-vert { color: #a6e3a1; } .c-rose { color: #f38ba8; } .c-orange { color: #fab387; }
 .bg-vert { background-color: #a6e3a1 !important; color: #11111b !important; } .bg-orange { background-color: #fab387 !important; color: #11111b !important; }
 .bg-bleu { background-color: #89b4fa !important; color: #11111b !important; } .bg-violet { background-color: #cba6f7 !important; color: #11111b !important; }
+.bg-rose { background-color: #f38ba8 !important; color: #11111b !important; }
 
 /* ======================================================= */
 /* --- MEDIA QUERIES (ADAPTATION MOBILES ET TABLETTES) --- */
@@ -204,4 +223,9 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
     /* Ajustements pour les écrans de Repos/Menu sur mobile */
     .repos-container { flex-direction: column; }
     .btn-menu { width: 100%; }
+
+    /* Le récapitulatif de stats + les 5 boutons empilés peuvent dépasser la hauteur d'un petit
+       écran : on passe en défilement depuis le haut, car un contenu centré qui déborde coupe le
+       haut sans qu'on puisse y remonter (même piège que .inventaire-ecran). */
+    #ecran-repos { justify-content: flex-start; overflow-y: auto; }
 }

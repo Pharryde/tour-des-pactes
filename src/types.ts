@@ -1,7 +1,10 @@
-export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion';
+export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 export type ChoixRepos = 'soin' | 'atk' | 'pre' | 'def' | 'pv';
 export type Synergie = 'Guerrier' | 'Ninja' | 'Tank' | 'Assassin';
+// Bonus offert par le Chat Mystérieux, tiré à la Roue de la Chance à chaque entrée dans la Tour
+// (voir utils/benedictions.ts pour leurs effets).
+export type BenedictionChat = 'esquive' | 'critique' | 'armure' | 'hypnose' | 'vieDeChat' | 'apprentissage';
 
 export interface Competences {
     pv: number;
@@ -62,6 +65,11 @@ export interface Entite {
 
     // --- NOUVEAU : SYNERGIES CACHÉES ---
     synergieActive?: Synergie;
+
+    // --- NOUVEAU : BÉNÉDICTIONS DU CHAT (joueur uniquement) ---
+    bonusEsquiveFlat?: number;
+    chanceCritique?: number;
+    reductionEsquiveOpposant?: number;
 }
 
 export interface EtapeCombat {
