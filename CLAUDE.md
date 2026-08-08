@@ -16,6 +16,12 @@ npm install
 npm run dev          # Vite, http://localhost:5173
 ```
 
+🩺 **`node_modules` se corrompt sur cette machine.** Symptômes : page blanche + `Failed to resolve import "<dépendance>"` en console, ou `ERR_MODULE_NOT_FOUND` au lancement des tests. Signature constante : **les fichiers finissant par `.js` sont absents** alors que leurs voisins `.d.ts`, `.js.map`, `.mjs` et `.html` sont intacts — un `dist/` ne contenant que des `.map` et des `.d.ts` est le tell. Constaté le 2026-08-08 sur `@supabase/*`, puis sur l'arbre de `vitest` (`chai`, `tslib`, `magic-string`…).
+
+⚠️ **Un `npm install` incrémental (sur un `node_modules` existant) peut lui-même provoquer la casse** : c'est ce qui a détruit l'arbre de `vitest`, qui fonctionnait juste avant. Antivirus et cache npm ont été écartés (aucun événement Defender, accès contrôlé aux dossiers et règles ASR désactivés, `npm cache verify` intact) — cause racine non identifiée.
+
+**Réparation fiable** : supprimer `node_modules` **en entier** puis `npm install` (une réinstallation partielle ne suffit pas). Purger aussi `node_modules/.vite`, dont le cache de pré-bundling garde des références vers l'ancien état. **Détection** : scanner les points d'entrée de tous les paquets (`main` de chaque `package.json` doit exister) — un arbre sain donne 0 manquant.
+
 **Après TOUTE modification dans `moteur_wasm/src/*.rs` :**
 ```bash
 cd moteur_wasm
@@ -33,7 +39,13 @@ npm run preview        # sert le build de prod en local
 ```
 - Déploiement : Vercel (auto-détecte Vite sur push git, pas de config locale)
 - Avant de considérer une tâche terminée : `tsc -b` + `eslint .` + `npm test` propres, `cargo check` si Rust touché, **et test manuel dans le navigateur** (compilation ≠ fonctionnement)
-- ⚠️ **Ne jamais lancer de commande longue ou bavarde en console** (`npm run dev`, `vite`, tout mode `--watch`) : le pseudo-terminal Windows (ConPTY) de cette machine se fige quand un processus écrit en continu, ce qui plante l'application. Le serveur de dev est lancé par l'utilisateur dans son propre terminal ; pour la preview, utiliser `preview_start` avec une **URL** (`http://localhost:5173`), jamais avec un `name`.
+- ⚠️ **Ne jamais lancer de commande longue ou bavarde en avant-plan** (`npm run dev`, `vite`, tout mode `--watch`) : le pseudo-terminal Windows (ConPTY) de cette machine se fige quand un processus écrit en continu, ce qui plante l'application. Lancer en **tâche de fond avec la sortie redirigée vers un fichier log**, puis lire le log — jamais en avant-plan.
+- ⚠️ **Ne jamais ouvrir le panneau navigateur intégré (`preview_start`)** : chaque ouverture d'un nouveau panneau a planté l'application (2 occurrences le 2026-08-08). Le serveur Vite, lui, survivait au crash et écoutait toujours après coup — c'est bien le panneau le coupable, pas le serveur ni le port. Corollaire : déplacer le serveur hors de `localhost` ne règle rien et coûte cher, le navigateur intégré refusant en plus ses outils de lecture sur toute origine non-`localhost`.
+- **Vérification dans le navigateur** : passer par le vrai Chrome de l'utilisateur (outils `claude-in-chrome`). Serveur dédié en tâche de fond, sur un port distinct de celui de l'utilisateur (5173) :
+  ```bash
+  npx vite --host 127.0.0.1 --port 5174 --strictPort > /chemin/vers/vite.log 2>&1
+  ```
+  Le `--host 127.0.0.1` n'est pas décoratif : sans lui Vite n'écoute qu'en IPv6 (`::1`) et `http://127.0.0.1:5174` est injoignable. Le premier `navigate` peut expirer côté outil alors que la navigation a réussi — vérifier avec `tabs_context_mcp` avant de conclure à un échec.
 
 ## 🏗️ ARCHITECTURE ET STACK
 
