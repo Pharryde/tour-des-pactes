@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import type { Ecran } from '../types';
+import { ChatHub } from './ChatHub';
 
 interface HubProps {
     onLancerRun: () => void;
@@ -15,6 +17,8 @@ export function Hub({
     onLancerRun, onChangeEcran, xpTotal, aNouveauteTuto, marquerTutoLu,
     aNouveauPacte, marquerPactesVus, aPointsCompetenceDispo
 }: HubProps) {
+    // Cible du bond du Chat Mystérieux (voir ChatHub.tsx), qui mesure ce bouton à l'exécution.
+    const refBoutonLancer = useRef<HTMLButtonElement>(null);
 
     const ouvrirTuto = () => {
         marquerTutoLu();
@@ -28,9 +32,11 @@ export function Hub({
 
     return (
         <div id="ecran-hub" className="ecran">
+            <ChatHub refCible={refBoutonLancer} onLancer={onLancerRun} />
+
             <h1 className="titre-geant">Tour des Pactes</h1>
             <div className="menu-vertical">
-                <button className="btn-menu btn-jouer" onClick={onLancerRun}>▶️ Commencer l'Ascension</button>
+                <button ref={refBoutonLancer} className="btn-menu btn-jouer" onClick={onLancerRun}>▶️ Commencer l'Ascension</button>
 
                 <button className="btn-menu" onClick={ouvrirInventaire}>
                     🎒 Inventaire des Pactes

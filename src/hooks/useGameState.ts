@@ -11,6 +11,7 @@ import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } fro
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
+import { DELAI_TRANSITION_MS, calculerDelai } from '../utils/rythme';
 import { effacerEtatCombat } from './useCombatResume';
 import { useLocalStorage } from './useLocalStorage';
 import { useSauvegardeCloud } from './useSauvegardeCloud';
@@ -21,6 +22,14 @@ import { useSauvegardeCloud } from './useSauvegardeCloud';
 // Aucun consommateur n'a besoin de l'historique complet — `extraireLogsDuDernierTour` (écran de
 // mort) ne lit que le dernier tour, très largement contenu dans cette fenêtre.
 const LIMITE_LOGS = 300;
+
+// Le réglage de Vitesse (⚡) appartient à CombatArene : on le relit dans le localStorage plutôt que
+// de le faire descendre en prop, pour la même raison que les autres lectures persistantes (voir
+// utils/logs.ts) — ce code tourne depuis un callback de fin de combat, hors du cycle de rendu.
+function programmerTransition(action: () => void) {
+    const vitesse = lireValeurPersistante('tdp_vitesse_reso', 1);
+    setTimeout(action, calculerDelai(DELAI_TRANSITION_MS, vitesse));
+}
 
 // Regroupe tout l'état persistant de la partie (localStorage) et les règles qui le font évoluer.
 // App.tsx n'a plus qu'à lire ce que ce hook expose pour choisir quel écran afficher.
@@ -444,19 +453,19 @@ export function useGameState() {
         }
 
         setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ VOUS AVEZ ARRACHÉ LE ${nomFinal.toUpperCase()} !</span>`]);
-        setTimeout(() => { gererPassageEtageSuivant(); }, 2000);
+        programmerTransition(gererPassageEtageSuivant);
     };
 
     const gererFinDeGardien = (aLvl1Equipe: boolean, aLvl2Equipe: boolean, aLvl1Possede: boolean, aLvl2Possede: boolean) => {
         if (aLvl2Equipe) {
             setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Puissance maximale confirmée. Le Gardien s'incline. Progression automatique !</span>`]);
-            setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+            programmerTransition(gererPassageEtageSuivant);
             return;
         }
         if (aLvl1Equipe) {
             if (aLvl2Possede) {
                 setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Vous possédez déjà la Forme Finale de ce pacte. Progression automatique !</span>`]);
-                setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+                programmerTransition(gererPassageEtageSuivant);
             } else {
                 setEcran('ecran-choix-boss');
             }
@@ -464,7 +473,7 @@ export function useGameState() {
         }
         if (aLvl1Possede || aLvl2Possede) {
             setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Vous possédez déjà ce pacte. Le Gardien vous laisse passer. Progression automatique !</span>`]);
-            setTimeout(() => { gererPassageEtageSuivant(); }, 1500);
+            programmerTransition(gererPassageEtageSuivant);
         } else {
             setEcran('ecran-choix-boss');
         }

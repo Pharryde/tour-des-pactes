@@ -163,6 +163,50 @@
 .pacte-aucun { color: #a6adc8; }
 
 /* ======================================================= */
+/* --- HUB : LE CHAT MYSTÉRIEUX INTERACTIF --- */
+/* ======================================================= */
+/* Bouton dépouillé de toute apparence de bouton : seul le sprite se voit. Il reste un <button>
+   pour rester atteignable au clavier et réagir au tap comme au clic. */
+.chat-hub {
+    --sprite-echelle: 1.2;
+    position: absolute;
+    left: 8%;
+    bottom: 16%;
+    z-index: 5;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    line-height: 0;
+}
+.chat-hub:focus-visible { outline: 2px solid #f9e2af; outline-offset: 4px; border-radius: 6px; }
+
+/* --chat-x / --chat-y sont mesurées à l'exécution (position réelle du bouton de lancement, qui
+   dépend de la largeur de l'écran) : c'est ChatHub.tsx qui les pose en style inline. */
+.chat-hub--bond {
+    animation: chat-hub-bond 1.4s forwards;
+}
+/* Tient la position d'atterrissage le temps que l'écran change (le bond lance la run) : sans ça le
+   chat repartirait d'un bond à sa place de départ sur la dernière image affichée. */
+.chat-hub--arrive {
+    transform: translate(var(--chat-x), var(--chat-y));
+}
+
+/* Course au sol, puis bond : le sommet de l'arc dépasse le point d'atterrissage de 60px pour que
+   la trajectoire se lise comme un vrai saut et non comme un glissement en diagonale. */
+@keyframes chat-hub-bond {
+    0% { transform: translate(0, 0); animation-timing-function: linear; }
+    55% { transform: translate(calc(var(--chat-x) * 0.6), 0); animation-timing-function: ease-out; }
+    80% { transform: translate(calc(var(--chat-x) * 0.85), calc(var(--chat-y) - 60px)); animation-timing-function: ease-in; }
+    100% { transform: translate(var(--chat-x), var(--chat-y)); }
+}
+
+@media (max-width: 768px) {
+    /* Moins de place au sol sur mobile : le chat se cale plus bas et plus près du bord. */
+    .chat-hub { --sprite-echelle: 1; left: 4%; bottom: 10%; }
+}
+
+/* ======================================================= */
 /* --- HUB : PASTILLE DE NOTIFICATION --- */
 /* ======================================================= */
 .btn-menu { position: relative; }
@@ -448,6 +492,10 @@
 .tuto-carte-armure { --tuto-accent: #a6e3a1; background-color: #1e1e2e; }
 .tuto-carte-synergie { --tuto-accent: #f9e2af; background-color: #1e1e2e; }
 .tuto-carte-benediction { --tuto-accent: #f5c2e7; background-color: #1e1e2e; }
+
+/* Synergie révélée mais pas encore découverte : même traitement que les Pactes verrouillés de
+   l'Inventaire (.pacte-carte--verrouille), pour que le joueur lise le même code visuel partout. */
+.tuto-carte--verrouille { opacity: 0.5; filter: grayscale(1); }
 
 @media (max-width: 768px) {
     .tuto-ecran { padding: 1rem; }
@@ -744,6 +792,52 @@
 /* Badge de la bénédiction active en combat : même gabarit que les badges de Pacte, la couleur du
    fond venant du registre (valeur calculée à l'exécution, donc posée en style inline). */
 .benediction-badge { border: 1px solid #11111b; }
+
+/* ======================================================= */
+/* --- ÉCRAN DE RÉSURRECTION (Bénédiction "Vie de Chat") --- */
+/* ======================================================= */
+/* En overlay dans l'arène, et non comme un écran à part : la résolution du tour est suspendue en
+   plein vol (voir CombatArene), donc démonter le combat pour changer d'écran perdrait son état. */
+.vie-chat-ecran {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: rgba(17, 17, 27, 0.92);
+    animation: fadeIn 0.3s ease-in-out;
+}
+.vie-chat-carte {
+    width: 100%;
+    max-width: 460px;
+    background-color: #181825;
+    border: 2px solid #f9e2af;
+    border-radius: 12px;
+    padding: 22px 24px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(249, 226, 175, 0.25);
+}
+.vie-chat-sprite { --sprite-echelle: 2; display: flex; justify-content: center; }
+.vie-chat-titre { color: #f9e2af; font-size: 1.6em; margin: 6px 0 12px; }
+.vie-chat-texte { color: #cdd6f4; line-height: 1.55; margin-bottom: 14px; }
+.vie-chat-pv { color: #a6e3a1; font-size: 1.5em; font-weight: bold; margin-bottom: 14px; }
+.vie-chat-consommee {
+    color: #fab387;
+    font-size: 0.9em;
+    line-height: 1.5;
+    background-color: #11111b;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 18px;
+}
+
+@media (max-width: 768px) {
+    .vie-chat-titre { font-size: 1.3em; }
+    .vie-chat-texte { font-size: 0.95em; }
+    .vie-chat-pv { font-size: 1.25em; }
+}
 
 /* ======================================================= */
 /* --- ROUE DE LA CHANCE (entrée dans la Tour) --- */

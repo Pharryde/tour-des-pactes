@@ -79,6 +79,11 @@ export function CombatArene({
     
     const [attenteManuelle, setAttenteManuelle] = useState(false);
     const resolveManualStepRef = useRef<(() => void) | null>(null);
+
+    // Écran de résurrection de la Vie de Chat : suspend la résolution du tour jusqu'à ce que le
+    // joueur l'acquitte (même principe que le pas-à-pas manuel juste au-dessus).
+    const [attenteVieDeChat, setAttenteVieDeChat] = useState(false);
+    const resolveVieDeChatRef = useRef<(() => void) | null>(null);
     const modeResolutionRef = useRef<'auto'|'manuel'>(modeResolution);
     const vitesseRef = useRef<number>(vitesseResolution);
 
@@ -126,6 +131,12 @@ export function CombatArene({
             resolveManualStepRef.current = null;
             setAttenteManuelle(false);
         }
+    };
+
+    const reprendreApresVieDeChat = () => {
+        setAttenteVieDeChat(false);
+        resolveVieDeChatRef.current?.();
+        resolveVieDeChatRef.current = null;
     };
 
     const etapeSuivanteManuelle = () => {
@@ -266,7 +277,14 @@ export function CombatArene({
             resultat.joueur.pv = Math.max(1, Math.round(resultat.joueur.pvMax * POURCENTAGE_VIE_CHAT));
             onRessusciter?.();
             ajouterLogGlobal(`<div class="log-soin">🐈 Vie de Chat : vous retombez sur vos pattes et vous relevez avec ${resultat.joueur.pv} PV !</div>`);
-            await attendreEtape(600);
+
+            // Une ligne de journal passerait inaperçue pour un évènement aussi lourd : on impose
+            // un écran de résurrection que le joueur doit acquitter, quel que soit le mode/vitesse
+            // de résolution — c'est le seul moment où il apprend que la bénédiction est épuisée.
+            setJoueur(resultat.joueur);
+            setSpriteJoueur('idle');
+            setAttenteVieDeChat(true);
+            await new Promise<void>(resolve => { resolveVieDeChatRef.current = resolve; });
         }
 
         setJoueur(resultat.joueur);
@@ -323,6 +341,28 @@ export function CombatArene({
 
     return (
         <div className="arene-wrapper">
+
+            {attenteVieDeChat && (
+                <div className="vie-chat-ecran" role="dialog" aria-modal="true">
+                    <div className="vie-chat-carte">
+                        <div className="vie-chat-sprite">
+                            <SpriteAnime definition={ANIMATIONS_CHAT.idle} />
+                        </div>
+                        <h2 className="vie-chat-titre">🐈 Vie de Chat</h2>
+                        <p className="vie-chat-texte">
+                            Vous êtes tombé. Le sol se rapproche... et vous retombez sur vos pattes,
+                            comme si une patte invisible vous avait rattrapé au vol.
+                        </p>
+                        <p className="vie-chat-pv">❤️ {joueur.pv} / {joueur.pvMax} PV</p>
+                        <p className="vie-chat-consommee">
+                            ⚠️ La bénédiction est <b>consommée</b> pour cette ascension. La prochaine chute sera définitive.
+                        </p>
+                        <button className="btn-menu btn-jouer" onClick={reprendreApresVieDeChat}>
+                            Reprendre le combat
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="combat-header">
                 <div className="combat-header-actions">

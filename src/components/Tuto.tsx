@@ -20,6 +20,14 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
     const connaitFluidite = pactesDebloques.some(p => p.includes("Pacte de la Fluidité"));
     const connaitPuissanceBrute = pactesDebloques.some(p => p.includes("Pacte de la Puissance Brute"));
 
+    // Une synergie exige 4 Pactes équipés, or il n'y a que 3 emplacements de Niveau I : en arracher
+    // un de Niveau II est donc le vrai seuil d'entrée. À partir de là on révèle l'EXISTENCE des 4
+    // synergies — grisées, effet masqué — pour donner envie de chercher la combinaison.
+    const possedeLvl2 = pactesDebloques.some(p => p.endsWith(" II"));
+    const synergiesAffichees = possedeLvl2
+        ? (Object.keys(SYNERGIES_REGISTRY) as Synergie[])
+        : synergiesDecouvertes;
+
     return (
         <div className="ecran tuto-ecran">
             <h1 className="tuto-titre">
@@ -152,13 +160,25 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                         </div>
                     )}
 
-                    {synergiesDecouvertes.map(synergie => (
-                        <div key={synergie} className="tuto-carte tuto-carte-synergie">
-                            <span className="tuto-badge">Secret découvert : Synergie {synergie}</span>
-                            <h2>{SYNERGIES_REGISTRY[synergie].titre}</h2>
-                            <p>{SYNERGIES_REGISTRY[synergie].description}</p>
-                        </div>
-                    ))}
+                    {synergiesAffichees.map(synergie => {
+                        const decouverte = synergiesDecouvertes.includes(synergie);
+                        return (
+                            <div
+                                key={synergie}
+                                className={`tuto-carte tuto-carte-synergie${decouverte ? '' : ' tuto-carte--verrouille'}`}
+                            >
+                                <span className="tuto-badge">
+                                    {decouverte ? 'Secret découvert' : 'Secret à découvrir'} : Synergie {synergie}
+                                </span>
+                                <h2>{decouverte ? SYNERGIES_REGISTRY[synergie].titre : '???'}</h2>
+                                <p>
+                                    {decouverte
+                                        ? SYNERGIES_REGISTRY[synergie].description
+                                        : "Une combinaison précise de 4 Pactes équipés réveille ce pouvoir au lancement d'une ascension. Ni la Tour ni ses Gardiens ne vous diront laquelle."}
+                                </p>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 

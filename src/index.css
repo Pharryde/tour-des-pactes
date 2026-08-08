@@ -36,6 +36,9 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
     justify-content: center;
 }
 
+/* Référentiel du Chat Mystérieux interactif, positionné en absolu sur cet écran (voir .chat-hub). */
+#ecran-hub { position: relative; }
+
 #ecran-combat {
     justify-content: flex-start; /* L'arène commence en haut */
 }
