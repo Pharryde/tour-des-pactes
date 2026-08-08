@@ -133,9 +133,35 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 }
 .log-anchor { height: 1px; }
 
-.log-tour { color: #cba6f7; font-weight: bold; margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10px;}
+/* ⚠️ Le trait de séparation est réservé à l'usage EN BLOC (`<div class="log-tour">--- TOUR N ---</div>`).
+   Sur les `<span class="log-tour">` — la grande majorité des usages — un `border-top` se redessine en
+   haut de CHAQUE fragment de ligne dès que le texte passe à la ligne, et vient donc barrer le texte
+   au lieu de le séparer (et `padding-top`/`margin-top` n'y réservent aucune place, étant inline). */
+.log-tour { color: #cba6f7; font-weight: bold; }
+div.log-tour { margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10px; }
+
+/* Réplique du Chat Mystérieux (tutoriel) : du texte narratif long, pas une ligne de journal — d'où
+   un vrai bloc, une interligne confortable et un filet VERTICAL, insensible aux retours à la ligne. */
+.log-dialogue {
+    display: block;
+    color: #cba6f7;
+    line-height: 1.6;
+    margin: 12px 0;
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid #45475a;
+}
 .log-mort { color: #f38ba8; font-weight: bold; font-size: 1.1em; }
 .log-reset { color: #6c7086; font-style: italic; margin-top: 5px; }
+
+/* Gains du joueur (XP, soin du Pacte de la Vie II, Vie de Chat) : toujours une ligne à part entière,
+   d'où le pendant vert de .log-mort. Le vert est déjà celui des PV (.pv), le lien se fait tout seul. */
+.log-soin { color: #a6e3a1; font-weight: bold; }
+
+/* Précisions greffées AU MILIEU d'une ligne d'action par le moteur (combos, Posture du Guerrier,
+   Critique du Ninja) : elles restent inline, donc couleur uniquement — aucune propriété de boîte,
+   qui se redessinerait à chaque retour à la ligne (cf. l'avertissement sur .log-tour plus haut).
+   Même pêche que la jauge .combo de l'arène, pour qu'on relie les deux d'un coup d'œil. */
+.log-combo { color: #fab387; }
 
 /* --- CLASSES UTILITAIRES ET HUBS --- */
 .titre-geant { font-size: 3.5em; color: #cba6f7; margin-bottom: 10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); }

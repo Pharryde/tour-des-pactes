@@ -75,19 +75,19 @@ export const ACTIONS_AUTORISEES_TUTO: ActionType[][] = [
 export const DIALOGUE_CHAT_TUTO: Record<number, string[]> = {
     1: [
         `<br><b style="color: #f9e2af;">🐈 Un chat mystérieux vous barre la route, un sourire énigmatique aux lèvres...</b>`,
-        `<span class="log-tour">"Avant de gravir cette Tour, petit être, laisse-moi t'enseigner les bases, une par une. Tiens, en haut de l'écran : la Vitesse (⚡) accélère la résolution des tours, et le Mode te laisse choisir entre dérouler chaque action automatiquement, ou pas à pas (Manuel) pour ne rien manquer — n'hésite pas à ajuster ça selon ton aise."</span>`,
-        `<span class="log-tour">"Commençons par l'Attaque (⚔️) : une frappe brute qui vient cogner en priorité contre l'Armure de ta cible. Je verrouille tes autres actions pour ce tour — utilise l'Attaque, cinq fois, pour bien sentir comment elle fonctionne."</span>`,
+        `<span class="log-dialogue">"Avant de gravir cette Tour, petit être, laisse-moi t'enseigner les bases, une par une. Tiens, en haut de l'écran : la Vitesse (⚡) accélère la résolution des tours, et le Mode te laisse choisir entre dérouler chaque action automatiquement, ou pas à pas (Manuel) pour ne rien manquer — n'hésite pas à ajuster ça selon ton aise."</span>`,
+        `<span class="log-dialogue">"Commençons par l'Attaque (⚔️) : une frappe brute qui vient cogner en priorité contre l'Armure de ta cible. Je verrouille tes autres actions pour ce tour — utilise l'Attaque, cinq fois, pour bien sentir comment elle fonctionne."</span>`,
     ],
     2: [
-        `<span class="log-tour">"Bien joué ! Passons à la Précise (🎯) : contrairement à l'Attaque, elle ignore totalement l'armure adverse et va droit aux PV. Seule la Précise est disponible ce tour-ci."</span>`,
+        `<span class="log-dialogue">"Bien joué ! Passons à la Précise (🎯) : contrairement à l'Attaque, elle ignore totalement l'armure adverse et va droit aux PV. Seule la Précise est disponible ce tour-ci."</span>`,
     ],
     3: [
-        `<span class="log-tour">"Voyons maintenant la Défense (🛡️) : elle te construit une Armure qui absorbe les dégâts reçus. Cette Armure s'accumule et te protège pendant TOUT le tour — mais retiens bien ceci : elle retombe à zéro à la fin du tour. Rien ne se reporte sur le suivant, il faut la reconstruire à chaque fois. Regarde comme mes attaques peinent à te blesser pendant que tu te protèges. Seule la Défense est disponible ce tour-ci."</span>`,
+        `<span class="log-dialogue">"Voyons maintenant la Défense (🛡️) : elle te construit une Armure qui absorbe les dégâts reçus. Cette Armure s'accumule et te protège pendant TOUT le tour — mais retiens bien ceci : elle retombe à zéro à la fin du tour. Rien ne se reporte sur le suivant, il faut la reconstruire à chaque fois. Regarde comme mes attaques peinent à te blesser pendant que tu te protèges. Seule la Défense est disponible ce tour-ci."</span>`,
     ],
     4: [
-        `<span class="log-tour">"À ton tour d'apprendre l'Esquive (💨) : chaque fois que tu l'utilises, ta jauge d'esquive monte d'un palier, augmentant tes chances d'annuler complètement une attaque adverse. Il y a trois paliers, et le troisième est le maximum : au-delà, l'enchaîner encore ne te rapporte plus rien. Attention aussi : dès que tu fais autre chose, elle redescend aussitôt — un guerrier avisé sait quand esquiver, et quand frapper. Seule l'Esquive est disponible ce tour-ci."</span>`,
+        `<span class="log-dialogue">"À ton tour d'apprendre l'Esquive (💨) : chaque fois que tu l'utilises, ta jauge d'esquive monte d'un palier, augmentant tes chances d'annuler complètement une attaque adverse. Il y a trois paliers, et le troisième est le maximum : au-delà, l'enchaîner encore ne te rapporte plus rien. Attention aussi : dès que tu fais autre chose, elle redescend aussitôt — un guerrier avisé sait quand esquiver, et quand frapper. Seule l'Esquive est disponible ce tour-ci."</span>`,
     ],
     5: [
-        `<span class="log-tour">"Une dernière leçon avant que je ne te révèle quelque chose d'important. Enchaîner plusieurs fois LA MÊME action dans un même tour amplifie sa puissance à chaque répétition — c'est un Combo. Je te rends l'Attaque : martèle-la cinq fois d'affilée, et observe sa valeur grimper dans le journal de combat."</span>`,
+        `<span class="log-dialogue">"Une dernière leçon avant que je ne te révèle quelque chose d'important. Enchaîner plusieurs fois LA MÊME action dans un même tour amplifie sa puissance à chaque répétition — c'est un Combo. Je te rends l'Attaque : martèle-la cinq fois d'affilée, et observe sa valeur grimper dans le journal de combat."</span>`,
     ],
 };
