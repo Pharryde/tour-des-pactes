@@ -1,6 +1,17 @@
 import type { Bestiaire, Synergie } from '../types';
 import { SYNERGIES_REGISTRY } from '../utils/synergies';
+import { PACTES_REGISTRY } from '../utils/pactes';
 import { BENEDICTIONS_REGISTRY, LISTE_BENEDICTIONS } from '../utils/benedictions';
+
+// Familles de Pactes, dans l'ordre du registre (source de vérité unique) : chaque famille a son
+// Niveau I et son Niveau II, d'où le filtrage sur les seules entrées de base.
+const FAMILLES_PACTES = Object.keys(PACTES_REGISTRY).filter(nom => !nom.endsWith(' II'));
+
+// Les descriptions du registre sont parenthésées pour l'Inventaire, où elles complètent un nom de
+// carte. Dans le grimoire elles constituent la ligne entière : les parenthèses n'y servent à rien.
+function effetLisible(nom: string): string {
+    return (PACTES_REGISTRY[nom]?.desc ?? '').replace(/^\((.*)\)$/, '$1');
+}
 
 interface Props {
     pactesDebloques: string[];
@@ -23,6 +34,7 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
     // Une synergie exige 4 Pactes équipés, or il n'y a que 3 emplacements de Niveau I : en arracher
     // un de Niveau II est donc le vrai seuil d'entrée. À partir de là on révèle l'EXISTENCE des 4
     // synergies — grisées, effet masqué — pour donner envie de chercher la combinaison.
+    const possedeUnPacte = pactesDebloques.length > 0;
     const possedeLvl2 = pactesDebloques.some(p => p.endsWith(" II"));
     const synergiesAffichees = possedeLvl2
         ? (Object.keys(SYNERGIES_REGISTRY) as Synergie[])
@@ -167,28 +179,72 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                         </div>
                     )}
 
-                    {synergiesAffichees.map(synergie => {
-                        const decouverte = synergiesDecouvertes.includes(synergie);
-                        return (
-                            <div
-                                key={synergie}
-                                className={`tuto-carte tuto-carte-synergie${decouverte ? '' : ' tuto-carte--verrouille'}`}
-                            >
-                                <span className="tuto-badge">
-                                    {decouverte ? 'Secret découvert' : 'Secret à découvrir'} : Synergie {synergie}
-                                </span>
-                                <h2>{decouverte ? SYNERGIES_REGISTRY[synergie].titre : '???'}</h2>
-                                <p>
-                                    {/* Texte court : répété sur les 3-4 synergies encore secrètes,
-                                        un paragraphe entier gonflait toute la rangée. */}
-                                    {decouverte
-                                        ? SYNERGIES_REGISTRY[synergie].description
-                                        : "Une combinaison précise de 4 Pactes équipés la réveille. À vous de trouver laquelle."}
-                                </p>
-                            </div>
-                        );
-                    })}
                 </div>
+
+                {/* Grimoire : la référence chiffrée de tous les Pactes, là où les fiches ci-dessus
+                    expliquent les mécaniques. Il n'apparaît qu'une fois le premier Pacte arraché —
+                    avant, ce ne serait qu'une liste de « ??? ». */}
+                {possedeUnPacte && (
+                    <div className="tuto-carte-base tuto-grimoire">
+                        <h2>Le Grimoire des Pactes</h2>
+                        <p>
+                            Chaque Gardien vaincu dans sa forme supérieure vous cède son pouvoir. Vous pouvez en porter
+                            <b> 3 de Niveau I et 1 de Niveau II</b> à la fois — jamais les deux niveaux d'un même Pacte.
+                        </p>
+                        <div className="grimoire-liste">
+                            {FAMILLES_PACTES.map(famille => {
+                                const aLvl1 = pactesDebloques.includes(famille);
+                                const aLvl2 = pactesDebloques.includes(`${famille} II`);
+                                return (
+                                    <div key={famille} className={`grimoire-pacte${aLvl1 || aLvl2 ? '' : ' grimoire-pacte--verrouille'}`}>
+                                        <h3>{famille}</h3>
+                                        <p className={aLvl1 ? '' : 'grimoire-niveau--verrouille'}>
+                                            <b>I</b> — {aLvl1 ? effetLisible(famille) : '???'}
+                                        </p>
+                                        <p className={aLvl2 ? '' : 'grimoire-niveau--verrouille'}>
+                                            <b>II</b> — {aLvl2 ? effetLisible(`${famille} II`) : '???'}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Bloc à part, jamais mélangé aux fiches de mécaniques : les synergies sont des
+                    secrets à chercher, pas des règles à lire. */}
+                {synergiesAffichees.length > 0 && (
+                    <div className="tuto-section-synergies">
+                        <h2 className="tuto-section-titre">🔮 Les Synergies Cachées</h2>
+                        <p className="tuto-section-intro">
+                            Certaines combinaisons de <b>4 Pactes équipés</b> réveillent un pouvoir que rien n'annonce.
+                            Une seule peut être active à la fois — les emplacements n'en permettent pas davantage.
+                        </p>
+                        <div className="tuto-grille">
+                            {synergiesAffichees.map(synergie => {
+                                const decouverte = synergiesDecouvertes.includes(synergie);
+                                return (
+                                    <div
+                                        key={synergie}
+                                        className={`tuto-carte tuto-carte-synergie${decouverte ? '' : ' tuto-carte--verrouille'}`}
+                                    >
+                                        <span className="tuto-badge">
+                                            {decouverte ? 'Secret découvert' : 'Secret à découvrir'} : Synergie {synergie}
+                                        </span>
+                                        <h2>{decouverte ? SYNERGIES_REGISTRY[synergie].titre : '???'}</h2>
+                                        <p>
+                                            {/* Texte court : répété sur les 3-4 synergies encore secrètes,
+                                                un paragraphe entier gonflait toute la rangée. */}
+                                            {decouverte
+                                                ? SYNERGIES_REGISTRY[synergie].description
+                                                : "Une combinaison précise de 4 Pactes équipés la réveille. À vous de trouver laquelle."}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <button

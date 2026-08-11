@@ -117,8 +117,12 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
    avant l'adversaire — d'où ces repères directement sur les cases concernées. */
 .action-slot--gelee { box-shadow: inset 0 0 0 2px #89dceb; opacity: 0.5; }
 .action-slot--premier { box-shadow: inset 0 0 0 2px #f9e2af; }
+/* Dérèglement neutralisé (les deux camps le portent sur ce créneau) : repère éteint, ni doré ni
+   glacé. Sans lui, porter le Pacte du Froid à l'Étage du Froid donne l'impression d'un Pacte mort. */
+.action-slot--annulee { box-shadow: inset 0 0 0 2px #6c7086; }
 .action-slot--gelee::after,
-.action-slot--premier::after {
+.action-slot--premier::after,
+.action-slot--annulee::after {
     content: '❄️';
     position: absolute;
     top: -7px;
@@ -127,6 +131,11 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
     line-height: 1;
     filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
 }
+.action-slot--annulee::after { filter: grayscale(1) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7)); opacity: 0.7; }
+
+/* Brûlure et poison en cours sur un combattant, affichés à côté des PV/armure. */
+.etat-brulure { color: #fab387; font-weight: bold; }
+.etat-poison { color: #a6e3a1; font-weight: bold; }
 
 .controles { margin: 15px 0 10px; flex-shrink: 0; }
 

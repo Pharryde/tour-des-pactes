@@ -135,12 +135,12 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
     // ⚠️ Feu et Poison CONVERTISSENT une action : elle cesse de blesser sur le coup et se résout en
     // fin de tour. C'est un changement de style de jeu (dégâts différés), pas un simple bonus.
     "Pacte du Feu": {
-        desc: "(Vos Attaques deviennent +12 Brûlure, cumulée)",
-        appliquer: (j) => { j.degatsBrulure = 12; }
+        desc: "(Vos Attaques deviennent de la Brûlure, cumulée)",
+        appliquer: (j) => { j.multiplicateurBrulure = 1; }
     },
     "Pacte du Feu II": {
-        desc: "(Vos Attaques deviennent +20 Brûlure, cumulée)",
-        appliquer: (j) => { j.degatsBrulure = 20; }
+        desc: "(Vos Attaques deviennent x2 Brûlure, cumulée)",
+        appliquer: (j) => { j.multiplicateurBrulure = 2; }
     },
     "Pacte du Poison": {
         desc: "(Vos Précises deviennent du Poison, ignore l'armure)",

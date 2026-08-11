@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import type { Entite, ActionType, Competences, BenedictionChat } from '../types';
 import { BENEDICTIONS_REGISTRY, POURCENTAGE_VIE_CHAT } from '../utils/benedictions';
-import { genererActionsMonstre, corrigerActionsPourLimiteCombo, genererIndicesVisibles, calculerAttaqueAffichee, calculerPreciseAffichee, calculerPaliersEsquiveAffiches, SYMBOLES } from '../utils/combat';
+import { genererActionsMonstre, corrigerActionsPourLimiteCombo, genererIndicesVisibles, calculerAttaqueAffichee, calculerPreciseAffichee, calculerPaliersEsquiveAffiches, tirerCreneauxFroid, AUCUN_CRENEAU_FROID, symbolePour, type CreneauxFroid } from '../utils/combat';
 import { detailAttaque, detailPrecise, detailDefense } from '../utils/detailStats';
 import { tirerNouvelleForme, appliquerFormeMegaBoss } from '../utils/megaboss';
 import { genererBadgesPactes } from '../utils/pactes';
@@ -46,6 +46,22 @@ interface CombatAreneProps {
     onFinTutoriel?: (joueurRestant: Entite) => void;
 }
 
+// Reliquat de brûlure / de poison porté par un combattant. Ces deux états se résolvent en FIN de
+// tour : sans compteur visible, le joueur ne peut ni anticiper le coup à venir, ni comprendre
+// pourquoi il perd des PV sans avoir été touché.
+function EtatsDifferes({ entite }: { entite: Entite }) {
+    return (
+        <>
+            {entite.brulureActive ? (
+                <> | <span className="etat-brulure" title="Brûlure : encaissée en fin de tour, absorbée par l'armure restante, puis divisée par deux.">🔥 {entite.brulureActive}</span></>
+            ) : null}
+            {entite.poisonActif ? (
+                <> | <span className="etat-poison" title="Poison : encaissé en fin de tour, traverse l'armure et ne décroît jamais.">🧪 {entite.poisonActif}</span></>
+            ) : null}
+        </>
+    );
+}
+
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
     pactesEquipes, competences, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
@@ -69,12 +85,10 @@ export function CombatArene({
 
     usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, combatEnCours);
 
-    // Créneaux déréglés / gelés par l'Étage du Froid, renvoyés par le moteur à la résolution. Ils
-    // sont marqués sur les cases d'action : le journal seul ne dit pas d'un coup d'œil QUELLE
-    // action a sauté, ni laquelle est passée avant l'ennemi.
-    const [creneauxFroid, setCreneauxFroid] = useState<{ gelesJ: number[]; gelesM: number[]; jDabord: number[]; mDabord: number[] }>(
-        { gelesJ: [], gelesM: [], jDabord: [], mDabord: [] }
-    );
+    // Créneaux déréglés / gelés par l'Étage du Froid. Tirés à l'OUVERTURE du tour, en même temps
+    // que les actions du monstre, pour être affichés sur les cases pendant que le joueur programme
+    // — l'information n'aurait aucun intérêt tactique si elle n'arrivait qu'à la résolution.
+    const [creneauxFroid, setCreneauxFroid] = useState<CreneauxFroid>(AUCUN_CRENEAU_FROID);
 
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
@@ -113,15 +127,35 @@ export function CombatArene({
             monstreDuTour = appliquerFormeMegaBoss(monstre, nouvelleForme);
             setMonstre(monstreDuTour);
         }
-        const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour);
+        const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour, tourActuel);
         // Le joueur applique son Pacte Lvl 1/2 sur le monstre
         setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5));
         setIndicesVisiblesMonstre(genererIndicesVisibles(monstreDuTour.actionsVisibles));
+        setCreneauxFroid(tirerCreneauxFroid(joueur, monstreDuTour));
     }
 
-    const formatterCombo = (comboObj: {type: ActionType|null, count: number}) => {
+    const formatterCombo = (comboObj: {type: ActionType|null, count: number}, entite: Entite) => {
         if(comboObj.count <= 1 || comboObj.type === 'E' || comboObj.type === null) return "Aucun";
-        return `${SYMBOLES[comboObj.type]} x${comboObj.count}`;
+        return `${symbolePour(comboObj.type, entite)} x${comboObj.count}`;
+    };
+
+    // Repères de l'Étage du Froid posés sur une case d'action. Un créneau peut être à la fois gelé
+    // et déréglé ; « neutralisé » (le pouvoir porté des deux côtés) s'exclut des deux autres.
+    const marqueurCreneau = (i: number, gelees: number[], dabord: number[], libelleDabord: string) => {
+        const estGelee = gelees.includes(i);
+        const estDabord = dabord.includes(i);
+        const estAnnulee = !estGelee && !estDabord && creneauxFroid.annules.includes(i);
+
+        const titres = [
+            estGelee && 'Action gelée : elle est purement annulée.',
+            estDabord && libelleDabord,
+            estAnnulee && "Dérèglement neutralisé : les deux camps le portent sur ce créneau, l'action se résout normalement.",
+        ].filter(Boolean);
+
+        return {
+            className: `action-slot${estGelee ? ' action-slot--gelee' : ''}${estDabord ? ' action-slot--premier' : ''}${estAnnulee ? ' action-slot--annulee' : ''}`,
+            title: titres.length > 0 ? titres.join(' ') : undefined,
+        };
     };
 
     const effacerDerniereAction = () => {
@@ -197,9 +231,24 @@ export function CombatArene({
         setCombatEnCours(true);
         ajouterLogGlobal(`<div class="log-tour">--- TOUR ${tourActuel} ---</div>`);
 
+        // `annules` est purement informatif : le moteur ne connaît que les créneaux réellement
+        // déréglés ou gelés, on ne lui transmet donc que ceux-là.
+        const creneauxMoteur = {
+            gelesJoueur: creneauxFroid.gelesJoueur,
+            gelesMonstre: creneauxFroid.gelesMonstre,
+            joueurDabord: creneauxFroid.joueurDabord,
+            monstreDabord: creneauxFroid.monstreDabord,
+        };
+
+        if (creneauxFroid.annules.length > 0) {
+            const cases = [...creneauxFroid.annules].sort((a, b) => a - b).map(i => `n°${i + 1}`).join(', ');
+            const plusieurs = creneauxFroid.annules.length > 1;
+            ajouterLogGlobal(`<div class="log-tour">❄️ Dérèglement neutralisé sur ${plusieurs ? 'les actions' : "l'action"} ${cases} : les deux camps portent le même pouvoir, ${plusieurs ? 'elles se résolvent' : 'elle se résout'} normalement.</div>`);
+        }
+
         let resultat;
         try {
-            resultat = jouer_tour(joueur, monstre, actionsJoueur, actionsMonstre, tourActuel);
+            resultat = jouer_tour(joueur, monstre, actionsJoueur, actionsMonstre, tourActuel, creneauxMoteur);
         } catch (error) {
             console.error("Panique dans le module WASM:", error);
             ajouterLogGlobal(`<div class="log-mort">❌ Une erreur critique est survenue lors de la résolution (Panique WASM). Le tour a été annulé pour éviter un blocage.</div>`);
@@ -209,13 +258,6 @@ export function CombatArene({
             setSpriteMonstre('idle');
             return;
         }
-
-        setCreneauxFroid({
-            gelesJ: resultat.creneauxGelesJoueur ?? [],
-            gelesM: resultat.creneauxGelesMonstre ?? [],
-            jDabord: resultat.creneauxJoueurDabord ?? [],
-            mDabord: resultat.creneauxMonstreDabord ?? [],
-        });
 
         const currentJoueur = { ...joueur }; const currentMonstre = { ...monstre };
         const localComboJ = { ...comboAffichageJ }; const localComboM = { ...comboAffichageM };
@@ -233,8 +275,17 @@ export function CombatArene({
                 const actJ = actionsJoueur[indexDesActionsCombats];
                 const actM = actionsMonstre[indexDesActionsCombats];
 
-                if (localComboJ.type === actJ) localComboJ.count++; else { localComboJ.type = actJ; localComboJ.count = 1; }
-                if (localComboM.type === actM) localComboM.count++; else { localComboM.type = actM; localComboM.count = 1; }
+                // Une action gelée (Étage du Froid) ne casse pas le combo mais ne le fait pas
+                // avancer non plus : le moteur saute purement son `gerer_combo`, et ce compteur
+                // d'affichage doit sauter avec lui, sinon il annonce un palier que les dégâts
+                // ne suivront pas.
+                const creneau = indexDesActionsCombats;
+                if (!resultat.creneauxGelesJoueur.includes(creneau)) {
+                    if (localComboJ.type === actJ) localComboJ.count++; else { localComboJ.type = actJ; localComboJ.count = 1; }
+                }
+                if (!resultat.creneauxGelesMonstre.includes(creneau)) {
+                    if (localComboM.type === actM) localComboM.count++; else { localComboM.type = actM; localComboM.count = 1; }
+                }
 
                 indexDesActionsCombats++;
 
@@ -275,7 +326,9 @@ export function CombatArene({
             await attendreEtape(600);
         }
 
-        if (resultat.joueur.pv > 0 && resultat.monstre.pv > 0) {
+        // Le soin ne dépend que de la survie du JOUEUR : tuer l'ennemi au tour 5 ne doit pas
+        // annuler la régénération du Pacte de la Vie II.
+        if (resultat.joueur.pv > 0) {
             if (tourActuel % 5 === 0 && pactesEquipes.includes("Pacte de la Vie II")) {
                 const healAmount = Math.floor(resultat.joueur.pvMax * 0.10);
                 resultat.joueur.pv = Math.min(resultat.joueur.pvMax, resultat.joueur.pv + healAmount);
@@ -328,7 +381,6 @@ export function CombatArene({
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
             setComboAffichageJ({type: null, count: 0}); setComboAffichageM({type: null, count: 0});
             setActionsJoueur([]); setActionsMonstre([]);
-            setCreneauxFroid({ gelesJ: [], gelesM: [], jDabord: [], mDabord: [] });
 
             const prochainTour = tourActuel + 1;
             if (estTutoriel && actionsMonstreScriptees && prochainTour > actionsMonstreScriptees.length) {
@@ -410,8 +462,11 @@ export function CombatArene({
                 </div>
 
                 <div className="combat-header-pactes">
+                    {/* Nom seul : l'effet complet reste dans l'infobulle. Dans la Tour, ces badges
+                        sont un rappel de ce qu'on porte, pas une fiche technique — les descriptions
+                        entières poussaient l'en-tête sur plusieurs lignes. */}
                     {badges.length === 0 ? <span className="pacte-aucun">Aucun Pacte</span> : badges.map(b => (
-                        <span key={b.nom} className="pacte-badge" title={b.desc}>{b.nom} {b.desc}</span>
+                        <span key={b.nom} className="pacte-badge" title={`${b.nom} ${b.desc}`}>{b.nom}</span>
                     ))}
                     {benedictionActive && (
                         <span
@@ -436,23 +491,20 @@ export function CombatArene({
                     <h2>{joueur.nom}</h2>
                     <div className="stats">
                         <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur, monstre.reductionEsquiveOpposant)[Math.min(joueur.nivEsquive, 3)]}%)</span>
+                        <EtatsDifferes entite={joueur} />
                     </div>
                     <div className="stats-base">
-                        <StatDetail icone="⚔️" valeur={calculerAttaqueAffichee(joueur, actionsJoueur)} detail={detailAttaque(joueur, competences, actionsJoueur)} />
+                        <StatDetail icone={symbolePour('A', joueur)} valeur={calculerAttaqueAffichee(joueur, actionsJoueur)} detail={detailAttaque(joueur, competences, actionsJoueur)} />
                         {' | '}
-                        <StatDetail icone="🎯" valeur={calculerPreciseAffichee(joueur)} detail={detailPrecise(joueur, competences)} />
+                        <StatDetail icone={symbolePour('P', joueur)} valeur={calculerPreciseAffichee(joueur)} detail={detailPrecise(joueur, competences)} />
                         {' | '}
                         <StatDetail icone="🛡️" valeur={joueur.baseD} detail={detailDefense(joueur, competences, pactesEquipes)} />
                     </div>
-                    <span className="combo">Combo : {formatterCombo(comboAffichageJ)}</span>
+                    <span className="combo">Combo : {formatterCombo(comboAffichageJ, joueur)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => (
-                            <div
-                                key={i}
-                                className={`action-slot${creneauxFroid.gelesJ.includes(i) ? ' action-slot--gelee' : ''}${creneauxFroid.jDabord.includes(i) ? ' action-slot--premier' : ''}`}
-                                title={creneauxFroid.gelesJ.includes(i) ? 'Action gelée' : creneauxFroid.jDabord.includes(i) ? 'Résolue avant l\'ennemi' : undefined}
-                            >
-                                {actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}
+                            <div key={i} {...marqueurCreneau(i, creneauxFroid.gelesJoueur, creneauxFroid.joueurDabord, "Résolue avant l'ennemi.")}>
+                                {actionsJoueur[i] ? symbolePour(actionsJoueur[i], joueur) : ''}
                             </div>
                         ))}
                     </div>
@@ -465,17 +517,14 @@ export function CombatArene({
                     <h2>{titreMonstreFinal}</h2>
                     <div className="stats">
                         <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre, joueur.reductionEsquiveOpposant)[Math.min(monstre.nivEsquive, 3)]}%)</span>
+                        <EtatsDifferes entite={monstre} />
                     </div>
-                    <div className="stats-base">⚔️ {calculerAttaqueAffichee(monstre)} | 🎯 {calculerPreciseAffichee(monstre)} | 🛡️ {monstre.baseD}</div>
-                    <span className="combo">Combo : {formatterCombo(comboAffichageM)}</span>
+                    <div className="stats-base">{symbolePour('A', monstre)} {calculerAttaqueAffichee(monstre)} | {symbolePour('P', monstre)} {calculerPreciseAffichee(monstre)} | 🛡️ {monstre.baseD}</div>
+                    <span className="combo">Combo : {formatterCombo(comboAffichageM, monstre)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => (
-                            <div
-                                key={i}
-                                className={`action-slot${creneauxFroid.gelesM.includes(i) ? ' action-slot--gelee' : ''}${creneauxFroid.mDabord.includes(i) ? ' action-slot--premier' : ''}`}
-                                title={creneauxFroid.gelesM.includes(i) ? 'Action gelée' : creneauxFroid.mDabord.includes(i) ? 'Résolue avant vous' : undefined}
-                            >
-                                {actionsMonstre[i] ? (indicesVisiblesMonstre.includes(i) ? SYMBOLES[actionsMonstre[i]] : '❓') : ''}
+                            <div key={i} {...marqueurCreneau(i, creneauxFroid.gelesMonstre, creneauxFroid.monstreDabord, 'Résolue avant vous.')}>
+                                {actionsMonstre[i] ? (indicesVisiblesMonstre.includes(i) ? symbolePour(actionsMonstre[i], monstre) : '❓') : ''}
                             </div>
                         ))}
                     </div>
@@ -483,8 +532,8 @@ export function CombatArene({
             </div>
 
             <div className="controles">
-                <button className="btn-action" id="btn-a" onClick={() => {if (peutAjouterAction('A')) setActionsJoueur([...actionsJoueur, 'A'])}} disabled={!peutAjouterAction('A')}>⚔️ Attaque</button>
-                <button className="btn-action" id="btn-p" onClick={() => {if (peutAjouterAction('P')) setActionsJoueur([...actionsJoueur, 'P'])}} disabled={!peutAjouterAction('P')}>🎯 Précise</button>
+                <button className="btn-action" id="btn-a" onClick={() => {if (peutAjouterAction('A')) setActionsJoueur([...actionsJoueur, 'A'])}} disabled={!peutAjouterAction('A')}>{symbolePour('A', joueur)} Attaque</button>
+                <button className="btn-action" id="btn-p" onClick={() => {if (peutAjouterAction('P')) setActionsJoueur([...actionsJoueur, 'P'])}} disabled={!peutAjouterAction('P')}>{symbolePour('P', joueur)} Précise</button>
                 <button className="btn-action" id="btn-d" onClick={() => {if (peutAjouterAction('D')) setActionsJoueur([...actionsJoueur, 'D'])}} disabled={!peutAjouterAction('D')}>🛡️ Défense</button>
                 <button className="btn-action" id="btn-e" onClick={() => {if (peutAjouterAction('E')) setActionsJoueur([...actionsJoueur, 'E'])}} disabled={!peutAjouterAction('E')}>💨 Esquive</button>
             </div>

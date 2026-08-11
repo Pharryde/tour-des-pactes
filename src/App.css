@@ -527,6 +527,51 @@
    l'Inventaire (.pacte-carte--verrouille), pour que le joueur lise le même code visuel partout. */
 .tuto-carte--verrouille { opacity: 0.5; filter: grayscale(1); }
 
+/* --- Grimoire des Pactes : la référence chiffrée, en colonnes serrées --- */
+.tuto-grimoire h2 { color: #cba6f7; }
+.grimoire-liste {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+    gap: 0.5rem 1.2rem;
+    margin-top: 0.6rem;
+}
+.grimoire-pacte {
+    border-left: 2px solid #45475a;
+    padding: 0.15rem 0 0.15rem 0.6rem;
+}
+.grimoire-pacte h3 {
+    margin: 0;
+    font-size: 0.92rem;
+    color: #cdd6f4;
+}
+.grimoire-pacte p { margin: 0.1rem 0; font-size: 0.82rem; color: #bac2de; }
+.grimoire-pacte b { color: #f9e2af; }
+/* Le nom d'une famille jamais arrachée reste lisible : c'est un objectif, pas un secret. Seuls ses
+   effets sont masqués, niveau par niveau (on peut posséder le II sans le I, et l'inverse). */
+.grimoire-pacte--verrouille { opacity: 0.55; }
+.grimoire-niveau--verrouille { font-style: italic; opacity: 0.6; }
+
+/* --- Section dédiée aux Synergies : séparée des fiches de mécaniques, jamais mélangée --- */
+.tuto-section-synergies {
+    width: 100%;
+    box-sizing: border-box;
+    border-top: 1px solid #45475a;
+    padding-top: 0.8rem;
+    margin-top: 0.2rem;
+}
+.tuto-section-titre {
+    color: #f9e2af;
+    font-size: 1.15rem;
+    margin: 0 0 0.2rem;
+    text-align: left;
+}
+.tuto-section-intro {
+    margin: 0 0 0.7rem;
+    font-size: 0.88rem;
+    color: #bac2de;
+    text-align: left;
+}
+
 @media (max-width: 768px) {
     .tuto-ecran { padding: 1rem; }
     .tuto-titre { font-size: 1.5rem; }

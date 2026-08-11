@@ -75,9 +75,12 @@ export interface Entite {
     actionsResolutionInversee?: number;
     actionsGelees?: number;
     multiplicateurDegatsSiArmure?: number;
-    degatsBrulure?: number;
-    // Multiplicateur des dégâts Précis pour obtenir la dose de poison (miroir Rust).
+    // Multiplicateurs appliqués aux dégâts de l'action convertie (Attaque → brûlure, Précise →
+    // poison). La valeur du DoT vaut donc les dégâts réels de l'action, combos compris.
+    multiplicateurBrulure?: number;
     multiplicateurPoison?: number;
+    // Tour à partir duquel la créature peut passer un tour entier sans action offensive.
+    peutTemporiserDesTour?: number;
     // États subis, transportés d'un tour à l'autre par l'entité elle-même.
     brulureActive?: number;
     poisonActif?: number;

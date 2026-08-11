@@ -3,6 +3,16 @@ import type { ActionType, Entite } from '../types';
 
 export const SYMBOLES: Record<ActionType, string> = { 'A': '⚔️', 'P': '🎯', 'D': '🛡️', 'E': '💨' };
 
+// Le Feu et le Poison ne s'AJOUTENT pas à une action : ils la remplacent (l'Attaque cesse de blesser
+// sur le coup, la Précise aussi). Garder ⚔️/🎯 laisserait croire à des dégâts immédiats qui n'ont
+// plus lieu — d'où le changement d'icône partout où l'action est représentée. Miroir de `symbole()`
+// côté moteur (lib.rs), qui fait de même dans le journal.
+export function symbolePour(action: ActionType, entite?: Entite): string {
+    if (action === 'A' && entite?.multiplicateurBrulure) return '🔥';
+    if (action === 'P' && entite?.multiplicateurPoison) return '🧪';
+    return SYMBOLES[action];
+}
+
 // Valeur d'Attaque affichée dans les stats : contrairement aux pactes à bonus plat (ex: Pacte de
 // la Vie qui augmente directement pvMax), le Pacte de la Puissance Brute n'agit qu'au moment du
 // calcul de dégâts côté moteur Rust — sans ceci, le joueur ne verrait jamais son ⚔️ bouger à
@@ -59,22 +69,59 @@ export function calculerPaliersEsquiveAffiches(entite: Entite, reductionAdverse 
     return effectifs.map(palier => Math.min(100, Math.max(0, palier + decalage)));
 }
 
-// La brûlure ne s'éteint pas avec celui qui l'a allumée : ce qu'il en reste au moment où le combat
-// s'achève est encaissé d'un coup, absorbé par l'armure restante comme un tic normal. Tuer le
-// Gardien du Feu n'annule donc pas la dette accumulée.
-// Le plancher à 1 PV est délibéré : le flux de victoire n'a pas de branche « mort après coup », et
-// un héros laissé à 0 PV se traînerait jusqu'au combat suivant.
-export function solderBrulure(joueur: Entite): { joueur: Entite; degats: number } {
-    const netToye = { ...joueur, armure: 0, nivEsquive: 0, brulureActive: undefined, poisonActif: undefined };
-    const brulure = joueur.brulureActive ?? 0;
-    if (brulure <= 0) return { joueur: netToye, degats: 0 };
-
-    const pvPerdus = Math.max(0, brulure - joueur.armure);
-    const pv = Math.max(1, joueur.pv - pvPerdus);
-    return { joueur: { ...netToye, pv }, degats: joueur.pv - pv };
+export interface CreneauxFroid {
+    gelesJoueur: number[];
+    gelesMonstre: number[];
+    joueurDabord: number[];
+    monstreDabord: number[];
+    // Créneaux où les deux camps portaient le dérèglement : il s'y neutralise. Purement informatif
+    // (jamais transmis au moteur), mais indispensable — sans repère, le joueur qui porte le Pacte du
+    // Froid à l'étage du Froid croit simplement que son Pacte ne fonctionne pas.
+    annules: number[];
 }
 
-export function genererActionsMonstre(monstre: Entite): ActionType[] {
+export const AUCUN_CRENEAU_FROID: CreneauxFroid = { gelesJoueur: [], gelesMonstre: [], joueurDabord: [], monstreDabord: [], annules: [] };
+
+function tirerCreneaux(nombre: number): number[] {
+    if (nombre <= 0) return [];
+    return melangerIndices().slice(0, Math.min(nombre, 5));
+}
+
+function melangerIndices(): number[] {
+    const indices = [0, 1, 2, 3, 4];
+    for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices;
+}
+
+// Étage du Froid : quels créneaux du tour sont déréglés (résolus avant l'adversaire) et lesquels
+// sont gelés. ⚠️ Tiré ICI, au début du tour, et non dans le moteur : le joueur doit voir les cases
+// concernées PENDANT qu'il programme ses actions, sinon l'information arrive trop tard pour être
+// jouable. Le résultat est passé tel quel à `jouer_tour`.
+// Un pouvoir porté des DEUX côtés s'annule : seul l'écart compte. La part neutralisée est quand
+// même tirée et rendue dans `annules`, pour pouvoir montrer au joueur OÙ son dérèglement a été
+// contré — un tableau vide, lui, ressemblerait à un Pacte inopérant.
+export function tirerCreneauxFroid(joueur: Entite, monstre: Entite): CreneauxFroid {
+    const inversionsJ = joueur.actionsResolutionInversee ?? 0;
+    const inversionsM = monstre.actionsResolutionInversee ?? 0;
+
+    // Un seul mélange pour les deux lots : un créneau ne peut pas être à la fois déréglé et neutralisé.
+    const indices = melangerIndices();
+    const dabord = indices.slice(0, Math.min(Math.abs(inversionsJ - inversionsM), 5));
+    const annules = indices.slice(dabord.length, Math.min(dabord.length + Math.min(inversionsJ, inversionsM), 5));
+
+    return {
+        gelesJoueur: tirerCreneaux(monstre.actionsGelees ?? 0),
+        gelesMonstre: tirerCreneaux(joueur.actionsGelees ?? 0),
+        joueurDabord: inversionsJ > inversionsM ? dabord : [],
+        monstreDabord: inversionsM > inversionsJ ? dabord : [],
+        annules,
+    };
+}
+
+export function genererActionsMonstre(monstre: Entite, tourActuel: number = 1): ActionType[] {
     const possibilites = monstre.actionsPossibles;
     const actions: ActionType[] = [];
     const chancePoursuiteCombo = monstre.chanceCombo !== undefined ? monstre.chanceCombo : 20;
@@ -98,6 +145,17 @@ export function genererActionsMonstre(monstre: Entite): ActionType[] {
         }
         actions.push(choix);
     }
+
+    // Un tour entier passé à se défendre et esquiver n'a de sens que pour les créatures dont le
+    // pouvoir travaille pendant l'attente (régénération, Pointes d'Acier, altération temporelle,
+    // poison déjà posé). Partout ailleurs, c'est un tour offert au joueur : on force alors au moins
+    // une action offensive.
+    const peutTemporiser = monstre.peutTemporiserDesTour !== undefined && tourActuel >= monstre.peutTemporiserDesTour;
+    const offensives = possibilites.filter(a => a === 'A' || a === 'P');
+    if (!peutTemporiser && offensives.length > 0 && !actions.some(a => a === 'A' || a === 'P')) {
+        actions[Math.floor(Math.random() * 5)] = offensives[Math.floor(Math.random() * offensives.length)];
+    }
+
     return actions;
 }
 

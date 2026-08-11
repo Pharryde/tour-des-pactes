@@ -5,7 +5,6 @@ import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, C
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
 import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
 import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
-import { solderBrulure } from '../utils/combat';
 import { construireMegaBoss } from '../utils/megaboss';
 import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
 import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } from '../utils/tutoCombat';
@@ -418,13 +417,9 @@ export function useGameState() {
             gererDefaite();
             return;
         }
-        // La brûlure restante est soldée ici : elle survit à son porteur (voir solderBrulure). Le
-        // poison, lui, s'arrête avec le combat.
-        const { joueur: joueurApresBrulure, degats: degatsBrulure } = solderBrulure(joueurRestant);
-        if (degatsBrulure > 0) {
-            setHistoriqueLogs(prev => [...prev, `<div class="log-mort">🔥 Les flammes ne s'éteignent pas avec leur maître : la brûlure restante vous coûte ${degatsBrulure} PV.</div>`]);
-        }
-        setJoueur(joueurApresBrulure);
+        // Brûlure et poison ont déjà été encaissés par le tic de fin de tour, qui s'applique même
+        // quand l'ennemi meurt (voir jouer_tour) : il ne reste qu'à nettoyer avant la salle suivante.
+        setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0, brulureActive: undefined, poisonActif: undefined });
         setXpTotal(prev => prev + appliquerBonusXp(10, benedictionActive));
         setVictoireTotale(true);
         // Les Pactes portés jusqu'au bout gagnent leur trophée (cumulé sans doublon d'une victoire
@@ -573,13 +568,9 @@ export function useGameState() {
             return;
         }
 
-        // La brûlure restante est soldée ici : elle survit à son porteur (voir solderBrulure). Le
-        // poison, lui, s'arrête avec le combat.
-        const { joueur: joueurApresBrulure, degats: degatsBrulure } = solderBrulure(joueurRestant);
-        if (degatsBrulure > 0) {
-            setHistoriqueLogs(prev => [...prev, `<div class="log-mort">🔥 Les flammes ne s'éteignent pas avec leur maître : la brûlure restante vous coûte ${degatsBrulure} PV.</div>`]);
-        }
-        setJoueur(joueurApresBrulure);
+        // Brûlure et poison ont déjà été encaissés par le tic de fin de tour, qui s'applique même
+        // quand l'ennemi meurt (voir jouer_tour) : il ne reste qu'à nettoyer avant la salle suivante.
+        setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0, brulureActive: undefined, poisonActif: undefined });
 
         const etageActuel = listeEtages[indexEtageActuel];
         const nomPacteCourant = etageActuel?.idPacte || "Pacte Inconnu";

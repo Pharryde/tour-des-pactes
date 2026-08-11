@@ -25,12 +25,13 @@ export function get_donnees_etages() {
  * @param {any} actions_joueur_js
  * @param {any} actions_monstre_js
  * @param {number} tour_actuel
+ * @param {any} creneaux_js
  * @returns {any}
  */
-export function jouer_tour(joueur_js, monstre_js, actions_joueur_js, actions_monstre_js, tour_actuel) {
+export function jouer_tour(joueur_js, monstre_js, actions_joueur_js, actions_monstre_js, tour_actuel, creneaux_js) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.jouer_tour(retptr, addHeapObject(joueur_js), addHeapObject(monstre_js), addHeapObject(actions_joueur_js), addHeapObject(actions_monstre_js), tour_actuel);
+        wasm.jouer_tour(retptr, addHeapObject(joueur_js), addHeapObject(monstre_js), addHeapObject(actions_joueur_js), addHeapObject(actions_monstre_js), tour_actuel, addHeapObject(creneaux_js));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

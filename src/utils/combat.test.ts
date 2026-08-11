@@ -5,7 +5,9 @@ import {
     calculerPaliersEsquiveAffiches,
     calculerPreciseAffichee,
     corrigerActionsPourLimiteCombo,
-    solderBrulure,
+    genererActionsMonstre,
+    symbolePour,
+    tirerCreneauxFroid,
 } from './combat';
 
 function creerHeros(surcharges: Partial<Entite> = {}): Entite {
@@ -116,34 +118,91 @@ describe('calculerPaliersEsquiveAffiches', () => {
     });
 });
 
-// La brûlure survit à son porteur : tuer le Gardien du Feu n'annule pas la dette accumulée.
-describe('solderBrulure', () => {
-    it("ne retire rien sans brûlure en cours, mais nettoie les états", () => {
-        const { joueur, degats } = solderBrulure(creerHeros({ pv: 80, armure: 12, poisonActif: 4 }));
-        expect(degats).toBe(0);
-        expect(joueur.pv).toBe(80);
-        expect(joueur.armure).toBe(0);
-        expect(joueur.poisonActif).toBeUndefined();
+// Un tour entier sans action offensive n'a de sens que pour les créatures dont le pouvoir travaille
+// pendant l'attente. Ailleurs c'est un tour offert au joueur, donc un défaut de conception.
+describe('genererActionsMonstre — obligation d\'attaquer', () => {
+    // Kit sans offensive du tout : le garde-fou ne doit rien inventer.
+    it("n'invente pas d'offensive quand la créature n'en possède aucune", () => {
+        const actions = genererActionsMonstre(creerHeros({ actionsPossibles: ['D', 'E'] }));
+        expect(actions.every(a => a === 'D' || a === 'E')).toBe(true);
     });
 
-    it('encaisse la brûlure restante à la fin du combat', () => {
-        const { joueur, degats } = solderBrulure(creerHeros({ pv: 80, armure: 0, brulureActive: 30 }));
-        expect(degats).toBe(30);
-        expect(joueur.pv).toBe(50);
-        expect(joueur.brulureActive).toBeUndefined();
+    it('force au moins une offensive pour une créature qui ne peut pas temporiser', () => {
+        for (let essai = 0; essai < 40; essai++) {
+            const actions = genererActionsMonstre(creerHeros({ actionsPossibles: ['A', 'P', 'D', 'E'] }));
+            expect(actions.some(a => a === 'A' || a === 'P')).toBe(true);
+        }
     });
 
-    it("laisse l'armure restante absorber le solde", () => {
-        const { joueur, degats } = solderBrulure(creerHeros({ pv: 80, armure: 20, brulureActive: 30 }));
-        expect(degats).toBe(10);
-        expect(joueur.pv).toBe(70);
+    // L'étage du Poison ne temporise qu'à partir du 2e tour : au 1er, il doit poser sa dose.
+    it('respecte le tour à partir duquel la temporisation est permise', () => {
+        const creature = creerHeros({ actionsPossibles: ['P', 'D', 'E'], peutTemporiserDesTour: 2 });
+        for (let essai = 0; essai < 40; essai++) {
+            expect(genererActionsMonstre(creature, 1).some(a => a === 'P')).toBe(true);
+        }
+    });
+});
+
+// Le Feu et le Poison REMPLACENT l'action : garder ⚔️/🎯 laisserait croire à des dégâts immédiats
+// qui n'ont plus lieu. Le porteur du pouvoir décide de l'icône — jamais sa cible.
+describe('symbolePour', () => {
+    it('garde les symboles par défaut sans pouvoir de conversion', () => {
+        const nu = creerHeros();
+        expect((['A', 'P', 'D', 'E'] as const).map(a => symbolePour(a, nu))).toEqual(['⚔️', '🎯', '🛡️', '💨']);
     });
 
-    // Le flux de victoire n'a pas de branche « mort après coup » : un héros à 0 PV se traînerait
-    // jusqu'au combat suivant, d'où ce plancher délibéré.
-    it('laisse toujours au moins 1 PV', () => {
-        const { joueur } = solderBrulure(creerHeros({ pv: 12, armure: 0, brulureActive: 999 }));
-        expect(joueur.pv).toBe(1);
+    it("bascule l'Attaque en feu et la Précise en poison, chacune indépendamment", () => {
+        expect(symbolePour('A', creerHeros({ multiplicateurBrulure: 1 }))).toBe('🔥');
+        expect(symbolePour('P', creerHeros({ multiplicateurBrulure: 1 }))).toBe('🎯');
+        expect(symbolePour('P', creerHeros({ multiplicateurPoison: 2 }))).toBe('🧪');
+        expect(symbolePour('A', creerHeros({ multiplicateurPoison: 2 }))).toBe('⚔️');
+    });
+
+    it('ne convertit jamais la Défense ni l\'Esquive', () => {
+        const double = creerHeros({ multiplicateurBrulure: 1, multiplicateurPoison: 1 });
+        expect(symbolePour('D', double)).toBe('🛡️');
+        expect(symbolePour('E', double)).toBe('💨');
+    });
+});
+
+describe('tirerCreneauxFroid', () => {
+    // Le pouvoir porté des deux côtés s'annule : seul l'écart compte. Mais les créneaux neutralisés
+    // doivent quand même être désignés, sinon le Pacte a l'air inopérant à l'écran.
+    it('annule le dérèglement quand les deux camps le portent à égalité', () => {
+        const creneaux = tirerCreneauxFroid(
+            creerHeros({ actionsResolutionInversee: 2 }),
+            creerHeros({ actionsResolutionInversee: 2 }),
+        );
+        expect(creneaux.joueurDabord).toHaveLength(0);
+        expect(creneaux.monstreDabord).toHaveLength(0);
+        expect(creneaux.annules).toHaveLength(2);
+    });
+
+    // Écart de 1 sur un total de 3 portés : 1 créneau effectif + 2 neutralisés, tous distincts.
+    it('sépare la part effective de la part neutralisée sans jamais réutiliser un créneau', () => {
+        const creneaux = tirerCreneauxFroid(
+            creerHeros({ actionsResolutionInversee: 3 }),
+            creerHeros({ actionsResolutionInversee: 2 }),
+        );
+        expect(creneaux.joueurDabord).toHaveLength(1);
+        expect(creneaux.monstreDabord).toHaveLength(0);
+        expect(creneaux.annules).toHaveLength(2);
+        const tous = [...creneaux.joueurDabord, ...creneaux.annules];
+        expect(new Set(tous).size).toBe(3);
+    });
+
+    it("ne neutralise rien quand un seul camp porte le pouvoir", () => {
+        const creneaux = tirerCreneauxFroid(creerHeros(), creerHeros({ actionsResolutionInversee: 2 }));
+        expect(creneaux.annules).toHaveLength(0);
+        expect(creneaux.monstreDabord).toHaveLength(2);
+    });
+
+    it('tire le nombre de créneaux demandé, tous distincts et dans les 5 du tour', () => {
+        const creneaux = tirerCreneauxFroid(creerHeros(), creerHeros({ actionsResolutionInversee: 2, actionsGelees: 1 }));
+        expect(creneaux.monstreDabord).toHaveLength(2);
+        expect(new Set(creneaux.monstreDabord).size).toBe(2);
+        expect(creneaux.gelesJoueur).toHaveLength(1);
+        expect([...creneaux.monstreDabord, ...creneaux.gelesJoueur].every(i => i >= 0 && i < 5)).toBe(true);
     });
 });
 

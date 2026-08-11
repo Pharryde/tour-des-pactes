@@ -87,10 +87,18 @@ pub struct Entite {
     // FEU. Brûlure ajoutée à la cible à chaque coup qui connecte. Les attaques de ces créatures ne
     // blessent PLUS directement : toute leur valeur part dans la brûlure, qui s'accumule, se fait
     // absorber par l'armure en fin de tour, puis est divisée par deux.
-    #[serde(default)] pub degats_brulure: Option<i32>,
+    #[serde(default)] pub multiplicateur_brulure: Option<i32>,
     // POISON. Multiplicateur appliqué aux dégâts PRÉCIS de l'attaquant pour obtenir la dose. Le
     // poison traverse l'armure et ne décroît jamais.
     #[serde(default)] pub multiplicateur_poison: Option<i32>,
+
+    // Numéro de tour à partir duquel cette créature a le droit de passer un tour ENTIER sans action
+    // offensive (que de la Défense et de l'Esquive). `None` = jamais : il lui faut au moins une
+    // Attaque ou une Précise par tour. Seuls les étages dont le pouvoir récompense l'attente en
+    // profitent — Vie (régénération), Armure (Pointes d'Acier), Temps (altération), Poison (dès le
+    // 2e tour, une fois sa dose posée). Ailleurs, temporiser n'a aucun sens et donne juste un tour
+    // creux au joueur.
+    #[serde(default)] pub peut_temporiser_des_tour: Option<i32>,
 
     // États SUBIS par cette entité. Ils doivent voyager avec elle d'un tour à l'autre (le moteur est
     // sans mémoire entre deux appels), d'où leur place sur l'entité plutôt que dans une variable

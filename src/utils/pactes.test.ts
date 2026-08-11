@@ -59,7 +59,7 @@ describe('Pactes du Froid / Foudre / Feu / Poison', () => {
 
         expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte de la Foudre']).multiplicateurDegatsSiArmure).toBe(1.5);
         expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte de la Foudre II']).multiplicateurDegatsSiArmure).toBe(2);
-        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Feu']).degatsBrulure).toBe(12);
+        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Feu']).multiplicateurBrulure).toBe(1);
         // Le poison vaut les dégâts Précis : le Pacte porte le multiplicateur, pas un montant fixe.
         expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Poison']).multiplicateurPoison).toBe(1);
         expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Poison II']).multiplicateurPoison).toBe(2);

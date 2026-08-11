@@ -55,8 +55,9 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         actions_resolution_inversee: None,
         actions_gelees: None,
         multiplicateur_degats_si_armure: None,
-        degats_brulure: None,
+        multiplicateur_brulure: None,
         multiplicateur_poison: None,
+        peut_temporiser_des_tour: None,
         brulure_active: None,
         poison_actif: None,
     }
@@ -307,22 +308,22 @@ pub fn get_etage_foudre() -> StructureEtage {
 // d'elle-même si on survit à l'assaut initial. ---
 pub fn get_etage_feu() -> StructureEtage {
     let mut m1 = creer_base("Braise Rampante", 35, 7, 4, 8, esquive_std(), kit_sans_precise());
-    m1.degats_brulure = Some(2);
+    m1.multiplicateur_brulure = Some(1);
 
     let mut m2 = creer_base("Chien de Cendre", 45, 9, 4, 8, esquive_std(), kit_sans_precise());
-    m2.degats_brulure = Some(3);
+    m2.multiplicateur_brulure = Some(1);
 
     let mut m3 = creer_base("Salamandre Ardente", 55, 10, 5, 10, esquive_std(), kit_sans_precise());
-    m3.degats_brulure = Some(4);
+    m3.multiplicateur_brulure = Some(1);
 
     let mut boss = creer_base(&nom_boss("Le Brasier Vorace"), 85, 11, 5, 12, esquive_std(), kit_sans_precise());
-    boss.degats_brulure = Some(5);
+    boss.multiplicateur_brulure = Some(1);
 
     let mut boss_h = creer_base(&nom_boss_evolue("Le Brasier Vorace"), 115, 13, 6, 12, esquive_std(), kit_sans_precise());
-    boss_h.degats_brulure = Some(7);
+    boss_h.multiplicateur_brulure = Some(1);
 
     let mut boss_h2 = creer_base(&nom_boss_finale("Le Brasier Vorace"), 145, 14, 6, 14, esquive_std(), kit_sans_precise());
-    boss_h2.degats_brulure = Some(9);
+    boss_h2.multiplicateur_brulure = Some(1);
 
     StructureEtage {
         id_pacte: "Pacte du Feu".to_string(),
@@ -365,19 +366,32 @@ pub fn get_etage_poison() -> StructureEtage {
     }
 }
 
+// Autorise une entité à passer un tour entier sans action offensive, à partir du tour indiqué.
+// Réservé aux étages dont le pouvoir travaille pendant l'attente (voir peut_temporiser_des_tour).
+fn autoriser_temporisation(etage: StructureEtage, des_le_tour: i32) -> StructureEtage {
+    let marquer = |mut e: Entite| { e.peut_temporiser_des_tour = Some(des_le_tour); e };
+    StructureEtage {
+        monstres: etage.monstres.into_iter().map(marquer).collect(),
+        boss_normal: marquer(etage.boss_normal),
+        boss_heroique: marquer(etage.boss_heroique),
+        boss_heroique_lvl2: marquer(etage.boss_heroique_lvl2),
+        ..etage
+    }
+}
+
 pub fn get_tous_les_etages() -> Vec<StructureEtage> {
     vec![
-        get_etage_armure(),
+        autoriser_temporisation(get_etage_armure(), 1),
         get_etage_esquive(),
         get_etage_combo(),
-        get_etage_vie(),
+        autoriser_temporisation(get_etage_vie(), 1),
         get_etage_ombre(),
-        get_etage_temps(),
+        autoriser_temporisation(get_etage_temps(), 1),
         get_etage_fluidite(),
         get_etage_puissance_brute(),
         get_etage_froid(),
         get_etage_foudre(),
         get_etage_feu(),
-        get_etage_poison(),
+        autoriser_temporisation(get_etage_poison(), 2),
     ]
 }

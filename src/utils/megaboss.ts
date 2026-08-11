@@ -60,5 +60,14 @@ export function appliquerFormeMegaBoss(monstreActuel: Entite, forme: Entite): En
         pertePvChaqueXTours: forme.pertePvChaqueXTours !== undefined ? 1 : undefined,
         pertePvPourcentage: forme.pertePvPourcentage,
         pertePvBaseMax: forme.pertePvBaseMax,
+        // Pouvoirs des Gardiens du Froid, de la Foudre, du Feu et du Poison. `brulureActive` et
+        // `poisonActif` ne sont surtout PAS repris de la forme : ce sont des états subis par le
+        // Gardien Absolu lui-même, qui doivent survivre à ses changements d'apparence.
+        actionsResolutionInversee: forme.actionsResolutionInversee,
+        actionsGelees: forme.actionsGelees,
+        multiplicateurDegatsSiArmure: forme.multiplicateurDegatsSiArmure,
+        multiplicateurBrulure: forme.multiplicateurBrulure,
+        multiplicateurPoison: forme.multiplicateurPoison,
+        peutTemporiserDesTour: forme.peutTemporiserDesTour,
     };
 }

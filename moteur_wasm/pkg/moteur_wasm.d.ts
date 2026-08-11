@@ -3,14 +3,14 @@
 
 export function get_donnees_etages(): any;
 
-export function jouer_tour(joueur_js: any, monstre_js: any, actions_joueur_js: any, actions_monstre_js: any, tour_actuel: number): any;
+export function jouer_tour(joueur_js: any, monstre_js: any, actions_joueur_js: any, actions_monstre_js: any, tour_actuel: number, creneaux_js: any): any;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly get_donnees_etages: (a: number) => void;
-    readonly jouer_tour: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly jouer_tour: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

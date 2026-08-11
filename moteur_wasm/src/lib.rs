@@ -4,22 +4,21 @@ pub mod combat;
 
 use wasm_bindgen::prelude::*;
 use serde::Serialize;
-use rand::Rng;
 use crate::entite::{Entite, ActionType, Synergie};
 use crate::combat::{gerer_combo, get_valeur_action, calculer_degats, tenter_critique, ResultatDegats, MULTIPLICATEUR_CRITIQUE};
 use crate::boss_data::get_tous_les_etages;
 
-// Tire `nombre` créneaux d'action distincts parmi les 5 du tour (Étage du Froid).
-fn tirer_creneaux(nombre: i32) -> Vec<usize> {
-    if nombre <= 0 { return Vec::new(); }
-    let mut indices: Vec<usize> = (0..5).collect();
-    let mut rng = rand::thread_rng();
-    for i in (1..indices.len()).rev() {
-        let j = rng.gen_range(0..=i);
-        indices.swap(i, j);
-    }
-    indices.truncate((nombre as usize).min(5));
-    indices
+// Créneaux touchés par l'Étage du Froid. ⚠️ Ils ne sont PAS tirés ici : le joueur doit les voir
+// pendant qu'il programme ses actions, donc le tirage a lieu côté TS au début du tour
+// (`tirerCreneauxFroid`) et le moteur ne fait que les appliquer. Les tirer ici les rendrait
+// impossibles à afficher avant la résolution.
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CreneauxFroid {
+    #[serde(default)] pub geles_joueur: Vec<usize>,
+    #[serde(default)] pub geles_monstre: Vec<usize>,
+    #[serde(default)] pub joueur_dabord: Vec<usize>,
+    #[serde(default)] pub monstre_dabord: Vec<usize>,
 }
 
 fn aucun_degat() -> ResultatDegats {
@@ -47,37 +46,36 @@ fn encaisser(cible: &mut Entite, degats: &ResultatDegats) {
 
 // Calcule le coup puis, selon l'action, le convertit en brûlure (Attaque) ou en poison (Précise).
 // NE retire encore rien aux PV/armure : c'est `encaisser` qui le fait, au moment voulu par l'ordre
-// de résolution du créneau.
-fn calculer_et_appliquer_etats(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32) -> ResultatDegats {
+// de résolution du créneau. `poison_du_tour` accumule les doses du tour (voir convertir_en_poison).
+fn calculer_et_appliquer_etats(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, poison_du_tour: &mut i32) -> ResultatDegats {
     let degats = calculer_degats(action, valeur, attaquant, cible);
-    let degats = convertir_en_brulure(attaquant, cible, action, degats);
-    convertir_en_poison(attaquant, cible, action, valeur, degats)
+    let degats = convertir_en_brulure(attaquant, cible, action, valeur, degats);
+    convertir_en_poison(attaquant, action, valeur, poison_du_tour, degats)
 }
 
 // Étage du Feu : l'ATTAQUE (et elle seule) cesse de blesser directement — elle devient une brûlure
-// qui s'AJOUTE à celle de la cible (elle s'accumule, elle ne se rafraîchit pas) et se résout en fin
-// de tour, jusqu'à extinction, même après la mort de celui qui l'a allumée.
-// Une esquive coupe la conversion : la brûlure reste esquivable.
+// d'un montant égal aux DÉGÂTS QU'ELLE AURAIT INFLIGÉS (combos et multiplicateurs compris), qui
+// s'AJOUTE à la brûlure en cours. Une Attaque à 12 puis une à 34 posent donc 46 de brûlure, pas deux
+// fois une valeur forfaitaire. Elle se résout en fin de tour, jusqu'à extinction, même après la mort
+// de celui qui l'a allumée. Une esquive coupe la conversion : la brûlure reste esquivable.
 // Renvoie les dégâts à appliquer réellement : nuls dès qu'il y a conversion.
-fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionType, degats: ResultatDegats) -> ResultatDegats {
-    let Some(brulure) = attaquant.degats_brulure else { return degats; };
+fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, degats: ResultatDegats) -> ResultatDegats {
+    let Some(multiplicateur) = attaquant.multiplicateur_brulure else { return degats; };
     if *action != ActionType::A || degats.esquive { return degats; }
 
-    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + brulure);
-    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 }
+    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + valeur * multiplicateur);
+    aucun_degat()
 }
 
-// Étage du Poison : la PRÉCISE (et elle seule) cesse de blesser directement — sa valeur devient la
-// dose de poison, qui se résout en fin de tour. Le poison traverse l'armure et ne décroît jamais,
-// d'où le choix de RETENIR la plus forte dose au lieu de l'empiler : cumulé, il ne pardonnerait plus
-// rien sur un combat long. Esquivable, comme la brûlure.
-fn convertir_en_poison(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, degats: ResultatDegats) -> ResultatDegats {
+// Étage du Poison : miroir exact sur la PRÉCISE. Les doses s'additionnent SUR LE TOUR (d'où
+// l'accumulateur), mais d'un tour à l'autre on ne retient que la plus forte : le poison ne décroît
+// jamais, l'empiler indéfiniment ne pardonnerait plus rien sur un combat long.
+fn convertir_en_poison(attaquant: &Entite, action: &ActionType, valeur: i32, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
     let Some(multiplicateur) = attaquant.multiplicateur_poison else { return degats; };
     if *action != ActionType::P || degats.esquive { return degats; }
 
-    let dose = valeur * multiplicateur;
-    cible.poison_actif = Some(cible.poison_actif.unwrap_or(0).max(dose));
-    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 }
+    *poison_du_tour += valeur * multiplicateur;
+    aucun_degat()
 }
 
 // Tics de fin de tour. La brûlure se fait absorber par l'armure restante puis est divisée par deux
@@ -145,8 +143,18 @@ pub struct ResultatTour {
     pub creneaux_monstre_dabord: Vec<usize>,
 }
 
-fn symbole(act: &ActionType) -> &str {
-    match act { ActionType::A => "⚔️", ActionType::P => "🎯", ActionType::D => "🛡️", ActionType::E => "💨" }
+// Le Feu et le Poison REMPLACENT l'action au lieu de s'y ajouter : garder ⚔️/🎯 laisserait croire
+// que le coup a porté alors qu'il n'a fait qu'allumer une brûlure ou injecter une dose. Miroir de
+// `symbolePour()` côté TS (utils/combat.ts), qui fait de même sur les cases d'action et les stats.
+fn symbole(act: &ActionType, entite: &Entite) -> &'static str {
+    match act {
+        ActionType::A if entite.multiplicateur_brulure.is_some() => "🔥",
+        ActionType::P if entite.multiplicateur_poison.is_some() => "🧪",
+        ActionType::A => "⚔️",
+        ActionType::P => "🎯",
+        ActionType::D => "🛡️",
+        ActionType::E => "💨",
+    }
 }
 
 #[wasm_bindgen]
@@ -156,7 +164,7 @@ pub fn get_donnees_etages() -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: JsValue, actions_monstre_js: JsValue, tour_actuel: i32) -> Result<JsValue, JsValue> {
+pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: JsValue, actions_monstre_js: JsValue, tour_actuel: i32, creneaux_js: JsValue) -> Result<JsValue, JsValue> {
     let mut joueur: Entite = serde_wasm_bindgen::from_value(joueur_js)
         .map_err(|e| JsValue::from_str(&format!("Données joueur invalides : {e}")))?;
     let mut monstre: Entite = serde_wasm_bindgen::from_value(monstre_js)
@@ -181,6 +189,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     let mut guerrier_bonus_base_a = 0;
     // Ninja : une Esquive réussie arme un Coup Critique pour la PROCHAINE Précise du même tour.
     let mut ninja_crit_pret = false;
+    // Doses de poison posées pendant CE tour, par camp. Elles s'additionnent ici puis sont
+    // comparées à la dose déjà en cours en fin de tour (voir convertir_en_poison).
+    let mut poison_sur_joueur = 0;
+    let mut poison_sur_monstre = 0;
 
     // Même champ que le passif d'armure des boss, côté joueur : c'est la Bénédiction "Pelage
     // d'Acier" qui le lui accorde (l'armure retombant à 0 en fin de tour, il est bien re-crédité
@@ -219,15 +231,13 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         });
     }
 
-    // --- Étage du Froid : quels créneaux du tour sont déréglés, et lesquels sont gelés. ---
-    // Un pouvoir porté des DEUX côtés s'annule : seul l'écart compte, et la résolution redevient
-    // simultanée à égalité. Le tirage est fait une fois pour tout le tour.
-    let inversions_m = monstre.actions_resolution_inversee.unwrap_or(0);
-    let inversions_j = joueur.actions_resolution_inversee.unwrap_or(0);
-    let creneaux_monstre_dabord = tirer_creneaux(inversions_m - inversions_j);
-    let creneaux_joueur_dabord = tirer_creneaux(inversions_j - inversions_m);
-    let creneaux_geles_joueur = tirer_creneaux(monstre.actions_gelees.unwrap_or(0));
-    let creneaux_geles_monstre = tirer_creneaux(joueur.actions_gelees.unwrap_or(0));
+    // Étage du Froid : créneaux déréglés / gelés, tirés côté TS AVANT le tour pour être affichés
+    // pendant la phase de choix des actions (voir CreneauxFroid).
+    let creneaux: CreneauxFroid = serde_wasm_bindgen::from_value(creneaux_js).unwrap_or_default();
+    let creneaux_monstre_dabord = creneaux.monstre_dabord;
+    let creneaux_joueur_dabord = creneaux.joueur_dabord;
+    let creneaux_geles_joueur = creneaux.geles_joueur;
+    let creneaux_geles_monstre = creneaux.geles_monstre;
 
     for i in 0..5 {
         if joueur.pv <= 0 || monstre.pv <= 0 { break; }
@@ -299,30 +309,30 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         if creneaux_monstre_dabord.contains(&i) {
             if !gele_m {
                 monter_garde(&mut monstre, act_m, val_m, 1);
-                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m);
+                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, &mut poison_sur_joueur);
                 encaisser(&mut joueur, &d_joueur);
             }
             if !gele_j {
                 monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier);
-                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j);
+                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, &mut poison_sur_monstre);
                 encaisser(&mut monstre, &d_monstre);
             }
         } else if creneaux_joueur_dabord.contains(&i) {
             if !gele_j {
                 monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier);
-                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j);
+                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, &mut poison_sur_monstre);
                 encaisser(&mut monstre, &d_monstre);
             }
             if !gele_m {
                 monter_garde(&mut monstre, act_m, val_m, 1);
-                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m);
+                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, &mut poison_sur_joueur);
                 encaisser(&mut joueur, &d_joueur);
             }
         } else {
             if !gele_j { monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier); }
             if !gele_m { monter_garde(&mut monstre, act_m, val_m, 1); }
-            if !gele_m { d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m); }
-            if !gele_j { d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j); }
+            if !gele_m { d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, &mut poison_sur_joueur); }
+            if !gele_j { d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, &mut poison_sur_monstre); }
             encaisser(&mut joueur, &d_joueur);
             encaisser(&mut monstre, &d_monstre);
         }
@@ -333,9 +343,11 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         if guerrier && !gele_j && *act_j == ActionType::D { guerrier_bonus_base_a += 2; }
 
 
-        let mut log_action = format!("Action {} : Vous {} vs {} {}", i+1, symbole(act_j), monstre.nom, symbole(act_m));
+        let mut log_action = format!("Action {} : Vous {} vs {} {}", i+1, symbole(act_j, &joueur), monstre.nom, symbole(act_m, &monstre));
         
-        if combo_j_count > 1 && *act_j != ActionType::E {
+        // Pas de mention de combo sur un créneau gelé : l'action n'a pas eu lieu, afficher sa
+        // valeur laisserait croire qu'elle a porté (et le compteur n'a de toute façon pas bougé).
+        if combo_j_count > 1 && *act_j != ActionType::E && !gele_j {
             if monstre.annule_bonus_combo {
                 log_action.push_str(log_annulation_j);
             } else {
@@ -343,7 +355,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             }
         }
         
-        if combo_m_count > 1 && *act_m != ActionType::E {
+        if combo_m_count > 1 && *act_m != ActionType::E && !gele_m {
             if joueur.annule_bonus_combo {
                 log_action.push_str(log_annulation_m);
             } else {
@@ -443,13 +455,23 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     }
 
     let mut logs_fin_tour = Vec::new();
-    if joueur.pv > 0 && monstre.pv > 0 {
-        // La brûlure est prélevée AVANT les assauts d'armure : les flammes rongent d'abord la
-        // plaque, et seul ce qu'il en reste part à l'assaut. (Le poison, lui, traverse l'armure et
-        // ne change rien à ce qui suit.)
-        logs_fin_tour.extend(tics_de_fin_de_tour(&mut joueur, "vous perdez"));
-        logs_fin_tour.extend(tics_de_fin_de_tour(&mut monstre, "l'ennemi perd"));
 
+    // Les doses posées ce tour-ci rejoignent le poison en cours : on garde la plus forte des deux,
+    // le poison ne décroissant jamais.
+    if poison_sur_joueur > 0 {
+        joueur.poison_actif = Some(joueur.poison_actif.unwrap_or(0).max(poison_sur_joueur));
+    }
+    if poison_sur_monstre > 0 {
+        monstre.poison_actif = Some(monstre.poison_actif.unwrap_or(0).max(poison_sur_monstre));
+    }
+
+    // ⚠️ Brûlure et poison se résolvent HORS de la garde « les deux sont vivants » : tuer son
+    // adversaire n'annule pas ce qu'on a déjà dans les veines. Le reste des effets de fin de tour
+    // (assauts d'armure, régénérations) n'a lui plus de sens si le combat est terminé.
+    logs_fin_tour.extend(tics_de_fin_de_tour(&mut joueur, "vous perdez"));
+    logs_fin_tour.extend(tics_de_fin_de_tour(&mut monstre, "l'ennemi perd"));
+
+    if joueur.pv > 0 && monstre.pv > 0 {
         // Assauts d'armure de fin de tour ("Pointes d'Acier" / Pacte de l'Armure II).
         // ⚠️ Les deux camps sont résolus sur le MÊME instantané d'armure, pris avant tout échange :
         // en séquence, celui qui frappait en second n'avait plus que le reliquat de son armure,
