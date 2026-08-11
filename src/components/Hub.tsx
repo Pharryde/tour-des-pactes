@@ -5,7 +5,9 @@ import { ChatHub } from './ChatHub';
 interface HubProps {
     onLancerRun: () => void;
     onChangeEcran: (ecran: Ecran) => void;
-    xpTotal: number;
+    // L'Arbre reste absent tant que le Chat n'a pas présenté le Forgeron (fin de la 2e run au plus
+    // tôt), même si le joueur a déjà de l'XP à dépenser : c'est le Chat qui ouvre la forge.
+    forgeronPresente: boolean;
     aNouveauteTuto: boolean;
     marquerTutoLu: () => void;
     aNouveauPacte: boolean;
@@ -14,7 +16,7 @@ interface HubProps {
 }
 
 export function Hub({
-    onLancerRun, onChangeEcran, xpTotal, aNouveauteTuto, marquerTutoLu,
+    onLancerRun, onChangeEcran, forgeronPresente, aNouveauteTuto, marquerTutoLu,
     aNouveauPacte, marquerPactesVus, aPointsCompetenceDispo
 }: HubProps) {
     // Cible du bond du Chat Mystérieux (voir ChatHub.tsx), qui mesure ce bouton à l'exécution.
@@ -46,13 +48,13 @@ export function Hub({
                 </button>
 
                 <button className="btn-menu" onClick={ouvrirTuto}>
-                    📖 Les Archives (Tuto)
+                    📖 Archives
                     {aNouveauteTuto && (
                         <span title="Nouvelle connaissance acquise" className="badge-nouveaute" />
                     )}
                 </button>
 
-                {xpTotal > 0 && (
+                {forgeronPresente && (
                     <button className="btn-menu" onClick={() => onChangeEcran('ecran-arbre')}>
                         ✨ Arbre de Compétences
                         {aPointsCompetenceDispo && (

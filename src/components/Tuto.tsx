@@ -52,23 +52,48 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                     </ul>
                 </div>
 
+                {/* Les deux fiches de référence permanentes (et les plus hautes) occupent leur
+                    propre rangée : noyées dans la grille, elles en étiraient toute la ligne à leur
+                    hauteur et laissaient de grands vides dans les cartes voisines. */}
+                {(xpTotal > 0 || aBenedictionChat) && (
+                    <div className="tuto-rangee-large">
+                        {xpTotal > 0 && (
+                            <div className="tuto-carte tuto-carte-xp">
+                                <span className="tuto-badge">Découverte : Éclats d'Âme</span>
+                                <h2>L'Énergie des Âmes</h2>
+                                <p>En terrassant les créatures de la Tour, vous accumulez de l'XP. À certains paliers fixes (5, 10, 25, 50, 100 puis toutes les centaines), vous obtenez <b>1 Point de Compétence</b> à dépenser dans l'Arbre.</p>
+
+                                <p>Valeur des âmes libérées selon le bestiaire connu :</p>
+                                <ul>
+                                    <li>👹 <b>Monstre normal</b> : 1 XP</li>
+                                    {bestiaire.boss > 0 && <li>👑 <b>Boss (Normal)</b> : 2 XP</li>}
+                                    {bestiaire.evolue > 0 && <li>⚡ <b className="c-orange">Boss (Forme Évoluée)</b> : 4 XP</li>}
+                                    {bestiaire.final > 0 && <li>🔥 <b className="c-rose">Boss (Forme Finale)</b> : 8 XP</li>}
+                                </ul>
+                            </div>
+                        )}
+
+                        {aBenedictionChat && (
+                            <div className="tuto-carte tuto-carte-benediction">
+                                <span className="tuto-badge">Don du Chat : Bénédiction</span>
+                                <h2>La Roue de la Chance</h2>
+                                <p>
+                                    L'Esprit de la Tour vous accompagne désormais. À <b>chaque entrée dans la Tour</b>, sa
+                                    roue vous accorde au hasard l'un de ces six bonus, valable pour toute l'ascension :
+                                </p>
+                                <ul>
+                                    {LISTE_BENEDICTIONS.map(cle => (
+                                        <li key={cle}>
+                                            {BENEDICTIONS_REGISTRY[cle].emoji} <b>{BENEDICTIONS_REGISTRY[cle].titre}</b> : {BENEDICTIONS_REGISTRY[cle].description}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="tuto-grille">
-
-                    {xpTotal > 0 && (
-                        <div className="tuto-carte tuto-carte-xp">
-                            <span className="tuto-badge">Découverte : Éclats d'Âme</span>
-                            <h2>L'Énergie des Âmes</h2>
-                            <p>En terrassant les créatures de la Tour, vous accumulez de l'XP. À certains paliers fixes (5, 10, 25, 50, 100 puis toutes les centaines), vous obtenez <b>1 Point de Compétence</b> à dépenser dans l'Arbre.</p>
-
-                            <p>Valeur des âmes libérées selon le bestiaire connu :</p>
-                            <ul>
-                                <li>👹 <b>Monstre normal</b> : 1 XP</li>
-                                {bestiaire.boss > 0 && <li>👑 <b>Boss (Normal)</b> : 2 XP</li>}
-                                {bestiaire.evolue > 0 && <li>⚡ <b className="c-orange">Boss (Forme Évoluée)</b> : 4 XP</li>}
-                                {bestiaire.final > 0 && <li>🔥 <b className="c-rose">Boss (Forme Finale)</b> : 8 XP</li>}
-                            </ul>
-                        </div>
-                    )}
 
                     {aConnuBuff && (
                         <div className="tuto-carte tuto-carte-resonance">
@@ -142,24 +167,6 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                         </div>
                     )}
 
-                    {aBenedictionChat && (
-                        <div className="tuto-carte tuto-carte-benediction">
-                            <span className="tuto-badge">Don du Chat : Bénédiction</span>
-                            <h2>La Roue de la Chance</h2>
-                            <p>
-                                L'Esprit de la Tour vous accompagne désormais. À <b>chaque entrée dans la Tour</b>, sa
-                                roue vous accorde au hasard l'un de ces six bonus, valable pour toute l'ascension :
-                            </p>
-                            <ul>
-                                {LISTE_BENEDICTIONS.map(cle => (
-                                    <li key={cle}>
-                                        {BENEDICTIONS_REGISTRY[cle].emoji} <b>{BENEDICTIONS_REGISTRY[cle].titre}</b> : {BENEDICTIONS_REGISTRY[cle].description}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
                     {synergiesAffichees.map(synergie => {
                         const decouverte = synergiesDecouvertes.includes(synergie);
                         return (
@@ -172,9 +179,11 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                                 </span>
                                 <h2>{decouverte ? SYNERGIES_REGISTRY[synergie].titre : '???'}</h2>
                                 <p>
+                                    {/* Texte court : répété sur les 3-4 synergies encore secrètes,
+                                        un paragraphe entier gonflait toute la rangée. */}
                                     {decouverte
                                         ? SYNERGIES_REGISTRY[synergie].description
-                                        : "Une combinaison précise de 4 Pactes équipés réveille ce pouvoir au lancement d'une ascension. Ni la Tour ni ses Gardiens ne vous diront laquelle."}
+                                        : "Une combinaison précise de 4 Pactes équipés la réveille. À vous de trouver laquelle."}
                                 </p>
                             </div>
                         );

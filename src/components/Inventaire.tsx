@@ -1,13 +1,18 @@
 // src/components/Inventaire.tsx
-import type { Ecran } from '../types';
+import type { Ecran, Synergie } from '../types';
 import { PACTES_REGISTRY, genererBadgesPactes } from '../utils/pactes';
-import { pactesManquantsPourSynergie } from '../utils/synergies';
+import { SYNERGIES_REGISTRY, composerEquipementSynergie, pactesManquantsPourSynergie } from '../utils/synergies';
 
 interface InventaireProps {
     pactesDebloques: string[];
     pactesEquipes: string[];
+    // Pactes portés lors d'une victoire totale : ils arborent un trophée définitif.
+    pactesVictorieux: string[];
+    // Synergies déjà découvertes : elles seules donnent droit au raccourci d'équipement.
+    synergiesDecouvertes: Synergie[];
     aPacteChat: boolean;
     onBasculerPacte: (nomPacte: string) => void;
+    onEquiperSynergie: (pactes: string[]) => void;
     onChangeEcran: (ecran: Ecran) => void;
 }
 
@@ -15,7 +20,7 @@ interface InventaireProps {
 // verrouillés dans la grille et donner au joueur une idée de sa progression vers la collection.
 const TOUS_LES_PACTES = Object.keys(PACTES_REGISTRY);
 
-export function Inventaire({ pactesDebloques, pactesEquipes, aPacteChat, onBasculerPacte, onChangeEcran }: InventaireProps) {
+export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, synergiesDecouvertes, aPacteChat, onBasculerPacte, onEquiperSynergie, onChangeEcran }: InventaireProps) {
 
     // Tant que le joueur n'a encore arraché aucun Pacte d'un niveau donné, on ne montre même pas
     // les emplacements verrouillés de ce niveau (sinon la 1ère partie révèlerait déjà la liste
@@ -29,6 +34,16 @@ export function Inventaire({ pactesDebloques, pactesEquipes, aPacteChat, onBascu
     // Si le joueur équipe déjà 3 des 4 Pactes d'une synergie cachée, le 4e s'illumine dans son
     // inventaire (à condition de le posséder déjà) pour l'aider à repérer la combinaison.
     const pactesManquants = pactesManquantsPourSynergie(pactesEquipes);
+
+    // Seules les synergies déjà découvertes ET réellement composables avec ce que le joueur possède
+    // méritent un bouton : proposer un raccourci qui échoue serait pire que ne rien proposer.
+    const synergiesEquipables = synergiesDecouvertes
+        .map(synergie => ({ synergie, composition: composerEquipementSynergie(synergie, pactesDebloques) }))
+        .filter((entree): entree is { synergie: Synergie; composition: string[] } => entree.composition !== null)
+        .map(entree => ({
+            ...entree,
+            dejaEquipee: entree.composition.every(p => pactesEquipes.includes(p)) && pactesEquipes.length === entree.composition.length,
+        }));
 
     const renderPacte = (pacte: string) => {
         const estDebloque = pactesDebloques.includes(pacte);
@@ -45,6 +60,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, aPacteChat, onBascu
 
         const estEquipe = pactesEquipes.includes(pacte);
         const estSuggere = !estEquipe && pactesManquants.includes(pacte.replace(" II", ""));
+        const aVaincuLaTour = pactesVictorieux.includes(pacte);
         const infoPacte = genererBadgesPactes([pacte])[0];
         const description = infoPacte ? infoPacte.desc : "Effet inconnu";
 
@@ -52,12 +68,23 @@ export function Inventaire({ pactesDebloques, pactesEquipes, aPacteChat, onBascu
             <div
                 key={pacte}
                 onClick={() => onBasculerPacte(pacte)}
-                className={`pacte-carte${estEquipe ? ' pacte-carte--equipe' : ''}${estSuggere ? ' pacte-carte--suggere' : ''}`}
+                className={`pacte-carte${estEquipe ? ' pacte-carte--equipe' : ''}${estSuggere ? ' pacte-carte--suggere' : ''}${aVaincuLaTour ? ' pacte-carte--victorieux' : ''}`}
             >
                 <h3 className="pacte-carte-titre">{pacte}</h3>
                 <p className="pacte-carte-desc">{description}</p>
-                {estEquipe && <div className="pacte-carte-badge">Équipé</div>}
-                {estSuggere && <div className="pacte-carte-badge pacte-carte-badge--suggere">Synergie possible !</div>}
+                {/* États dans le FLUX, en pied de carte : en pastilles positionnées en absolu, ils
+                    se superposaient au titre et débordaient sur les cartes voisines. */}
+                <div className="pacte-carte-etats">
+                    {aVaincuLaTour && (
+                        <span className="pacte-etat pacte-etat--trophee" title="Vous avez terminé la Tour en portant ce Pacte">🏆</span>
+                    )}
+                    {estEquipe && <span className="pacte-etat pacte-etat--equipe">Équipé</span>}
+                    {/* Volontairement réduit à une pastille : le halo doré de la carte porte déjà le
+                        message, un libellé complet mangeait toute la place sur une carte étroite. */}
+                    {estSuggere && (
+                        <span className="pacte-etat pacte-etat--suggere" title="Ce Pacte compléterait une synergie cachée">⚡</span>
+                    )}
+                </div>
             </div>
         );
     };
@@ -76,9 +103,30 @@ export function Inventaire({ pactesDebloques, pactesEquipes, aPacteChat, onBascu
                         <div className="pacte-carte pacte-carte--equipe pacte-carte--speciale">
                             <h3 className="pacte-carte-titre">🐈 Pacte de la Vie Éternelle</h3>
                             <p className="pacte-carte-desc">Don de l'Esprit de la Tour. Vous ressuscitez toujours au Hub après une chute.</p>
-                            <div className="pacte-carte-badge">Toujours équipé</div>
+                            <div className="pacte-carte-etats">
+                                <span className="pacte-etat pacte-etat--equipe">Toujours équipé</span>
+                            </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Raccourci d'équipement : une synergie exige une combinaison exacte de 4 Pactes
+                répartis sur 3 emplacements de Niveau I et 1 de Niveau II. La recomposer à la main
+                à chaque run est fastidieux et facile à rater. */}
+            {synergiesEquipables.length > 0 && (
+                <div className="synergies-raccourcis">
+                    <span className="synergies-raccourcis-titre">Synergies découvertes :</span>
+                    {synergiesEquipables.map(({ synergie, composition, dejaEquipee }) => (
+                        <button
+                            key={synergie}
+                            className={`synergie-bouton${dejaEquipee ? ' synergie-bouton--active' : ''}`}
+                            onClick={() => onEquiperSynergie(composition)}
+                            title={`${SYNERGIES_REGISTRY[synergie].titre} — ${composition.join(', ')}`}
+                        >
+                            🔮 {synergie}{dejaEquipee ? ' ✓' : ''}
+                        </button>
+                    ))}
                 </div>
             )}
 

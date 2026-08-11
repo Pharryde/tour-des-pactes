@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // `moteur_wasm/pkg` est généré par wasm-bindgen à chaque build du moteur : rien n'y est écrit à
+  // la main, et ses en-têtes `eslint-disable` déclenchent une alerte « directive inutile ».
+  globalIgnores(['dist', 'moteur_wasm/pkg']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

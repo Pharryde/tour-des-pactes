@@ -1,4 +1,4 @@
-export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue';
+export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 export type ChoixRepos = 'soin' | 'atk' | 'pre' | 'def' | 'pv';
 export type Synergie = 'Guerrier' | 'Ninja' | 'Tank' | 'Assassin';
@@ -70,6 +70,17 @@ export interface Entite {
     bonusEsquiveFlat?: number;
     chanceCritique?: number;
     reductionEsquiveOpposant?: number;
+
+    // --- NOUVEAU : ÉTAGES DU FROID / DE LA FOUDRE / DU FEU / DU POISON ---
+    actionsResolutionInversee?: number;
+    actionsGelees?: number;
+    multiplicateurDegatsSiArmure?: number;
+    degatsBrulure?: number;
+    // Multiplicateur des dégâts Précis pour obtenir la dose de poison (miroir Rust).
+    multiplicateurPoison?: number;
+    // États subis, transportés d'un tour à l'autre par l'entité elle-même.
+    brulureActive?: number;
+    poisonActif?: number;
 }
 
 export interface EtapeCombat {

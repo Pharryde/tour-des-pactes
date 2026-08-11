@@ -11,6 +11,8 @@ import { SortieTour } from './components/SortieTour';
 import { EtagePair } from './components/EtagePair';
 import { TutoConclusion } from './components/TutoConclusion';
 import { BenedictionChat } from './components/BenedictionChat';
+import { PresentationForgeron } from './components/PresentationForgeron';
+import { LeconCombo } from './components/LeconCombo';
 import { RoueChance } from './components/RoueChance';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
@@ -26,12 +28,13 @@ function App() {
       listeEtages, indexEtageActuel, indexSalle,
       joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort, statsDerniereRun,
       enCombatMegaBoss, monstreMegaBoss, choixReposActifs, monstreTuto,
-      pactesDebloques, pactesEquipes, aPacteChat,
-      aBenedictionChat, benedictionActive, vieChatDispo,
+      pactesDebloques, pactesEquipes, pactesVictorieux, aPacteChat,
+      aBenedictionChat, benedictionActive, vieChatDispo, forgeronPresente,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, aPointsCompetenceDispo,
-      ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte,
+      ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie,
       gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction,
+      gererForgeronPresente, gererLeconComboFaite,
       gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss,
       gererFinTutoriel, gererConclusionTuto, gererAbandonTuto, handleFinDeCombat,
   } = useGameState();
@@ -80,7 +83,7 @@ function App() {
               <Hub
                   onLancerRun={gererDemarrerAscension}
                   onChangeEcran={setEcran}
-                  xpTotal={xpTotal}
+                  forgeronPresente={forgeronPresente}
                   aNouveauteTuto={aNouveauteTuto}
                   marquerTutoLu={marquerTutoLu}
                   aNouveauPacte={aNouveauPacte}
@@ -111,13 +114,26 @@ function App() {
               />
           )}
 
-          {ecran === 'ecran-inventaire' && <Inventaire pactesDebloques={pactesDebloques} pactesEquipes={pactesEquipes} aPacteChat={aPacteChat} onBasculerPacte={gererBasculerPacte} onChangeEcran={setEcran} />}
+          {ecran === 'ecran-inventaire' && (
+              <Inventaire
+                  pactesDebloques={pactesDebloques}
+                  pactesEquipes={pactesEquipes}
+                  pactesVictorieux={pactesVictorieux}
+                  synergiesDecouvertes={synergiesDecouvertes}
+                  aPacteChat={aPacteChat}
+                  onBasculerPacte={gererBasculerPacte}
+                  onEquiperSynergie={gererEquiperSynergie}
+                  onChangeEcran={setEcran}
+              />
+          )}
           {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={gererQuitterFin} logsMort={logsMort} stats={statsDerniereRun} />}
           {ecran === 'ecran-repos' && joueur && <Repos joueur={joueur} soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} />}
           {ecran === 'ecran-etage-pair' && <EtagePair onContinuer={() => setEcran('ecran-combat')} />}
           {ecran === 'ecran-tuto-conclusion' && <TutoConclusion onContinuer={gererConclusionTuto} />}
           {ecran === 'ecran-benediction' && <BenedictionChat aVaincuLaTour={victoireTotale} onContinuer={gererRecevoirBenediction} />}
+          {ecran === 'ecran-forgeron' && <PresentationForgeron onContinuer={gererForgeronPresente} />}
+          {ecran === 'ecran-lecon-combo' && <LeconCombo onContinuer={gererLeconComboFaite} />}
           {ecran === 'ecran-roue' && benedictionActive && <RoueChance benediction={benedictionActive} onEntrer={() => gererLancerRun(benedictionActive)} />}
 
           {ecran === 'ecran-choix-boss' && (

@@ -8,6 +8,7 @@ fn kit_complet() -> Vec<ActionType> { vec![ActionType::A, ActionType::P, ActionT
 fn kit_sans_esquive() -> Vec<ActionType> { vec![ActionType::A, ActionType::P, ActionType::D] }
 fn kit_sans_defense() -> Vec<ActionType> { vec![ActionType::A, ActionType::P, ActionType::E] }
 fn kit_sans_precise() -> Vec<ActionType> { vec![ActionType::A, ActionType::D, ActionType::E] }
+fn kit_sans_attaque() -> Vec<ActionType> { vec![ActionType::P, ActionType::D, ActionType::E] }
 
 // --- Noms de boss : les 3 formes partagent toujours le même préfixe ---
 fn nom_boss(base: &str) -> String { format!("👑 BOSS: {}", base) }
@@ -50,6 +51,14 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         bonus_esquive_flat: None,
         chance_critique: None,
         reduction_esquive_opposant: None,
+        // Étages du Froid / de la Foudre / du Feu / du Poison.
+        actions_resolution_inversee: None,
+        actions_gelees: None,
+        multiplicateur_degats_si_armure: None,
+        degats_brulure: None,
+        multiplicateur_poison: None,
+        brulure_active: None,
+        poison_actif: None,
     }
 }
 
@@ -213,7 +222,9 @@ pub fn get_etage_puissance_brute() -> StructureEtage {
 
     StructureEtage {
         id_pacte: "Pacte de la Puissance Brute".to_string(),
-        nom: "Étage de la Puissance Brute".to_string(),
+        // Seul le nom affiché change : `id_pacte` reste "Pacte de la Puissance Brute", car il sert
+        // de clé dans les sauvegardes, PACTES_REGISTRY et SYNERGIES_REGISTRY.
+        nom: "Étage de la Brute".to_string(),
         monstres: vec![
             creer_base("Brute Hargneuse", 35, 12, 4, 6, esquive_std(), kit_sans_precise()),
             creer_base("Berserker des Cavernes", 45, 12, 4, 6, esquive_std(), kit_sans_precise()),
@@ -221,6 +232,135 @@ pub fn get_etage_puissance_brute() -> StructureEtage {
         ],
         boss_normal: creer_base(&nom_boss("Le Poing Primordial"), 90, 16, 5, 12, esquive_std(), kit_sans_precise()),
         boss_heroique: creer_base(&nom_boss_evolue("Le Poing Primordial"), 120, 20, 5, 12, esquive_std(), kit_sans_precise()),
+        boss_heroique_lvl2: boss_h2,
+    }
+}
+
+// --- Étage du Froid : dérègle l'ordre de résolution du tour. Là où tout se résout normalement en
+// simultané, ce Gardien fait passer ses propres actions AVANT celles du joueur sur quelques créneaux
+// (une Défense programmée face à ces créneaux arrive donc trop tard), et sa forme évoluée gèle
+// carrément une action. La forme finale cumule les deux. ---
+pub fn get_etage_froid() -> StructureEtage {
+    let mut m1 = creer_base("Éclat de Givre", 35, 8, 4, 8, esquive_std(), kit_sans_esquive());
+    m1.actions_resolution_inversee = Some(1);
+
+    let mut m2 = creer_base("Spectre Glacé", 45, 10, 4, 10, esquive_std(), kit_complet());
+    m2.actions_resolution_inversee = Some(1);
+
+    let mut m3 = creer_base("Colosse de Glace", 55, 10, 5, 12, esquive_std(), kit_sans_esquive());
+    m3.actions_resolution_inversee = Some(2);
+
+    let mut boss = creer_base(&nom_boss("Le Souffle Immobile"), 85, 12, 5, 12, esquive_std(), kit_complet());
+    boss.actions_resolution_inversee = Some(2);
+
+    let mut boss_h = creer_base(&nom_boss_evolue("Le Souffle Immobile"), 115, 14, 6, 12, esquive_std(), kit_complet());
+    boss_h.actions_gelees = Some(1);
+
+    let mut boss_h2 = creer_base(&nom_boss_finale("Le Souffle Immobile"), 145, 15, 6, 14, esquive_std(), kit_complet());
+    boss_h2.actions_resolution_inversee = Some(2);
+    boss_h2.actions_gelees = Some(1);
+
+    StructureEtage {
+        id_pacte: "Pacte du Froid".to_string(),
+        nom: "Étage du Froid".to_string(),
+        monstres: vec![m1, m2, m3],
+        boss_normal: boss,
+        boss_heroique: boss_h,
+        boss_heroique_lvl2: boss_h2,
+    }
+}
+
+// --- Étage de la Foudre : punit le fait de se défendre. Tant que la cible porte de l'armure, TOUS
+// ses dégâts sont multipliés — Précise comprise, qui garde par ailleurs son contournement d'armure.
+// Se défendre contre ce Gardien est donc un piège ; il faut esquiver ou frapper. ---
+pub fn get_etage_foudre() -> StructureEtage {
+    let mut m1 = creer_base("Étincelle Vive", 35, 8, 4, 6, esquive_std(), kit_sans_defense());
+    m1.multiplicateur_degats_si_armure = Some(1.5);
+
+    let mut m2 = creer_base("Zéphyr Électrique", 45, 9, 5, 8, esquive_std(), kit_sans_defense());
+    m2.multiplicateur_degats_si_armure = Some(1.5);
+
+    let mut m3 = creer_base("Élémentaire d'Orage", 55, 10, 5, 10, esquive_std(), kit_complet());
+    m3.multiplicateur_degats_si_armure = Some(1.5);
+
+    let mut boss = creer_base(&nom_boss("La Colère du Ciel"), 85, 11, 5, 10, esquive_std(), kit_complet());
+    boss.multiplicateur_degats_si_armure = Some(1.5);
+
+    let mut boss_h = creer_base(&nom_boss_evolue("La Colère du Ciel"), 115, 12, 6, 10, esquive_std(), kit_complet());
+    boss_h.multiplicateur_degats_si_armure = Some(2.0);
+
+    let mut boss_h2 = creer_base(&nom_boss_finale("La Colère du Ciel"), 145, 13, 6, 12, esquive_std(), kit_complet());
+    boss_h2.multiplicateur_degats_si_armure = Some(3.0);
+
+    StructureEtage {
+        id_pacte: "Pacte de la Foudre".to_string(),
+        nom: "Étage de la Foudre".to_string(),
+        monstres: vec![m1, m2, m3],
+        boss_normal: boss,
+        boss_heroique: boss_h,
+        boss_heroique_lvl2: boss_h2,
+    }
+}
+
+// --- Étage du Feu : pose une brûlure dès qu'un coup porte. Elle frappe en fin de tour, se fait
+// absorber par l'armure restante, puis est divisée par deux — elle punit fort à chaud et s'éteint
+// d'elle-même si on survit à l'assaut initial. ---
+pub fn get_etage_feu() -> StructureEtage {
+    let mut m1 = creer_base("Braise Rampante", 35, 7, 4, 8, esquive_std(), kit_sans_precise());
+    m1.degats_brulure = Some(2);
+
+    let mut m2 = creer_base("Chien de Cendre", 45, 9, 4, 8, esquive_std(), kit_sans_precise());
+    m2.degats_brulure = Some(3);
+
+    let mut m3 = creer_base("Salamandre Ardente", 55, 10, 5, 10, esquive_std(), kit_sans_precise());
+    m3.degats_brulure = Some(4);
+
+    let mut boss = creer_base(&nom_boss("Le Brasier Vorace"), 85, 11, 5, 12, esquive_std(), kit_sans_precise());
+    boss.degats_brulure = Some(5);
+
+    let mut boss_h = creer_base(&nom_boss_evolue("Le Brasier Vorace"), 115, 13, 6, 12, esquive_std(), kit_sans_precise());
+    boss_h.degats_brulure = Some(7);
+
+    let mut boss_h2 = creer_base(&nom_boss_finale("Le Brasier Vorace"), 145, 14, 6, 14, esquive_std(), kit_sans_precise());
+    boss_h2.degats_brulure = Some(9);
+
+    StructureEtage {
+        id_pacte: "Pacte du Feu".to_string(),
+        nom: "Étage du Feu".to_string(),
+        monstres: vec![m1, m2, m3],
+        boss_normal: boss,
+        boss_heroique: boss_h,
+        boss_heroique_lvl2: boss_h2,
+    }
+}
+
+// --- Étage du Poison : le miroir du Feu. Le tic est bien plus faible, mais il ignore l'armure et
+// ne décroît JAMAIS : plus le combat s'étire, plus il coûte cher. Il faut conclure vite. ---
+pub fn get_etage_poison() -> StructureEtage {
+    let mut m1 = creer_base("Crapaud Putride", 35, 7, 4, 8, esquive_std(), kit_sans_attaque());
+    m1.multiplicateur_poison = Some(1);
+
+    let mut m2 = creer_base("Rôdeur Bilieux", 45, 8, 4, 10, esquive_std(), kit_sans_attaque());
+    m2.multiplicateur_poison = Some(1);
+
+    let mut m3 = creer_base("Veuve Sépulcrale", 55, 9, 5, 10, esquive_std(), kit_sans_attaque());
+    m3.multiplicateur_poison = Some(1);
+
+    let mut boss = creer_base(&nom_boss("La Sève Noire"), 85, 10, 5, 12, esquive_std(), kit_sans_attaque());
+    boss.multiplicateur_poison = Some(1);
+
+    let mut boss_h = creer_base(&nom_boss_evolue("La Sève Noire"), 115, 12, 6, 12, esquive_std(), kit_sans_attaque());
+    boss_h.multiplicateur_poison = Some(1);
+
+    let mut boss_h2 = creer_base(&nom_boss_finale("La Sève Noire"), 145, 13, 6, 14, esquive_std(), kit_sans_attaque());
+    boss_h2.multiplicateur_poison = Some(1);
+
+    StructureEtage {
+        id_pacte: "Pacte du Poison".to_string(),
+        nom: "Étage du Poison".to_string(),
+        monstres: vec![m1, m2, m3],
+        boss_normal: boss,
+        boss_heroique: boss_h,
         boss_heroique_lvl2: boss_h2,
     }
 }
@@ -235,5 +375,9 @@ pub fn get_tous_les_etages() -> Vec<StructureEtage> {
         get_etage_temps(),
         get_etage_fluidite(),
         get_etage_puissance_brute(),
+        get_etage_froid(),
+        get_etage_foudre(),
+        get_etage_feu(),
+        get_etage_poison(),
     ]
 }

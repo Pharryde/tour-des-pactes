@@ -3,8 +3,7 @@
 // s'il s'est fait broyer par la Tour, admiratif s'il l'a terrassée — mais il offre sa Bénédiction
 // dans les deux cas (voir utils/benedictions.ts).
 import { BENEDICTIONS_REGISTRY, LISTE_BENEDICTIONS } from '../utils/benedictions';
-import { ANIMATIONS_CHAT } from '../utils/animationsChat';
-import { SpriteAnime } from './SpriteAnime';
+import { ScenetteChat } from './ScenetteChat';
 
 interface Props {
     aVaincuLaTour: boolean;
@@ -13,16 +12,14 @@ interface Props {
 
 export function BenedictionChat({ aVaincuLaTour, onContinuer }: Props) {
     return (
-        <div id="ecran-benediction" className="ecran benediction-ecran">
-            <div className="benediction-entete">
-                <div className="benediction-sprite">
-                    <SpriteAnime definition={ANIMATIONS_CHAT.idle} />
-                </div>
-                <h1 className="titre-geant c-orange">🐈 Le Chat Mystérieux</h1>
-            </div>
-
+        <ScenetteChat
+            identifiant="ecran-benediction"
+            titre="🐈 Le Chat Mystérieux"
+            libelleBouton={aVaincuLaTour ? "Merci, l'Esprit de la Tour" : "Compris. J'y retourne."}
+            onContinuer={onContinuer}
+        >
             {aVaincuLaTour ? (
-                <p className="benediction-texte">
+                <p className="scenette-texte">
                     "Alors ça... je ne l'avais pas vu venir." Le chat vous observe, la queue battant
                     lentement l'air. "Tu es monté jusqu'en haut. Du premier coup. Aucun de tes
                     prédécesseurs n'a fait ça — je les ai tous regardés tomber, tu sais."
@@ -34,7 +31,7 @@ export function BenedictionChat({ aVaincuLaTour, onContinuer }: Props) {
                     avertissement : la Tour te prendra bien plus au sérieux, désormais."
                 </p>
             ) : (
-                <p className="benediction-texte">
+                <p className="scenette-texte">
                     Le chat vous attend au pied de la Tour, assis bien droit, la queue enroulée autour
                     des pattes. "Alors ? On s'est fait surprendre ?" Il incline la tête, l'air plus
                     amusé que déçu.
@@ -71,10 +68,6 @@ export function BenedictionChat({ aVaincuLaTour, onContinuer }: Props) {
                     })}
                 </div>
             </div>
-
-            <button className="btn-menu btn-jouer" onClick={onContinuer}>
-                {aVaincuLaTour ? "Merci, l'Esprit de la Tour" : "Compris. J'y retourne."}
-            </button>
-        </div>
+        </ScenetteChat>
     );
 }

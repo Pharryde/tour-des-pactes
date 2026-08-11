@@ -44,6 +44,11 @@ export function ArbreCompetences({ xpTotal, competences, setCompetences, monstre
     // pour que le joueur puisse composer sa répartition avant de la confirmer.
     const [brouillon, setBrouillon] = useState<Competences>(competences);
     const [forgeActive, setForgeActive] = useState(false);
+    // Suivre les manipulations, et pas seulement l'écart avec l'état validé : après une
+    // réinitialisation, un joueur qui remet exactement la même répartition retombe sur un brouillon
+    // identique au validé. Sans ce drapeau, "Valider" restait grisé et l'écran semblait bloqué —
+    // alors que la répartition affichée était bien celle en vigueur.
+    const [manipuleDepuisValidation, setManipuleDepuisValidation] = useState(false);
 
     const ptsTotal = calculerPointsCompetence(xpTotal);
     const ptsDepenses = calculerPointsDepenses(brouillon);
@@ -66,13 +71,21 @@ export function ArbreCompetences({ xpTotal, competences, setCompetences, monstre
     const modifier = (stat: keyof Competences, cout: number, direction: 1 | -1) => {
         if (direction === 1 && ptsDispo >= cout) {
             setBrouillon({ ...brouillon, [stat]: (brouillon[stat] || 0) + 1 });
+            setManipuleDepuisValidation(true);
         } else if (direction === -1 && (brouillon[stat] || 0) > 0) {
             setBrouillon({ ...brouillon, [stat]: (brouillon[stat] || 0) - 1 });
+            setManipuleDepuisValidation(true);
         }
+    };
+
+    const reinitialiser = () => {
+        setBrouillon({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
+        setManipuleDepuisValidation(true);
     };
 
     const valider = () => {
         setCompetences(brouillon);
+        setManipuleDepuisValidation(false);
         setForgeActive(true);
         setTimeout(() => setForgeActive(false), DUREE_ANIMATION_FORGE_MS);
     };
@@ -123,10 +136,19 @@ export function ArbreCompetences({ xpTotal, competences, setCompetences, monstre
             </div>
 
             <div className="arbre-footer">
-                <button onClick={() => setBrouillon({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 })} className="btn-menu btn-danger">
+                {/* Sur mobile, le compteur de points (et donc le forgeron du haut) est souvent hors
+                    de vue au moment de valider : une seconde forge s'allume ici, juste sous le
+                    pouce, pour que la confirmation reste visible sans avoir à remonter. */}
+                {forgeActive && (
+                    <div className="forge-anim-validation" aria-hidden="true">
+                        <SpriteAnime definition={ANIMATION_FORGE} />
+                    </div>
+                )}
+
+                <button onClick={reinitialiser} className="btn-menu btn-danger">
                     🔄 Réinitialiser l'Arbre
                 </button>
-                <button onClick={valider} disabled={!aChangements} className="btn-menu btn-jouer">
+                <button onClick={valider} disabled={!manipuleDepuisValidation && !aChangements} className="btn-menu btn-jouer">
                     ⚒️ Valider
                 </button>
                 <button onClick={onRetour} className="btn-menu">

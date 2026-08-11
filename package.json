@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "wasm": "cd moteur_wasm && cargo build --release --target wasm32-unknown-unknown && wasm-bindgen target/wasm32-unknown-unknown/release/moteur_wasm.wasm --out-dir pkg --target web && cd .. && node -e \"require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})\"",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

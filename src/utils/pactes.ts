@@ -107,6 +107,48 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
             j.bonusDegatsAttaquePourcentage = 20;
             j.bonusComboAttaquePalier = 1;
         }
+    },
+    // --- NOUVEAU : les 4 Pactes arrachés aux Gardiens du Froid, de la Foudre, du Feu et du Poison.
+    // Chacun retourne contre les monstres la mécanique de son Gardien (voir boss_data.rs).
+    "Pacte du Froid": {
+        desc: "(2 actions résolues avant l'ennemi)",
+        appliquer: (j) => { j.actionsResolutionInversee = 2; }
+    },
+    "Pacte du Froid II": {
+        desc: "(2 actions en premier, gèle 1 action ennemie)",
+        appliquer: (j) => {
+            j.actionsResolutionInversee = 2;
+            j.actionsGelees = 1;
+        }
+    },
+    // Le bonus ne s'applique QUE si la cible a de l'Armure sur elle à cet instant : personne ne
+    // s'étant défendu, pas de bonus. D'où la formulation, l'ancienne (« cible armée ») laissait
+    // croire à une propriété permanente de la cible.
+    "Pacte de la Foudre": {
+        desc: "(x1.5 Dégâts si la cible a de l'Armure)",
+        appliquer: (j) => { j.multiplicateurDegatsSiArmure = 1.5; }
+    },
+    "Pacte de la Foudre II": {
+        desc: "(x2 Dégâts si la cible a de l'Armure)",
+        appliquer: (j) => { j.multiplicateurDegatsSiArmure = 2; }
+    },
+    // ⚠️ Feu et Poison CONVERTISSENT une action : elle cesse de blesser sur le coup et se résout en
+    // fin de tour. C'est un changement de style de jeu (dégâts différés), pas un simple bonus.
+    "Pacte du Feu": {
+        desc: "(Vos Attaques deviennent +12 Brûlure, cumulée)",
+        appliquer: (j) => { j.degatsBrulure = 12; }
+    },
+    "Pacte du Feu II": {
+        desc: "(Vos Attaques deviennent +20 Brûlure, cumulée)",
+        appliquer: (j) => { j.degatsBrulure = 20; }
+    },
+    "Pacte du Poison": {
+        desc: "(Vos Précises deviennent du Poison, ignore l'armure)",
+        appliquer: (j) => { j.multiplicateurPoison = 1; }
+    },
+    "Pacte du Poison II": {
+        desc: "(Vos Précises deviennent x2 Poison, ignore l'armure)",
+        appliquer: (j) => { j.multiplicateurPoison = 2; }
     }
 };
 // ============================================================================

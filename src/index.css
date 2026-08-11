@@ -22,9 +22,15 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .ecran {
     display: flex;
     flex-direction: column;
-    /* L'écran prend toujours exactement la hauteur de l'appareil */
-    height: calc(100vh - 20px); 
-    max-height: calc(100vh - 20px);
+    /* ⚠️ min-height, JAMAIS height/max-height figées : avec une hauteur imposée, tout contenu plus
+       grand que l'écran est rogné en haut ET en bas sans qu'on puisse y accéder (les écrans étant
+       centrés verticalement), ce qui coupait plusieurs écrans sur mobile. Ici le conteneur grandit
+       avec son contenu et c'est la page qui défile.
+       `dvh` suit les barres d'outils rétractables des navigateurs mobiles ; `vh`, lui, fige la
+       hauteur barres masquées, donc déborde systématiquement de la zone réellement visible. La
+       ligne `vh` reste en repli pour les navigateurs sans `dvh`. */
+    min-height: calc(100vh - 20px);
+    min-height: calc(100dvh - 20px);
     animation: fadeIn 0.5s ease-in-out;
 }
 
@@ -104,7 +110,23 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 .combo { color: #fab387; display: block; margin-top: 10px; font-weight: bold;}
 
 .actions-box { display: flex; justify-content: center; gap: 8px; margin-top: 10px; height: 35px;}
-.action-slot { width: 35px; height: 35px; background-color: #45475a; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.action-slot { width: 35px; height: 35px; background-color: #45475a; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: relative; }
+
+/* Étage du Froid : marquage des créneaux sur les cases d'action pendant la résolution. Une ligne de
+   journal ne permet pas de voir d'un coup d'œil QUELLE action a été gelée, ni laquelle est passée
+   avant l'adversaire — d'où ces repères directement sur les cases concernées. */
+.action-slot--gelee { box-shadow: inset 0 0 0 2px #89dceb; opacity: 0.5; }
+.action-slot--premier { box-shadow: inset 0 0 0 2px #f9e2af; }
+.action-slot--gelee::after,
+.action-slot--premier::after {
+    content: '❄️';
+    position: absolute;
+    top: -7px;
+    right: -6px;
+    font-size: 0.62rem;
+    line-height: 1;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
+}
 
 .controles { margin: 15px 0 10px; flex-shrink: 0; }
 
@@ -165,6 +187,24 @@ div.log-tour { margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10p
    qui se redessinerait à chaque retour à la ligne (cf. l'avertissement sur .log-tour plus haut).
    Même pêche que la jauge .combo de l'arène, pour qu'on relie les deux d'un coup d'œil. */
 .log-combo { color: #fab387; }
+
+/* Coup Critique de la Bénédiction "Griffe Acérée" : une simple couleur se noyait dans une ligne
+   d'action déjà dense, d'où une pastille pleine qui pulse brièvement à son apparition.
+   `inline-block` garantit qu'elle ne se coupe jamais en deux au passage à la ligne — le seul
+   endroit où une propriété de boîte est sûre sur un élément inline. */
+.log-critique {
+    display: inline-block;
+    background-color: #f9e2af;
+    color: #11111b;
+    font-weight: bold;
+    padding: 1px 8px;
+    border-radius: 10px;
+    animation: eclat-critique 0.85s ease-in-out 2;
+}
+@keyframes eclat-critique {
+    0%, 100% { box-shadow: 0 0 6px rgba(249, 226, 175, 0.5); transform: scale(1); }
+    50% { box-shadow: 0 0 20px rgba(249, 226, 175, 1); transform: scale(1.06); }
+}
 
 /* --- CLASSES UTILITAIRES ET HUBS --- */
 .titre-geant { font-size: 3.5em; color: #cba6f7; margin-bottom: 10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
@@ -252,9 +292,4 @@ div.log-tour { margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10p
     /* Ajustements pour les écrans de Repos/Menu sur mobile */
     .repos-container { flex-direction: column; }
     .btn-menu { width: 100%; }
-
-    /* Le récapitulatif de stats + les 5 boutons empilés peuvent dépasser la hauteur d'un petit
-       écran : on passe en défilement depuis le haut, car un contenu centré qui déborde coupe le
-       haut sans qu'on puisse y remonter (même piège que .inventaire-ecran). */
-    #ecran-repos { justify-content: flex-start; overflow-y: auto; }
 }

@@ -1,12 +1,9 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
-export const get_donnees_etages: () => [number, number, number];
-export const jouer_tour: (a: any, b: any, c: any, d: any, e: number) => [number, number, number];
-export const __wbindgen_malloc: (a: number, b: number) => number;
-export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-export const __wbindgen_exn_store: (a: number) => void;
-export const __externref_table_alloc: () => number;
-export const __wbindgen_externrefs: WebAssembly.Table;
-export const __externref_table_dealloc: (a: number) => void;
-export const __wbindgen_start: () => void;
+export const get_donnees_etages: (a: number) => void;
+export const jouer_tour: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const __wbindgen_export: (a: number, b: number) => number;
+export const __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_export3: (a: number) => void;
+export const __wbindgen_add_to_stack_pointer: (a: number) => number;

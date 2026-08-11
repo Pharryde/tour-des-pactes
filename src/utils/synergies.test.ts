@@ -1,5 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { detecterSynergie, pactesManquantsPourSynergie, SYNERGIES_REGISTRY } from './synergies';
+import { composerEquipementSynergie, detecterSynergie, pactesManquantsPourSynergie, SYNERGIES_REGISTRY } from './synergies';
+
+// Le bouton d'équipement rapide s'appuie entièrement là-dessus : une composition fausse
+// équiperait une combinaison qui NE déclenche pas la synergie, sans rien signaler au joueur.
+describe('composerEquipementSynergie', () => {
+    const requisGuerrier = SYNERGIES_REGISTRY.Guerrier.pactesRequis;
+
+    it("refuse si un des 4 Pactes n'est pas possédé", () => {
+        expect(composerEquipementSynergie('Guerrier', requisGuerrier.slice(0, 3))).toBeNull();
+    });
+
+    it("refuse si aucun des 4 n'est possédé en Niveau II (l'emplacement II doit être rempli)", () => {
+        expect(composerEquipementSynergie('Guerrier', [...requisGuerrier])).toBeNull();
+    });
+
+    // Les 3 emplacements de Niveau I + l'unique emplacement de Niveau II : la composition doit
+    // toujours sortir exactement 3 Pactes de base et 1 en « II ».
+    it('compose 3 Niveau I et 1 Niveau II', () => {
+        const composition = composerEquipementSynergie('Guerrier', [...requisGuerrier, `${requisGuerrier[0]} II`]);
+        expect(composition).not.toBeNull();
+        expect(composition!.filter(p => p.endsWith(' II'))).toHaveLength(1);
+        expect(composition!).toHaveLength(4);
+        expect(detecterSynergie(composition!)).toBe('Guerrier');
+    });
+
+    // Un Pacte possédé UNIQUEMENT en Niveau II doit prendre l'emplacement II, sinon il ne rentre
+    // nulle part et la composition serait invalide.
+    it("réserve l'emplacement II au Pacte qui n'existe qu'à ce niveau", () => {
+        const debloques = [requisGuerrier[0], requisGuerrier[1], requisGuerrier[2], `${requisGuerrier[3]} II`, `${requisGuerrier[0]} II`];
+        const composition = composerEquipementSynergie('Guerrier', debloques);
+        expect(composition).toContain(`${requisGuerrier[3]} II`);
+        expect(detecterSynergie(composition!)).toBe('Guerrier');
+    });
+
+    it('refuse si deux Pactes exigeraient tous deux l\'unique emplacement II', () => {
+        const debloques = [requisGuerrier[0], requisGuerrier[1], `${requisGuerrier[2]} II`, `${requisGuerrier[3]} II`];
+        expect(composerEquipementSynergie('Guerrier', debloques)).toBeNull();
+    });
+});
 
 describe('detecterSynergie', () => {
     it('ne détecte rien tant que les 4 Pactes requis ne sont pas tous équipés', () => {

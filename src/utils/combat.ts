@@ -59,6 +59,21 @@ export function calculerPaliersEsquiveAffiches(entite: Entite, reductionAdverse 
     return effectifs.map(palier => Math.min(100, Math.max(0, palier + decalage)));
 }
 
+// La brûlure ne s'éteint pas avec celui qui l'a allumée : ce qu'il en reste au moment où le combat
+// s'achève est encaissé d'un coup, absorbé par l'armure restante comme un tic normal. Tuer le
+// Gardien du Feu n'annule donc pas la dette accumulée.
+// Le plancher à 1 PV est délibéré : le flux de victoire n'a pas de branche « mort après coup », et
+// un héros laissé à 0 PV se traînerait jusqu'au combat suivant.
+export function solderBrulure(joueur: Entite): { joueur: Entite; degats: number } {
+    const netToye = { ...joueur, armure: 0, nivEsquive: 0, brulureActive: undefined, poisonActif: undefined };
+    const brulure = joueur.brulureActive ?? 0;
+    if (brulure <= 0) return { joueur: netToye, degats: 0 };
+
+    const pvPerdus = Math.max(0, brulure - joueur.armure);
+    const pv = Math.max(1, joueur.pv - pvPerdus);
+    return { joueur: { ...netToye, pv }, degats: joueur.pv - pv };
+}
+
 export function genererActionsMonstre(monstre: Entite): ActionType[] {
     const possibilites = monstre.actionsPossibles;
     const actions: ActionType[] = [];

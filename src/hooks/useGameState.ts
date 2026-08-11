@@ -5,6 +5,7 @@ import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, C
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
 import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
 import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
+import { solderBrulure } from '../utils/combat';
 import { construireMegaBoss } from '../utils/megaboss';
 import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
 import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } from '../utils/tutoCombat';
@@ -59,7 +60,15 @@ export function useGameState() {
     const [tutoIntroFait, setTutoIntroFait] = useLocalStorage<boolean>('tdp_tuto_intro_fait', false);
     const [monstreTuto, setMonstreTuto] = useLocalStorage<Entite | null>('tdp_monstre_tuto', null);
     const [aPacteChat, setAPacteChat] = useLocalStorage<boolean>('tdp_a_pacte_chat', false);
+    // Pactes avec lesquels le joueur a déjà terrassé la Tour entière : trophée à vie, jamais remis
+    // à zéro d'une run à l'autre (contrairement aux stats de run).
+    const [pactesVictorieux, setPactesVictorieux] = useLocalStorage<string[]>('tdp_pactes_victorieux', []);
     const [aBenedictionChat, setABenedictionChat] = useLocalStorage<boolean>('tdp_benediction_chat', false);
+    // Apparitions successives du Chat entre deux runs (voir gererQuitterFin) : chacune ne se joue
+    // qu'une fois, dans l'ordre, et `runsTerminees` sert de minimum d'ancienneté.
+    const [runsTerminees, setRunsTerminees] = useLocalStorage<number>('tdp_runs_terminees', 0);
+    const [forgeronPresente, setForgeronPresente] = useLocalStorage<boolean>('tdp_forgeron_presente', false);
+    const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
     const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
     const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
@@ -129,6 +138,13 @@ export function useGameState() {
                 // sauvegardes antérieures à cette fonctionnalité (drapeau absent) : ne se
                 // déclenche que si le joueur n'a strictement aucune progression, pour ne jamais
                 // interrompre une partie déjà en cours.
+                // Sauvegardes antérieures à la scène du forgeron : le joueur utilise sans doute déjà
+                // l'Arbre, on ne va pas lui retirer le bouton en attendant une scène qu'il n'a
+                // jamais eu l'occasion de voir. Clé ABSENTE (et non `false`) = save d'avant.
+                if (window.localStorage.getItem('tdp_forgeron_presente') === null && (xpTotal > 0 || monstresTues > 0)) {
+                    setForgeronPresente(true);
+                }
+
                 if (!tutoIntroFait && ecran === 'ecran-hub' && monstresTues === 0 && pactesDebloques.length === 0) {
                     setTutoIntroFait(true);
                     setJoueur(construireHerosTuto());
@@ -155,7 +171,8 @@ export function useGameState() {
             enCombatMegaBoss, monstreMegaBoss, reposVisites, choixReposActifs, synergiesDecouvertes,
             tutoIntroFait, monstreTuto, aPacteChat, monstresTues, competences, xpTotal, bestiaire,
             aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
-            aBenedictionChat, benedictionActive, vieChatDispo,
+            aBenedictionChat, benedictionActive, vieChatDispo, pactesVictorieux,
+            runsTerminees, forgeronPresente, leconComboFaite,
         ],
     );
 
@@ -172,6 +189,11 @@ export function useGameState() {
     // effacerRun() ne remette indexEtageActuel et les compteurs à zéro — sinon l'écran de fin
     // n'aurait plus rien à afficher.
     const capturerStatsFinRun = () => {
+        // Appelée exactement une fois par run ACHEVÉE (mort ou victoire totale) — un abandon ne
+        // passe pas par ici. C'est donc le bon endroit pour compter les runs qui cadencent les
+        // apparitions du Chat.
+        setRunsTerminees(n => n + 1);
+
         const etageAtteint = indexEtageActuel + 1;
         const estNouveauRecord = etageAtteint > etageRecord;
         if (estNouveauRecord) setEtageRecord(etageAtteint);
@@ -197,12 +219,33 @@ export function useGameState() {
     // mourir, il ne reste plus rien à dépenser pour le reste de la run.
     const gererVieDeChatConsommee = () => setVieChatDispo(false);
 
-    // Sortie de l'écran de fin. La toute première run achevée (peu importe l'issue) fait apparaître
-    // le Chat Mystérieux, qui commente la performance du joueur avant de lui offrir sa Bénédiction.
-    const gererQuitterFin = () => setEcran(aBenedictionChat ? 'ecran-hub' : 'ecran-benediction');
+    // Sortie de l'écran de fin : le Chat s'y invite à intervalles scénarisés, une apparition par
+    // run achevée au maximum et toujours dans cet ordre.
+    //  1. 1re run  → il commente la performance et offre sa Bénédiction.
+    //  2. 2e run   → il présente le Forgeron (qui reste invisible au Hub jusque-là, même si le
+    //                joueur a déjà l'XP nécessaire : c'est le Chat qui « ouvre » la forge).
+    //  3. run suivante → il refait la leçon sur les Combos.
+    // `runsTerminees` a été incrémentée par capturerStatsFinRun avant l'affichage de l'écran de fin :
+    // au moment de ce clic, elle vaut donc bien le nombre de runs achevées, celle-ci comprise.
+    const gererQuitterFin = () => {
+        if (!aBenedictionChat) { setEcran('ecran-benediction'); return; }
+        if (!forgeronPresente && runsTerminees >= 2) { setEcran('ecran-forgeron'); return; }
+        if (forgeronPresente && !leconComboFaite) { setEcran('ecran-lecon-combo'); return; }
+        setEcran('ecran-hub');
+    };
 
     const gererRecevoirBenediction = () => {
         setABenedictionChat(true);
+        setEcran('ecran-hub');
+    };
+
+    const gererForgeronPresente = () => {
+        setForgeronPresente(true);
+        setEcran('ecran-arbre');
+    };
+
+    const gererLeconComboFaite = () => {
+        setLeconComboFaite(true);
         setEcran('ecran-hub');
     };
 
@@ -243,6 +286,11 @@ export function useGameState() {
             setPactesEquipes([...pactesEquipes, nomPacte]);
         }
     };
+
+    // Équipement en un clic d'une synergie découverte : la composition est validée en amont par
+    // composerEquipementSynergie, on remplace donc l'équipement entier sans repasser par les
+    // contrôles de peutEquiperPacte (qui refuseraient les étapes intermédiaires).
+    const gererEquiperSynergie = (pactes: string[]) => setPactesEquipes(pactes);
 
     const gererLancerRun = (benediction: BenedictionChat | null) => {
         const bonusEsq = (competences.esq || 0) * 5;
@@ -370,9 +418,18 @@ export function useGameState() {
             gererDefaite();
             return;
         }
-        setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0 });
+        // La brûlure restante est soldée ici : elle survit à son porteur (voir solderBrulure). Le
+        // poison, lui, s'arrête avec le combat.
+        const { joueur: joueurApresBrulure, degats: degatsBrulure } = solderBrulure(joueurRestant);
+        if (degatsBrulure > 0) {
+            setHistoriqueLogs(prev => [...prev, `<div class="log-mort">🔥 Les flammes ne s'éteignent pas avec leur maître : la brûlure restante vous coûte ${degatsBrulure} PV.</div>`]);
+        }
+        setJoueur(joueurApresBrulure);
         setXpTotal(prev => prev + appliquerBonusXp(10, benedictionActive));
         setVictoireTotale(true);
+        // Les Pactes portés jusqu'au bout gagnent leur trophée (cumulé sans doublon d'une victoire
+        // à l'autre : chaque composition victorieuse s'ajoute au palmarès).
+        setPactesVictorieux(prev => [...new Set([...prev, ...pactesEquipes])]);
         capturerStatsFinRun();
         setEcran('ecran-fin');
         effacerRun();
@@ -516,7 +573,13 @@ export function useGameState() {
             return;
         }
 
-        setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0 });
+        // La brûlure restante est soldée ici : elle survit à son porteur (voir solderBrulure). Le
+        // poison, lui, s'arrête avec le combat.
+        const { joueur: joueurApresBrulure, degats: degatsBrulure } = solderBrulure(joueurRestant);
+        if (degatsBrulure > 0) {
+            setHistoriqueLogs(prev => [...prev, `<div class="log-mort">🔥 Les flammes ne s'éteignent pas avec leur maître : la brûlure restante vous coûte ${degatsBrulure} PV.</div>`]);
+        }
+        setJoueur(joueurApresBrulure);
 
         const etageActuel = listeEtages[indexEtageActuel];
         const nomPacteCourant = etageActuel?.idPacte || "Pacte Inconnu";
@@ -563,12 +626,14 @@ export function useGameState() {
         // Pactes
         pactesDebloques,
         pactesEquipes,
+        pactesVictorieux,
         aPacteChat,
 
-        // Bénédiction du Chat
+        // Bénédiction du Chat et ses apparitions scénarisées
         aBenedictionChat,
         benedictionActive,
         vieChatDispo,
+        forgeronPresente,
 
         // Progression méta (hors-run)
         monstresTues,
@@ -588,11 +653,14 @@ export function useGameState() {
         marquerPactesVus,
         gererAbandon,
         gererBasculerPacte,
+        gererEquiperSynergie,
         gererDemarrerAscension,
         gererLancerRun,
         gererVieDeChatConsommee,
         gererQuitterFin,
         gererRecevoirBenediction,
+        gererForgeronPresente,
+        gererLeconComboFaite,
         gererPassageEtageSuivant,
         gererChoixRepos,
         declencherCombatPacte,

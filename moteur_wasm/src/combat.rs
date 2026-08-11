@@ -129,6 +129,14 @@ pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, attaquant: &Entite
 
     let degats_precis_doubles = attaquant.degats_precis_doubles;
 
+    // Étage de la Foudre : tant que la cible porte de l'armure, le coup entier est amplifié —
+    // Précise comprise, qui conserve par ailleurs son contournement d'armure. Se défendre contre un
+    // porteur de ce pouvoir est donc un piège.
+    let val_atk = match attaquant.multiplicateur_degats_si_armure {
+        Some(mult) if defenseur.armure > 0 => (val_atk as f32 * mult).round() as i32,
+        _ => val_atk,
+    };
+
     let jet = rand::thread_rng().gen_range(1..=100);
     if jet <= chance_esquive(attaquant, defenseur) {
         let degats_potentiels = if *action_atk == ActionType::P && degats_precis_doubles { val_atk * 2 } else { val_atk };

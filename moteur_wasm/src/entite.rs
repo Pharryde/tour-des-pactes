@@ -72,6 +72,31 @@ pub struct Entite {
     #[serde(default)] pub chance_critique: Option<i32>,
     // Points d'esquive retirés au DÉFENSEUR d'en face (l'inverse de bonus_esquive_flat).
     #[serde(default)] pub reduction_esquive_opposant: Option<i32>,
+
+    // --- NOUVEAU : ÉTAGES DU FROID / DE LA FOUDRE / DU FEU / DU POISON ---
+    // FROID. Nombre d'actions du tour (tirées au hasard) dont la résolution est déréglée : l'action
+    // de CETTE entité se résout avant celle de l'adversaire, au lieu du simultané habituel.
+    #[serde(default)] pub actions_resolution_inversee: Option<i32>,
+    // FROID. Nombre d'actions de l'ADVERSAIRE purement et simplement annulées (gelées).
+    #[serde(default)] pub actions_gelees: Option<i32>,
+
+    // FOUDRE. Multiplicateur appliqué aux dégâts (Attaque comme Précise) quand la cible porte
+    // encore de l'armure : le boss punit le fait de se défendre.
+    #[serde(default)] pub multiplicateur_degats_si_armure: Option<f32>,
+
+    // FEU. Brûlure ajoutée à la cible à chaque coup qui connecte. Les attaques de ces créatures ne
+    // blessent PLUS directement : toute leur valeur part dans la brûlure, qui s'accumule, se fait
+    // absorber par l'armure en fin de tour, puis est divisée par deux.
+    #[serde(default)] pub degats_brulure: Option<i32>,
+    // POISON. Multiplicateur appliqué aux dégâts PRÉCIS de l'attaquant pour obtenir la dose. Le
+    // poison traverse l'armure et ne décroît jamais.
+    #[serde(default)] pub multiplicateur_poison: Option<i32>,
+
+    // États SUBIS par cette entité. Ils doivent voyager avec elle d'un tour à l'autre (le moteur est
+    // sans mémoire entre deux appels), d'où leur place sur l'entité plutôt que dans une variable
+    // locale à jouer_tour.
+    #[serde(default)] pub brulure_active: Option<i32>,
+    #[serde(default)] pub poison_actif: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

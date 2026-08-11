@@ -69,6 +69,13 @@ export function CombatArene({
 
     usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, combatEnCours);
 
+    // Créneaux déréglés / gelés par l'Étage du Froid, renvoyés par le moteur à la résolution. Ils
+    // sont marqués sur les cases d'action : le journal seul ne dit pas d'un coup d'œil QUELLE
+    // action a sauté, ni laquelle est passée avant l'ennemi.
+    const [creneauxFroid, setCreneauxFroid] = useState<{ gelesJ: number[]; gelesM: number[]; jDabord: number[]; mDabord: number[] }>(
+        { gelesJ: [], gelesM: [], jDabord: [], mDabord: [] }
+    );
+
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [spriteJoueur, setSpriteJoueur] = useState<NomAnimation>('idle');
@@ -203,6 +210,13 @@ export function CombatArene({
             return;
         }
 
+        setCreneauxFroid({
+            gelesJ: resultat.creneauxGelesJoueur ?? [],
+            gelesM: resultat.creneauxGelesMonstre ?? [],
+            jDabord: resultat.creneauxJoueurDabord ?? [],
+            mDabord: resultat.creneauxMonstreDabord ?? [],
+        });
+
         const currentJoueur = { ...joueur }; const currentMonstre = { ...monstre };
         const localComboJ = { ...comboAffichageJ }; const localComboM = { ...comboAffichageM };
 
@@ -314,6 +328,7 @@ export function CombatArene({
             ajouterLogGlobal(`<div class="log-reset">(Fin du tour : Défenses et Combos réinitialisés)</div>`);
             setComboAffichageJ({type: null, count: 0}); setComboAffichageM({type: null, count: 0});
             setActionsJoueur([]); setActionsMonstre([]);
+            setCreneauxFroid({ gelesJ: [], gelesM: [], jDabord: [], mDabord: [] });
 
             const prochainTour = tourActuel + 1;
             if (estTutoriel && actionsMonstreScriptees && prochainTour > actionsMonstreScriptees.length) {
@@ -431,7 +446,15 @@ export function CombatArene({
                     </div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageJ)}</span>
                     <div className="actions-box">
-                        {[0, 1, 2, 3, 4].map(i => <div key={i} className="action-slot">{actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}</div>)}
+                        {[0, 1, 2, 3, 4].map(i => (
+                            <div
+                                key={i}
+                                className={`action-slot${creneauxFroid.gelesJ.includes(i) ? ' action-slot--gelee' : ''}${creneauxFroid.jDabord.includes(i) ? ' action-slot--premier' : ''}`}
+                                title={creneauxFroid.gelesJ.includes(i) ? 'Action gelée' : creneauxFroid.jDabord.includes(i) ? 'Résolue avant l\'ennemi' : undefined}
+                            >
+                                {actionsJoueur[i] ? SYMBOLES[actionsJoueur[i]] : ''}
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -447,7 +470,11 @@ export function CombatArene({
                     <span className="combo">Combo : {formatterCombo(comboAffichageM)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => (
-                            <div key={i} className="action-slot">
+                            <div
+                                key={i}
+                                className={`action-slot${creneauxFroid.gelesM.includes(i) ? ' action-slot--gelee' : ''}${creneauxFroid.mDabord.includes(i) ? ' action-slot--premier' : ''}`}
+                                title={creneauxFroid.gelesM.includes(i) ? 'Action gelée' : creneauxFroid.mDabord.includes(i) ? 'Résolue avant vous' : undefined}
+                            >
                                 {actionsMonstre[i] ? (indicesVisiblesMonstre.includes(i) ? SYMBOLES[actionsMonstre[i]] : '❓') : ''}
                             </div>
                         ))}

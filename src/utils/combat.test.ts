@@ -5,6 +5,7 @@ import {
     calculerPaliersEsquiveAffiches,
     calculerPreciseAffichee,
     corrigerActionsPourLimiteCombo,
+    solderBrulure,
 } from './combat';
 
 function creerHeros(surcharges: Partial<Entite> = {}): Entite {
@@ -112,6 +113,37 @@ describe('calculerPaliersEsquiveAffiches', () => {
     it('borne le résultat entre 0 et 100 après décalage', () => {
         const entite = creerHeros({ paliersEsquive: [0, 50, 75, 100], bonusEsquiveFlat: 5 });
         expect(calculerPaliersEsquiveAffiches(entite, 60)).toEqual([0, 0, 20, 45]);
+    });
+});
+
+// La brûlure survit à son porteur : tuer le Gardien du Feu n'annule pas la dette accumulée.
+describe('solderBrulure', () => {
+    it("ne retire rien sans brûlure en cours, mais nettoie les états", () => {
+        const { joueur, degats } = solderBrulure(creerHeros({ pv: 80, armure: 12, poisonActif: 4 }));
+        expect(degats).toBe(0);
+        expect(joueur.pv).toBe(80);
+        expect(joueur.armure).toBe(0);
+        expect(joueur.poisonActif).toBeUndefined();
+    });
+
+    it('encaisse la brûlure restante à la fin du combat', () => {
+        const { joueur, degats } = solderBrulure(creerHeros({ pv: 80, armure: 0, brulureActive: 30 }));
+        expect(degats).toBe(30);
+        expect(joueur.pv).toBe(50);
+        expect(joueur.brulureActive).toBeUndefined();
+    });
+
+    it("laisse l'armure restante absorber le solde", () => {
+        const { joueur, degats } = solderBrulure(creerHeros({ pv: 80, armure: 20, brulureActive: 30 }));
+        expect(degats).toBe(10);
+        expect(joueur.pv).toBe(70);
+    });
+
+    // Le flux de victoire n'a pas de branche « mort après coup » : un héros à 0 PV se traînerait
+    // jusqu'au combat suivant, d'où ce plancher délibéré.
+    it('laisse toujours au moins 1 PV', () => {
+        const { joueur } = solderBrulure(creerHeros({ pv: 12, armure: 0, brulureActive: 999 }));
+        expect(joueur.pv).toBe(1);
     });
 });
 
