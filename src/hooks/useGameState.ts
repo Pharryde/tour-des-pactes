@@ -11,7 +11,10 @@ import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } fro
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
-import { construireEvenementRun, journaliserRun, type IssueRun } from '../utils/telemetrieRuns';
+import {
+    COMPTEURS_REPOS_VIDES, construireEvenementRun, incrementerRepos, journaliserRun,
+    type CompteursRepos, type IssueRun,
+} from '../utils/telemetrieRuns';
 import { DELAI_TRANSITION_MS, calculerDelai } from '../utils/rythme';
 import { effacerEtatCombat } from './useCombatResume';
 import { useLocalStorage } from './useLocalStorage';
@@ -67,6 +70,13 @@ export function useGameState() {
     // Apparitions successives du Chat entre deux runs (voir gererQuitterFin) : chacune ne se joue
     // qu'une fois, dans l'ordre, et `runsTerminees` sert de minimum d'ancienneté.
     const [runsTerminees, setRunsTerminees] = useLocalStorage<number>('tdp_runs_terminees', 0);
+    // Numéro de run pour le journal cloud (voir utils/telemetrieRuns.ts). Distinct de
+    // `runsTerminees`, qui ne compte QUE les runs achevées : un abandon consommerait sinon le même
+    // numéro que la run suivante, et la clé primaire (user_id, numero_run) en rejetterait une des
+    // deux en silence. La valeur de départ est `runsTerminees` et non 0 : chez un joueur déjà
+    // installé, les runs déjà journalisées portent des numéros jusqu'à ce total, on repart donc
+    // juste au-dessus au lieu de réutiliser des numéros pris.
+    const [, setRunsLancees] = useLocalStorage<number>('tdp_runs_lancees', runsTerminees);
     const [forgeronPresente, setForgeronPresente] = useLocalStorage<boolean>('tdp_forgeron_presente', false);
     const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
     const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
@@ -91,6 +101,11 @@ export function useGameState() {
     const [, setDegatsInfligesRun] = useLocalStorage<number>('tdp_degats_infliges_run', 0);
     const [, setDegatsBloquesRun] = useLocalStorage<number>('tdp_degats_bloques_run', 0);
     const [, setDegatsEsquivesRun] = useLocalStorage<number>('tdp_degats_esquives_run', 0);
+    // Zones de Repos : ce qui a été PROPOSÉ et ce qui a été PRIS. Les deux, parce qu'au-delà de la
+    // 1re visite d'une run seules 3 des 5 options sont tirées — un choix peu pris peut donc n'avoir
+    // été que peu proposé, et le taux d'utilisation serait faux sans son dénominateur.
+    const [, setReposProposesRun] = useLocalStorage<CompteursRepos>('tdp_repos_proposes_run', COMPTEURS_REPOS_VIDES);
+    const [, setReposPrisRun] = useLocalStorage<CompteursRepos>('tdp_repos_pris_run', COMPTEURS_REPOS_VIDES);
     const [etageRecord, setEtageRecord] = useLocalStorage<number>('tdp_etage_record', 0);
     const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
 
@@ -145,6 +160,15 @@ export function useGameState() {
                     setForgeronPresente(true);
                 }
 
+                // Sauvegardes antérieures au journal de runs : le compteur doit être POSÉ, pas
+                // seulement initialisé en mémoire, sinon la run en cours serait journalisée avec le
+                // numéro 0. Une run déjà en vol a été lancée sans compteur : on lui attribue
+                // `runsTerminees + 1`, exactement le numéro qu'utilisait la version précédente —
+                // donc au-dessus des runs déjà journalisées, et libéré pour la suivante.
+                if (window.localStorage.getItem('tdp_runs_lancees') === null) {
+                    setRunsLancees(runsTerminees + (listeEtages.length > 0 ? 1 : 0));
+                }
+
                 if (!tutoIntroFait && ecran === 'ecran-hub' && monstresTues === 0 && pactesDebloques.length === 0) {
                     setTutoIntroFait(true);
                     setJoueur(construireHerosTuto());
@@ -188,15 +212,33 @@ export function useGameState() {
     // Fige les stats de la run qui vient de se terminer (mort ou victoire totale) AVANT que
     // effacerRun() ne remette indexEtageActuel et les compteurs à zéro — sinon l'écran de fin
     // n'aurait plus rien à afficher.
-    const capturerStatsFinRun = (issue: IssueRun) => {
+    // Charge utile du journal cloud, commune aux trois issues. Toutes les valeurs de run sont
+    // relues dans le localStorage plutôt que prises dans la closure : ce code part d'un callback de
+    // fin de combat, dont l'état capturé peut dater d'avant le tour fatal (cf. utils/logs.ts).
+    const construireEvenementDeLaRun = (issue: IssueRun) => construireEvenementRun({
+        numeroRun: lireValeurPersistante('tdp_runs_lancees', 0),
+        issue,
+        etage: indexEtageActuel + 1,
+        salle: indexSalle,
+        // La Tour est mélangée à chaque run : sans la séquence tirée, `etage` ne dit pas quels
+        // Gardiens ont réellement été rencontrés.
+        etages: listeEtages.map(e => e.idPacte),
+        pactesEquipes,
+        competences,
+        benediction: benedictionActive,
+        monstresTues: lireValeurPersistante('tdp_monstres_tues_run', 0),
+        pactesArraches: lireValeurPersistante<string[]>('tdp_pactes_debloques_run', []),
+        degatsInfliges: lireValeurPersistante('tdp_degats_infliges_run', 0),
+        degatsBloques: lireValeurPersistante('tdp_degats_bloques_run', 0),
+        degatsEsquives: lireValeurPersistante('tdp_degats_esquives_run', 0),
+        reposProposes: lireValeurPersistante('tdp_repos_proposes_run', COMPTEURS_REPOS_VIDES),
+        reposPris: lireValeurPersistante('tdp_repos_pris_run', COMPTEURS_REPOS_VIDES),
+    });
+
+    const capturerStatsFinRun = (issue: 'mort' | 'victoire') => {
         // Appelée exactement une fois par run ACHEVÉE (mort ou victoire totale) — un abandon ne
         // passe pas par ici. C'est donc le bon endroit pour compter les runs qui cadencent les
         // apparitions du Chat, et pour journaliser la run côté cloud.
-        // Le numéro est relu dans le localStorage plutôt que pris dans la closure : `setRunsTerminees`
-        // ci-dessous n'écrit qu'au moment où React applique la mise à jour, donc l'ancienne valeur
-        // est encore la bonne base ici, et elle est fiable même si ce callback vient d'un tour de
-        // combat déjà obsolète (même raison que les autres lectures persistantes, voir utils/logs.ts).
-        const numeroRun = lireValeurPersistante('tdp_runs_terminees', 0) + 1;
         setRunsTerminees(n => n + 1);
 
         const etageAtteint = indexEtageActuel + 1;
@@ -215,19 +257,18 @@ export function useGameState() {
         });
 
         // Volontairement pas attendu : l'écran de fin ne doit jamais dépendre du réseau, et un
-        // échec d'envoi n'a aucune conséquence pour le joueur. `benedictionActive` et
-        // `pactesEquipes` sont encore intacts ici — effacerRun() ne les remet à zéro qu'après.
-        void journaliserRun(construireEvenementRun({
-            numeroRun,
-            issue,
-            etage: etageAtteint,
-            pactesEquipes,
-            competences,
-            benediction: benedictionActive,
-        }));
+        // échec d'envoi n'a aucune conséquence pour le joueur. `benedictionActive`, `listeEtages`
+        // et `pactesEquipes` sont encore intacts ici — effacerRun() ne les vide qu'après.
+        void journaliserRun(construireEvenementDeLaRun(issue));
     };
 
     const gererAbandon = () => {
+        // Un abandon ne passe PAS par capturerStatsFinRun : il ne compte ni pour `runsTerminees`
+        // (qui cadence les apparitions du Chat) ni pour le record. Il est en revanche journalisé,
+        // parce que c'est le signal de frustration le plus fort du jeu — et le seul qui
+        // disparaissait entièrement. La garde protège d'un appel sans run en cours, qui
+        // enregistrerait une run fantôme à l'étage 1.
+        if (listeEtages.length > 0) void journaliserRun(construireEvenementDeLaRun('abandon'));
         effacerRun();
         setEcran('ecran-hub');
     };
@@ -360,6 +401,11 @@ export function useGameState() {
         setDegatsEsquivesRun(0);
         setReposVisites(0);
         setChoixReposActifs(null);
+        setReposProposesRun(COMPTEURS_REPOS_VIDES);
+        setReposPrisRun(COMPTEURS_REPOS_VIDES);
+        // Incrémenté au LANCEMENT et non à la fin : c'est ce qui donne un numéro unique à chaque
+        // run du journal cloud, abandons compris (voir la déclaration de tdp_runs_lancees).
+        setRunsLancees(n => n + 1);
 
         const messageBuff = genererMessageBuff(melange[0], pactesEquipes);
         if (messageBuff) setAConnuBuff(true);
@@ -412,8 +458,12 @@ export function useGameState() {
             // 1ère zone de repos de la run : les 5 choix sont disponibles. Ensuite, seuls 3
             // (tirés aléatoirement à chaque visite) restent utilisables, les 2 autres sont grisés.
             const toutesLesOptions: ChoixRepos[] = ['soin', 'pv', 'atk', 'pre', 'def'];
-            setChoixReposActifs(reposVisites === 0 ? null : melangerAleatoirement(toutesLesOptions).slice(0, 3));
+            const actifs = reposVisites === 0 ? null : melangerAleatoirement(toutesLesOptions).slice(0, 3);
+            setChoixReposActifs(actifs);
             setReposVisites(v => v + 1);
+            // `null` signifie « les 5 options », d'où le repli sur la liste complète : c'est le
+            // dénominateur du taux d'utilisation de chaque choix.
+            setReposProposesRun(c => incrementerRepos(c, actifs ?? toutesLesOptions));
             setEcran('ecran-repos');
         }
     };
@@ -454,6 +504,8 @@ export function useGameState() {
         if (choix === 'soin') { j.pv = Math.min(j.pvMax, j.pv + calculerSoinRepos(j.pvMax, pactesEquipes)); }
         if (choix === 'pv') { const gain = calculerGainPvMaxRepos(pactesEquipes); j.pvMax += gain; j.pv += gain; }
         if (choix === 'atk') j.baseA += 2; if (choix === 'pre') j.baseP += 1; if (choix === 'def') j.baseD += 2;
+
+        setReposPrisRun(c => incrementerRepos(c, [choix]));
 
         const prochainEtage = listeEtages[indexEtageActuel + 1];
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { construireEvenementRun } from './telemetrieRuns';
+import { COMPTEURS_REPOS_VIDES, construireEvenementRun, incrementerRepos } from './telemetrieRuns';
 import { SYNERGIES_REGISTRY } from './synergies';
 import { APP_VERSION } from './versionApp';
 
@@ -10,9 +10,18 @@ function construire(pactesEquipes: string[]) {
         numeroRun: 1,
         issue: 'mort',
         etage: 3,
+        salle: 2,
+        etages: ['armure', 'vie', 'feu'],
         pactesEquipes,
         competences: COMPETENCES_VIDES,
         benediction: null,
+        monstresTues: 7,
+        pactesArraches: [],
+        degatsInfliges: 120,
+        degatsBloques: 40,
+        degatsEsquives: 15,
+        reposProposes: COMPTEURS_REPOS_VIDES,
+        reposPris: COMPTEURS_REPOS_VIDES,
     });
 }
 
@@ -57,5 +66,37 @@ describe('construireEvenementRun', () => {
     // une valeur figée rendrait toute la table inexploitable pour ça.
     it("estampille l'événement avec la version courante", () => {
         expect(construire([]).version).toBe(APP_VERSION);
+    });
+
+    // Contrairement aux Pactes, l'ordre des étages EST l'information : la Tour est mélangée à
+    // chaque run, un tri effacerait la séquence réellement rencontrée.
+    it("préserve l'ordre des étages tirés", () => {
+        expect(construire([]).etages).toEqual(['armure', 'vie', 'feu']);
+    });
+});
+
+// Sans le dénominateur « proposé », un choix de Zone de Repos peu pris est indiscernable d'un
+// choix peu tiré : au-delà de la 1re visite d'une run, seules 3 des 5 options sont offertes.
+describe('incrementerRepos', () => {
+    it('compte chaque option indépendamment', () => {
+        const apres = incrementerRepos(incrementerRepos(COMPTEURS_REPOS_VIDES, ['soin', 'atk']), ['soin']);
+
+        expect(apres.soin).toBe(2);
+        expect(apres.atk).toBe(1);
+        expect(apres.def).toBe(0);
+    });
+
+    it("n'altère pas les compteurs reçus", () => {
+        incrementerRepos(COMPTEURS_REPOS_VIDES, ['soin']);
+
+        expect(COMPTEURS_REPOS_VIDES.soin).toBe(0);
+    });
+
+    // Une sauvegarde écrite avant l'ajout d'une option n'a pas sa clé : sans repli, l'incrément
+    // produirait un NaN qui remonterait jusqu'en base.
+    it('repart de zéro sur une clé absente', () => {
+        const partiel = { soin: 3 } as unknown as typeof COMPTEURS_REPOS_VIDES;
+
+        expect(incrementerRepos(partiel, ['pv']).pv).toBe(1);
     });
 });

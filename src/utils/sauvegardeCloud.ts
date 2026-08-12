@@ -34,6 +34,7 @@ const CLES_SYNCHRONISEES = [
     'tdp_pactes_victorieux',
     'tdp_benediction_chat',
     'tdp_runs_terminees',
+    'tdp_runs_lancees',
     'tdp_forgeron_presente',
     'tdp_lecon_combo_faite',
     'tdp_benediction_active',
@@ -51,6 +52,8 @@ const CLES_SYNCHRONISEES = [
     'tdp_degats_infliges_run',
     'tdp_degats_bloques_run',
     'tdp_degats_esquives_run',
+    'tdp_repos_proposes_run',
+    'tdp_repos_pris_run',
     'tdp_etage_record',
     'tdp_stats_derniere_run',
 ] as const;

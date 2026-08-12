@@ -133,7 +133,97 @@ group by benediction, synergie
 order by runs desc;
 
 -- Progression d'un joueur run après run : est-ce qu'on apprend à jouer, et à quel rythme ?
+-- `numero_run` compte les runs LANCÉES (abandons compris), pas seulement les achevées.
 select numero_run, count(*) as joueurs, round(avg(etage), 2) as etage_moyen
 from public.runs
 group by numero_run
 order by numero_run;
+
+
+-- ============================================================================
+-- ZONES DE REPOS : PRIS RAPPORTÉ À PROPOSÉ
+-- ============================================================================
+
+-- LA requête du sujet. Au-delà de la 1re visite d'une run, seules 3 des 5 options sont tirées :
+-- comparer les choix entre eux sans leur dénominateur donnerait un classement faux, qui refléterait
+-- surtout la chance du tirage. Ici, `taux_pct` = « quand on me la propose, à quelle fréquence
+-- je la prends ». Une option sous 20 % est morte ; une au-dessus de 50 % écrase les autres.
+select
+    choix,
+    sum((repos_proposes->>choix)::int) as fois_proposee,
+    sum((repos_pris->>choix)::int)     as fois_prise,
+    round(100.0 * sum((repos_pris->>choix)::int)
+          / nullif(sum((repos_proposes->>choix)::int), 0), 1) as taux_pct
+from public.runs,
+     lateral unnest(array['soin', 'pv', 'atk', 'pre', 'def']) as choix
+where repos_proposes <> '{}'::jsonb
+group by choix
+order by taux_pct desc nulls last;
+
+-- Le même taux, mais découpé par issue : un choix qui séduit les joueurs qui MEURENT et que les
+-- vainqueurs dédaignent est un piège à débutant, pas une option équilibrée.
+select
+    issue,
+    choix,
+    round(100.0 * sum((repos_pris->>choix)::int)
+          / nullif(sum((repos_proposes->>choix)::int), 0), 1) as taux_pct
+from public.runs,
+     lateral unnest(array['soin', 'pv', 'atk', 'pre', 'def']) as choix
+where repos_proposes <> '{}'::jsonb
+group by issue, choix
+order by choix, issue;
+
+
+-- ============================================================================
+-- OÙ ET COMMENT LES RUNS S'ARRÊTENT
+-- ============================================================================
+
+-- Quel Gardien arrête réellement les joueurs. `etages` porte la séquence tirée et `etage` le rang
+-- atteint : `etages[etage]` est donc l'étage où la run s'est arrêtée, quel que soit le mélange.
+-- `salle` situe dans l'étage (le boss est la dernière des 4).
+select
+    etages[etage] as etage_fatal,
+    salle,
+    count(*)      as runs,
+    count(*) filter (where issue = 'abandon') as abandons
+from public.runs
+where issue <> 'victoire' and cardinality(etages) >= etage
+group by etage_fatal, salle
+order by runs desc;
+
+-- Taux d'abandon par étage : là où les gens ferment le jeu plutôt que d'y mourir. C'est un signal
+-- d'ennui ou de découragement, pas de difficulté — et il ne ressemble pas à la courbe des morts.
+select
+    etage,
+    count(*)                                                              as runs,
+    count(*) filter (where issue = 'abandon')                             as abandons,
+    round(100.0 * count(*) filter (where issue = 'abandon') / count(*), 1) as taux_abandon_pct
+from public.runs
+group by etage
+order by etage;
+
+-- Style de jeu et survie : le rapport entre dégâts infligés, bloqués et esquivés dit si le joueur
+-- a joué agressif, tank ou esquive. Comparer les profils entre victoires et morts désigne la
+-- stratégie qui marche vraiment — par opposition à celle que les joueurs croient bonne.
+select
+    issue,
+    count(*)                        as runs,
+    round(avg(degats_infliges))     as degats_infliges,
+    round(avg(degats_bloques))      as degats_bloques,
+    round(avg(degats_esquives))     as degats_esquives,
+    round(avg(monstres_tues), 1)    as monstres_tues,
+    round(avg(cardinality(pactes_arraches)), 2) as gardiens_heroiques_vaincus
+from public.runs
+group by issue
+order by runs desc;
+
+-- Prendre le risque du Gardien Héroïque, est-ce que ça paie ? `pactes_arraches` compte les Pactes
+-- arrachés PENDANT la run, donc les Formes Héroïques affrontées et gagnées.
+select
+    cardinality(pactes_arraches) as pactes_arraches,
+    count(*)                     as runs,
+    round(100.0 * count(*) filter (where issue = 'victoire') / count(*), 1) as taux_victoire_pct,
+    round(avg(etage), 1)         as etage_moyen
+from public.runs
+group by pactes_arraches
+order by pactes_arraches;
