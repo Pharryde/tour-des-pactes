@@ -12,8 +12,9 @@ import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
 import {
-    COMPTEURS_REPOS_VIDES, construireEvenementRun, incrementerRepos, journaliserRun,
-    type CompteursRepos, type IssueRun,
+    COMBO_VIDE, COMPTEURS_ACTIONS_VIDES, COMPTEURS_REPOS_VIDES, construireEvenementRun,
+    fusionnerCombo, incrementerCompteurs, journaliserRun,
+    type CompteursActions, type CompteursRepos, type IssueRun, type StatCombo, type StatsTour,
 } from '../utils/telemetrieRuns';
 import { DELAI_TRANSITION_MS, calculerDelai } from '../utils/rythme';
 import { effacerEtatCombat } from './useCombatResume';
@@ -106,6 +107,12 @@ export function useGameState() {
     // été que peu proposé, et le taux d'utilisation serait faux sans son dénominateur.
     const [, setReposProposesRun] = useLocalStorage<CompteursRepos>('tdp_repos_proposes_run', COMPTEURS_REPOS_VIDES);
     const [, setReposPrisRun] = useLocalStorage<CompteursRepos>('tdp_repos_pris_run', COMPTEURS_REPOS_VIDES);
+    // Comment le joueur JOUE, par opposition à ce qu'il équipe : actions programmées et efficacité
+    // au combo, la sienne comme celle des monstres — ces derniers tirant au hasard, leur combo
+    // moyen est l'étalon de ce qu'on obtient sans chercher à enchaîner.
+    const [, setActionsRun] = useLocalStorage<CompteursActions>('tdp_actions_run', COMPTEURS_ACTIONS_VIDES);
+    const [, setComboJoueurRun] = useLocalStorage<StatCombo>('tdp_combo_joueur_run', COMBO_VIDE);
+    const [, setComboMonstresRun] = useLocalStorage<StatCombo>('tdp_combo_monstres_run', COMBO_VIDE);
     const [etageRecord, setEtageRecord] = useLocalStorage<number>('tdp_etage_record', 0);
     const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
 
@@ -233,6 +240,9 @@ export function useGameState() {
         degatsEsquives: lireValeurPersistante('tdp_degats_esquives_run', 0),
         reposProposes: lireValeurPersistante('tdp_repos_proposes_run', COMPTEURS_REPOS_VIDES),
         reposPris: lireValeurPersistante('tdp_repos_pris_run', COMPTEURS_REPOS_VIDES),
+        actions: lireValeurPersistante('tdp_actions_run', COMPTEURS_ACTIONS_VIDES),
+        comboJoueur: lireValeurPersistante('tdp_combo_joueur_run', COMBO_VIDE),
+        comboMonstres: lireValeurPersistante('tdp_combo_monstres_run', COMBO_VIDE),
     });
 
     const capturerStatsFinRun = (issue: 'mort' | 'victoire') => {
@@ -403,6 +413,9 @@ export function useGameState() {
         setChoixReposActifs(null);
         setReposProposesRun(COMPTEURS_REPOS_VIDES);
         setReposPrisRun(COMPTEURS_REPOS_VIDES);
+        setActionsRun(COMPTEURS_ACTIONS_VIDES);
+        setComboJoueurRun(COMBO_VIDE);
+        setComboMonstresRun(COMBO_VIDE);
         // Incrémenté au LANCEMENT et non à la fin : c'est ce qui donne un numéro unique à chaque
         // run du journal cloud, abandons compris (voir la déclaration de tdp_runs_lancees).
         setRunsLancees(n => n + 1);
@@ -463,7 +476,7 @@ export function useGameState() {
             setReposVisites(v => v + 1);
             // `null` signifie « les 5 options », d'où le repli sur la liste complète : c'est le
             // dénominateur du taux d'utilisation de chaque choix.
-            setReposProposesRun(c => incrementerRepos(c, actifs ?? toutesLesOptions));
+            setReposProposesRun(c => incrementerCompteurs(c, actifs ?? toutesLesOptions));
             setEcran('ecran-repos');
         }
     };
@@ -505,7 +518,7 @@ export function useGameState() {
         if (choix === 'pv') { const gain = calculerGainPvMaxRepos(pactesEquipes); j.pvMax += gain; j.pv += gain; }
         if (choix === 'atk') j.baseA += 2; if (choix === 'pre') j.baseP += 1; if (choix === 'def') j.baseD += 2;
 
-        setReposPrisRun(c => incrementerRepos(c, [choix]));
+        setReposPrisRun(c => incrementerCompteurs(c, [choix]));
 
         const prochainEtage = listeEtages[indexEtageActuel + 1];
 
@@ -541,10 +554,16 @@ export function useGameState() {
 
     const ajouterLogGlobal = (log: string) => setHistoriqueLogs(prev => [...prev, log]);
 
-    const ajouterStatsTour = (degatsInfliges: number, degatsBloques: number, degatsEsquives: number) => {
-        setDegatsInfligesRun(prev => prev + degatsInfliges);
-        setDegatsBloquesRun(prev => prev + degatsBloques);
-        setDegatsEsquivesRun(prev => prev + degatsEsquives);
+    const ajouterStatsTour = (stats: StatsTour) => {
+        setDegatsInfligesRun(prev => prev + stats.degatsInfliges);
+        setDegatsBloquesRun(prev => prev + stats.degatsBloques);
+        setDegatsEsquivesRun(prev => prev + stats.degatsEsquives);
+        setActionsRun(prev => ({
+            A: prev.A + stats.actions.A, P: prev.P + stats.actions.P,
+            D: prev.D + stats.actions.D, E: prev.E + stats.actions.E,
+        }));
+        setComboJoueurRun(prev => fusionnerCombo(prev, stats.comboJoueur));
+        setComboMonstresRun(prev => fusionnerCombo(prev, stats.comboMonstre));
     };
 
     const gererRecompenseCombat = () => {

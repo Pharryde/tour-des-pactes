@@ -217,6 +217,68 @@ from public.runs
 group by issue
 order by runs desc;
 
+-- ============================================================================
+-- COMMENT LES JOUEURS JOUENT : ACTIONS ET COMBOS
+-- ============================================================================
+
+-- Répartition des actions programmées. Une action sous 10 % est un bouton que personne n'utilise.
+select
+    action,
+    sum((actions->>action)::int)                                              as fois_programmee,
+    round(100.0 * sum((actions->>action)::int)
+          / nullif(sum(sum((actions->>action)::int)) over (), 0), 1)          as pourcentage
+from public.runs,
+     lateral unnest(array['A', 'P', 'D', 'E']) as action
+where actions <> '{}'::jsonb
+group by action
+order by pourcentage desc;
+
+-- LA comparaison joueur / monstres. Les monstres tirent leurs actions au hasard : leur combo moyen
+-- est donc l'étalon de ce qu'on obtient SANS chercher à enchaîner. Un `ecart` proche de 0 (ou
+-- négatif) signifie que le joueur n'exploite pas le Combo — soit il ne l'a pas compris, soit la
+-- mécanique coûte plus qu'elle ne rapporte.
+-- On divise les SOMMES par les NOMBRES, jamais une moyenne de moyennes : sinon une run de 3 tours
+-- pèserait autant qu'une run de 40.
+select
+    version,
+    issue,
+    count(*)                                                       as runs,
+    round(sum(combo_somme_joueur)::numeric
+          / nullif(sum(combo_actions_joueur), 0), 2)               as combo_moyen_joueur,
+    round(sum(combo_somme_monstres)::numeric
+          / nullif(sum(combo_actions_monstres), 0), 2)             as combo_moyen_monstres,
+    round(sum(combo_somme_joueur)::numeric / nullif(sum(combo_actions_joueur), 0)
+        - sum(combo_somme_monstres)::numeric / nullif(sum(combo_actions_monstres), 0), 2) as ecart,
+    round(avg(combo_max_joueur), 1)                                as meilleur_combo_joueur
+from public.runs
+where combo_actions_joueur > 0
+group by version, issue
+order by version desc, issue;
+
+-- Le Combo fait-il gagner ? Découpage du taux de victoire par combo moyen du joueur. Si la courbe
+-- est plate, la mécanique centrale du jeu ne sert à rien.
+select
+    round(combo_somme_joueur::numeric / nullif(combo_actions_joueur, 0), 1) as combo_moyen,
+    count(*)                                                                as runs,
+    round(100.0 * count(*) filter (where issue = 'victoire') / count(*), 1) as taux_victoire_pct,
+    round(avg(etage), 1)                                                    as etage_moyen
+from public.runs
+where combo_actions_joueur > 0
+group by combo_moyen
+order by combo_moyen;
+
+-- Est-ce qu'on apprend à enchaîner ? Progression du combo moyen run après run, chez un même joueur.
+select
+    numero_run,
+    count(*)                                                   as joueurs,
+    round(sum(combo_somme_joueur)::numeric
+          / nullif(sum(combo_actions_joueur), 0), 2)           as combo_moyen_joueur
+from public.runs
+where combo_actions_joueur > 0
+group by numero_run
+order by numero_run;
+
+
 -- Prendre le risque du Gardien Héroïque, est-ce que ça paie ? `pactes_arraches` compte les Pactes
 -- arrachés PENDANT la run, donc les Formes Héroïques affrontées et gagnées.
 select

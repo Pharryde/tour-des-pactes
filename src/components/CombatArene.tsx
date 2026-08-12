@@ -5,6 +5,7 @@ import { genererActionsMonstre, corrigerActionsPourLimiteCombo, genererIndicesVi
 import { detailAttaque, detailPrecise, detailDefense } from '../utils/detailStats';
 import { tirerNouvelleForme, appliquerFormeMegaBoss } from '../utils/megaboss';
 import { genererBadgesPactes } from '../utils/pactes';
+import { COMPTEURS_ACTIONS_VIDES, incrementerCompteurs, type StatCombo, type StatsTour } from '../utils/telemetrieRuns';
 import { jouer_tour } from 'moteur_wasm';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { chargerEtatCombat, usePersisterCombat } from '../hooks/useCombatResume';
@@ -26,7 +27,7 @@ interface CombatAreneProps {
     competences: Competences;
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
-    ajouterStatsTour: (degatsInfliges: number, degatsBloques: number, degatsEsquives: number) => void;
+    ajouterStatsTour: (stats: StatsTour) => void;
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
@@ -265,6 +266,16 @@ export function CombatArene({
         let indexDesActionsCombats = 0;
         let degatsInfligesTour = 0; let degatsBloquesTour = 0; let degatsEsquivesTour = 0;
 
+        // Télémétrie du tour (voir utils/telemetrieRuns.ts). On profite du suivi de combo déjà fait
+        // pour l'affichage : `localComboJ/M` porte exactement le palier atteint à chaque action,
+        // gel de l'Étage du Froid compris.
+        let actionsTour = COMPTEURS_ACTIONS_VIDES;
+        const comboTourJ: StatCombo = { somme: 0, actions: 0, max: 0 };
+        const comboTourM: StatCombo = { somme: 0, actions: 0, max: 0 };
+        const cumulerCombo = (cumul: StatCombo, niveau: number) => {
+            cumul.somme += niveau; cumul.actions++; cumul.max = Math.max(cumul.max, niveau);
+        };
+
         for (let i = 0; i < resultat.etapes.length; i++) {
             const etape = resultat.etapes[i];
             degatsInfligesTour += etape.degatsInfliges;
@@ -282,10 +293,14 @@ export function CombatArene({
                 const creneau = indexDesActionsCombats;
                 if (!resultat.creneauxGelesJoueur.includes(creneau)) {
                     if (localComboJ.type === actJ) localComboJ.count++; else { localComboJ.type = actJ; localComboJ.count = 1; }
+                    cumulerCombo(comboTourJ, localComboJ.count);
                 }
                 if (!resultat.creneauxGelesMonstre.includes(creneau)) {
                     if (localComboM.type === actM) localComboM.count++; else { localComboM.type = actM; localComboM.count = 1; }
+                    cumulerCombo(comboTourM, localComboM.count);
                 }
+                // Comptée même si le créneau est gelé : le joueur l'a bien programmée.
+                actionsTour = incrementerCompteurs(actionsTour, [actJ]);
 
                 indexDesActionsCombats++;
 
@@ -327,7 +342,14 @@ export function CombatArene({
             await attendreEtape(etape.estAction ? 300 : 600);
         }
 
-        ajouterStatsTour(degatsInfligesTour, degatsBloquesTour, degatsEsquivesTour);
+        ajouterStatsTour({
+            degatsInfliges: degatsInfligesTour,
+            degatsBloques: degatsBloquesTour,
+            degatsEsquives: degatsEsquivesTour,
+            actions: actionsTour,
+            comboJoueur: comboTourJ,
+            comboMonstre: comboTourM,
+        });
 
         if (resultat.logsFinTour.length > 0) {
             for (const logFin of resultat.logsFinTour) { ajouterLogGlobal(logFin); }

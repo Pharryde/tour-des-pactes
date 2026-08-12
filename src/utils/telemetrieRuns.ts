@@ -10,22 +10,53 @@
 // ouverte pour la sauvegarde, et l'identifiant reste l'utilisateur anonyme qui existe déjà.
 import { detecterSynergie } from './synergies';
 import { APP_VERSION } from './versionApp';
-import type { BenedictionChat, ChoixRepos, Competences, Synergie } from '../types';
+import type { ActionType, BenedictionChat, ChoixRepos, Competences, Synergie } from '../types';
 
 // L'abandon n'est pas une run « achevée » (il ne compte ni pour runsTerminees ni pour le record),
 // mais c'est le signal de frustration le plus fort du jeu, et le seul qui disparaissait entièrement.
 export type IssueRun = 'mort' | 'victoire' | 'abandon';
 
 export type CompteursRepos = Record<ChoixRepos, number>;
+export type CompteursActions = Record<ActionType, number>;
 
 export const COMPTEURS_REPOS_VIDES: CompteursRepos = { soin: 0, pv: 0, atk: 0, pre: 0, def: 0 };
+export const COMPTEURS_ACTIONS_VIDES: CompteursActions = { A: 0, P: 0, D: 0, E: 0 };
 
-// Le `?? 0` couvre une sauvegarde écrite avant l'ajout d'une option de repos : la clé manquerait
-// alors dans les compteurs restaurés, et un NaN se propagerait jusqu'en base.
-export function incrementerRepos(compteurs: CompteursRepos, choix: readonly ChoixRepos[]): CompteursRepos {
+// Le `?? 0` couvre une sauvegarde écrite avant l'ajout d'une clé (une option de repos, une action) :
+// elle manquerait dans les compteurs restaurés, et un NaN se propagerait jusqu'en base.
+export function incrementerCompteurs<K extends string>(
+    compteurs: Record<K, number>,
+    cles: readonly K[],
+): Record<K, number> {
     const suivant = { ...compteurs };
-    for (const c of choix) suivant[c] = (suivant[c] ?? 0) + 1;
+    for (const cle of cles) suivant[cle] = (suivant[cle] ?? 0) + 1;
     return suivant;
+}
+
+// Combo d'un camp. On stocke la SOMME et le NOMBRE plutôt que la moyenne déjà calculée : une
+// moyenne de moyennes est fausse dès qu'on agrège plusieurs runs de longueurs différentes, alors
+// que `sum(somme) / sum(actions)` reste exact quel que soit le découpage.
+export interface StatCombo {
+    somme: number;
+    actions: number;
+    max: number;
+}
+
+export const COMBO_VIDE: StatCombo = { somme: 0, actions: 0, max: 0 };
+
+export function fusionnerCombo(a: StatCombo, b: StatCombo): StatCombo {
+    return { somme: a.somme + b.somme, actions: a.actions + b.actions, max: Math.max(a.max, b.max) };
+}
+
+// Ce que CombatArene remonte à la fin de chaque tour. Regroupé en objet plutôt qu'en liste
+// d'arguments : la fonction en prenait déjà trois et en compterait neuf.
+export interface StatsTour {
+    degatsInfliges: number;
+    degatsBloques: number;
+    degatsEsquives: number;
+    actions: CompteursActions;
+    comboJoueur: StatCombo;
+    comboMonstre: StatCombo;
 }
 
 // Miroir des colonnes de public.runs, hors `user_id` (rempli côté serveur) et `fini_le` (défaut).
@@ -47,6 +78,13 @@ export interface EvenementRun {
     degats_esquives: number;
     repos_proposes: CompteursRepos;
     repos_pris: CompteursRepos;
+    actions: CompteursActions;
+    combo_somme_joueur: number;
+    combo_actions_joueur: number;
+    combo_max_joueur: number;
+    combo_somme_monstres: number;
+    combo_actions_monstres: number;
+    combo_max_monstres: number;
 }
 
 export function construireEvenementRun(params: {
@@ -65,6 +103,9 @@ export function construireEvenementRun(params: {
     degatsEsquives: number;
     reposProposes: CompteursRepos;
     reposPris: CompteursRepos;
+    actions: CompteursActions;
+    comboJoueur: StatCombo;
+    comboMonstres: StatCombo;
 }): EvenementRun {
     return {
         numero_run: params.numeroRun,
@@ -96,6 +137,19 @@ export function construireEvenementRun(params: {
         // le dénominateur, le taux d'utilisation est faux.
         repos_proposes: params.reposProposes,
         repos_pris: params.reposPris,
+        // Ce que le joueur PROGRAMME, la seule mesure de sa façon de jouer — le reste du journal ne
+        // dit que ce qu'il équipe. Les créneaux gelés par l'Étage du Froid sont comptés : le joueur
+        // les a bel et bien choisis, c'est le moteur qui les annule ensuite.
+        actions: params.actions,
+        // Combo des deux camps, pour comparer. Le monstre est l'étalon : ses actions sont tirées
+        // au hasard, donc son combo moyen est la valeur qu'on obtient SANS jouer. Un joueur qui ne
+        // le dépasse pas n'a pas compris la mécanique — ou elle est trop difficile à exploiter.
+        combo_somme_joueur: params.comboJoueur.somme,
+        combo_actions_joueur: params.comboJoueur.actions,
+        combo_max_joueur: params.comboJoueur.max,
+        combo_somme_monstres: params.comboMonstres.somme,
+        combo_actions_monstres: params.comboMonstres.actions,
+        combo_max_monstres: params.comboMonstres.max,
     };
 }
 

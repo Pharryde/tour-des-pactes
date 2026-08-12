@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { COMPTEURS_REPOS_VIDES, construireEvenementRun, incrementerRepos } from './telemetrieRuns';
+import {
+    COMBO_VIDE, COMPTEURS_ACTIONS_VIDES, COMPTEURS_REPOS_VIDES,
+    construireEvenementRun, fusionnerCombo, incrementerCompteurs,
+} from './telemetrieRuns';
 import { SYNERGIES_REGISTRY } from './synergies';
 import { APP_VERSION } from './versionApp';
+import type { ChoixRepos } from '../types';
 
 const COMPETENCES_VIDES = { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 };
 
@@ -22,6 +26,9 @@ function construire(pactesEquipes: string[]) {
         degatsEsquives: 15,
         reposProposes: COMPTEURS_REPOS_VIDES,
         reposPris: COMPTEURS_REPOS_VIDES,
+        actions: COMPTEURS_ACTIONS_VIDES,
+        comboJoueur: COMBO_VIDE,
+        comboMonstres: COMBO_VIDE,
     });
 }
 
@@ -77,9 +84,12 @@ describe('construireEvenementRun', () => {
 
 // Sans le dénominateur « proposé », un choix de Zone de Repos peu pris est indiscernable d'un
 // choix peu tiré : au-delà de la 1re visite d'une run, seules 3 des 5 options sont offertes.
-describe('incrementerRepos', () => {
-    it('compte chaque option indépendamment', () => {
-        const apres = incrementerRepos(incrementerRepos(COMPTEURS_REPOS_VIDES, ['soin', 'atk']), ['soin']);
+describe('incrementerCompteurs', () => {
+    // Générique explicite : imbriqué, l'inférence retomberait sur les seules clés du dernier
+    // appel (`Record<'soin', number>`) au lieu du jeu complet des choix de repos.
+    it('compte chaque clé indépendamment', () => {
+        const premier = incrementerCompteurs<ChoixRepos>(COMPTEURS_REPOS_VIDES, ['soin', 'atk']);
+        const apres = incrementerCompteurs<ChoixRepos>(premier, ['soin']);
 
         expect(apres.soin).toBe(2);
         expect(apres.atk).toBe(1);
@@ -87,16 +97,33 @@ describe('incrementerRepos', () => {
     });
 
     it("n'altère pas les compteurs reçus", () => {
-        incrementerRepos(COMPTEURS_REPOS_VIDES, ['soin']);
+        incrementerCompteurs(COMPTEURS_ACTIONS_VIDES, ['A']);
 
-        expect(COMPTEURS_REPOS_VIDES.soin).toBe(0);
+        expect(COMPTEURS_ACTIONS_VIDES.A).toBe(0);
     });
 
-    // Une sauvegarde écrite avant l'ajout d'une option n'a pas sa clé : sans repli, l'incrément
+    // Une sauvegarde écrite avant l'ajout d'une clé ne la contient pas : sans repli, l'incrément
     // produirait un NaN qui remonterait jusqu'en base.
     it('repart de zéro sur une clé absente', () => {
         const partiel = { soin: 3 } as unknown as typeof COMPTEURS_REPOS_VIDES;
 
-        expect(incrementerRepos(partiel, ['pv']).pv).toBe(1);
+        expect(incrementerCompteurs(partiel, ['pv']).pv).toBe(1);
+    });
+});
+
+// Le combo d'une run est la somme de ceux de chaque tour. Stocker somme + nombre (et non la
+// moyenne) est ce qui rend l'agrégation SQL exacte entre runs de longueurs différentes.
+describe('fusionnerCombo', () => {
+    it('additionne sommes et actions mais garde le MAXIMUM des maxima', () => {
+        const fusion = fusionnerCombo({ somme: 6, actions: 3, max: 3 }, { somme: 10, actions: 4, max: 4 });
+
+        expect(fusion).toEqual({ somme: 16, actions: 7, max: 4 });
+    });
+
+    // Un tour sans action (créneaux tous gelés) ne doit ni gonfler le dénominateur ni écraser le max.
+    it('est neutre face à un tour vide', () => {
+        const depart = { somme: 9, actions: 5, max: 4 };
+
+        expect(fusionnerCombo(depart, COMBO_VIDE)).toEqual(depart);
     });
 });

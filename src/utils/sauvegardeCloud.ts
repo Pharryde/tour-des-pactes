@@ -54,6 +54,9 @@ const CLES_SYNCHRONISEES = [
     'tdp_degats_esquives_run',
     'tdp_repos_proposes_run',
     'tdp_repos_pris_run',
+    'tdp_actions_run',
+    'tdp_combo_joueur_run',
+    'tdp_combo_monstres_run',
     'tdp_etage_record',
     'tdp_stats_derniere_run',
 ] as const;
