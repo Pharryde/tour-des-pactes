@@ -1,7 +1,7 @@
 export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 export type ChoixRepos = 'soin' | 'atk' | 'pre' | 'def' | 'pv';
-export type Synergie = 'Guerrier' | 'Ninja' | 'Tank' | 'Assassin';
+export type Synergie = 'Guerrier' | 'Ninja' | 'Tank' | 'Assassin' | 'Elementaire';
 // Bonus offert par le Chat Mystérieux, tiré à la Roue de la Chance à chaque entrée dans la Tour
 // (voir utils/benedictions.ts pour leurs effets).
 export type BenedictionChat = 'esquive' | 'critique' | 'armure' | 'hypnose' | 'vieDeChat' | 'apprentissage';

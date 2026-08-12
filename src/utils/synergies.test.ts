@@ -1,5 +1,49 @@
 import { describe, expect, it } from 'vitest';
+import type { Synergie } from '../types';
+import { PACTES_REGISTRY } from './pactes';
 import { composerEquipementSynergie, detecterSynergie, pactesManquantsPourSynergie, SYNERGIES_REGISTRY } from './synergies';
+
+// Deux règles de conception qu'aucun code ne fait respecter tout seul : un nom de Pacte mal
+// orthographié rendrait la synergie indéclenchable, et un Pacte présent dans 3 synergies casserait
+// la promesse « chaque Pacte n'ouvre que deux voies ».
+describe('SYNERGIES_REGISTRY — invariants de conception', () => {
+    it('ne référence que des Pactes qui existent réellement', () => {
+        for (const [nom, def] of Object.entries(SYNERGIES_REGISTRY)) {
+            for (const pacte of def.pactesRequis) {
+                expect(PACTES_REGISTRY[pacte], `${nom} → ${pacte}`).toBeDefined();
+            }
+        }
+    });
+
+    it('exige exactement 4 Pactes distincts par synergie', () => {
+        for (const [nom, def] of Object.entries(SYNERGIES_REGISTRY)) {
+            expect(def.pactesRequis, nom).toHaveLength(4);
+            expect(new Set(def.pactesRequis).size, nom).toBe(4);
+        }
+    });
+
+    it("n'engage jamais un même Pacte dans plus de 2 synergies", () => {
+        const compte = new Map<string, number>();
+        for (const def of Object.values(SYNERGIES_REGISTRY)) {
+            for (const pacte of def.pactesRequis) compte.set(pacte, (compte.get(pacte) ?? 0) + 1);
+        }
+        for (const [pacte, n] of compte) expect(n, pacte).toBeLessThanOrEqual(2);
+    });
+});
+
+// Synergie Élémentaire : elle réunit les 4 Gardiens élémentaires, qui s'ignorent complètement sans
+// elle (la Brûlure sort du calcul de dégâts avant la Foudre, le Froid ne touche que l'ordre).
+describe('Synergie Élémentaire', () => {
+    it('se déclenche avec Foudre, Feu, Poison et Froid', () => {
+        expect(detecterSynergie([
+            "Pacte de la Foudre", "Pacte du Feu", "Pacte du Poison", "Pacte du Froid II",
+        ])).toBe<Synergie>('Elementaire');
+    });
+
+    it("ne se déclenche pas s'il manque un élément", () => {
+        expect(detecterSynergie(["Pacte de la Foudre", "Pacte du Feu", "Pacte du Poison"])).toBeNull();
+    });
+});
 
 // Le bouton d'équipement rapide s'appuie entièrement là-dessus : une composition fausse
 // équiperait une combinaison qui NE déclenche pas la synergie, sans rien signaler au joueur.

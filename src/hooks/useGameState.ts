@@ -429,11 +429,11 @@ export function useGameState() {
             if (!synergiesDecouvertes.includes(synergieActive)) {
                 setSynergiesDecouvertes(prev => [...prev, synergieActive]);
                 messagesSynergie = [
-                    `<br><b style="color: #f9e2af;">🔮✨ SECRET DÉCOUVERT : Synergie ${synergieActive} — ${def.titre} !</b>`,
+                    `<br><b style="color: #f9e2af;">🔮✨ SECRET DÉCOUVERT : Synergie ${def.nom} — ${def.titre} !</b>`,
                     `<span class="log-tour">${def.description}</span>`,
                 ];
             } else {
-                messagesSynergie = [`<br><b style="color: #f9e2af;">🔮 Synergie ${synergieActive} active : ${def.titre}.</b>`];
+                messagesSynergie = [`<br><b style="color: #f9e2af;">🔮 Synergie ${def.nom} active : ${def.titre}.</b>`];
             }
         }
 

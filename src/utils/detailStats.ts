@@ -16,6 +16,11 @@ function aLePacte(pactesEquipes: string[], nomBase: string): boolean {
     return pactesEquipes.includes(nomBase) || pactesEquipes.includes(nomBase + " II");
 }
 
+// Part convertie en brûlure/poison, en pourcentage lisible (0.5 -> « 50% », 1 -> « 100% »).
+function pourcentage(multiplicateur: number): string {
+    return `${Math.round(multiplicateur * 100)}%`;
+}
+
 export function detailAttaque(entite: Entite, competences: Competences, actionsEnAttente: ActionType[]): string[] {
     const lignes = [`Base : ${BASE_ATTAQUE}`];
     if (competences.atk) lignes.push(`Arbre de compétence (Force Brute) : +${competences.atk}`);
@@ -32,7 +37,11 @@ export function detailAttaque(entite: Entite, competences: Competences, actionsE
         lignes.push(`Pacte de la Puissance Brute : x${(1 + entite.bonusDegatsAttaquePourcentage / 100).toFixed(2).replace(/\.?0+$/, '')}`);
     }
 
-    lignes.push(`= ${calculerAttaqueAffichee(entite, actionsEnAttente)}`);
+    if (entite.multiplicateurBrulure) {
+        lignes.push(`Pacte du Feu (converti en Brûlure) : ${pourcentage(entite.multiplicateurBrulure)}`);
+    }
+
+    lignes.push(`= ${calculerAttaqueAffichee(entite, actionsEnAttente)}${entite.multiplicateurBrulure ? ' de brûlure' : ''}`);
     return lignes;
 }
 
@@ -48,7 +57,11 @@ export function detailPrecise(entite: Entite, competences: Competences): string[
     }
     if (entite.degatsPrecisDoubles) lignes.push(`Pacte de l'Ombre (Dégâts Précis) : x2`);
 
-    lignes.push(`= ${calculerPreciseAffichee(entite)}`);
+    if (entite.multiplicateurPoison) {
+        lignes.push(`Pacte du Poison (converti en Poison) : ${pourcentage(entite.multiplicateurPoison)}`);
+    }
+
+    lignes.push(`= ${calculerPreciseAffichee(entite)}${entite.multiplicateurPoison ? ' de poison' : ''}`);
     return lignes;
 }
 

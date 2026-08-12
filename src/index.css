@@ -197,6 +197,11 @@ div.log-tour { margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10p
    Même pêche que la jauge .combo de l'arène, pour qu'on relie les deux d'un coup d'œil. */
 .log-combo { color: #fab387; }
 
+/* Rappel du taux d'esquive appliqué à un coup. Volontairement en retrait : c'est une précision de
+   lecture, pas un évènement — elle accompagne chaque ligne de résultat sans la disputer. Même teinte
+   que la stat 💨 de l'arène, pour qu'on relie les deux. */
+.log-esquive { color: #9a8f6d; font-size: 0.88em; }
+
 /* Coup Critique de la Bénédiction "Griffe Acérée" : une simple couleur se noyait dans une ligne
    d'action déjà dense, d'où une pastille pleine qui pulse brièvement à son apparition.
    `inline-block` garantit qu'elle ne se coupe jamais en deux au passage à la ligne — le seul

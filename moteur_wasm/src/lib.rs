@@ -5,7 +5,7 @@ pub mod combat;
 use wasm_bindgen::prelude::*;
 use serde::Serialize;
 use crate::entite::{Entite, ActionType, Synergie};
-use crate::combat::{gerer_combo, get_valeur_action, calculer_degats, tenter_critique, ResultatDegats, MULTIPLICATEUR_CRITIQUE};
+use crate::combat::{gerer_combo, get_valeur_action, calculer_degats, tenter_critique, appliquer_foudre, ResultatDegats, MULTIPLICATEUR_CRITIQUE};
 use crate::boss_data::get_tous_les_etages;
 
 // Créneaux touchés par l'Étage du Froid. ⚠️ Ils ne sont PAS tirés ici : le joueur doit les voir
@@ -28,8 +28,17 @@ fn poison_affiche(entite: &Entite, dose_du_tour: i32) -> i32 {
     entite.poison_actif.unwrap_or(0) + dose_du_tour
 }
 
+// Rappel de la chance d'esquive qui s'appliquait au coup. Muette à 0% (rien à dire quand personne
+// ne pouvait esquiver) : ailleurs, c'est ce qui distingue un palier d'esquive atteint d'un simple
+// coup de chance, et permet de vérifier que le dérèglement du Froid a bien joué avant la garde.
+fn mention_esquive(chance: i32, reussie: bool) -> String {
+    if chance <= 0 { return String::new(); }
+    let detail = if reussie { format!("{}% d'esquive", chance) } else { format!("{}% d'esquive déjouée", chance) };
+    format!(" <span class=\"log-esquive\">({})</span>", detail)
+}
+
 fn aucun_degat() -> ResultatDegats {
-    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 }
+    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false }
 }
 
 // Monte la garde d'une entité d'après l'action qu'elle vient de jouer : armure gagnée par une
@@ -54,10 +63,12 @@ fn encaisser(cible: &mut Entite, degats: &ResultatDegats) {
 // Calcule le coup puis, selon l'action, le convertit en brûlure (Attaque) ou en poison (Précise).
 // NE retire encore rien aux PV/armure : c'est `encaisser` qui le fait, au moment voulu par l'ordre
 // de résolution du créneau. `poison_du_tour` accumule les doses du tour (voir convertir_en_poison).
-fn calculer_et_appliquer_etats(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, poison_du_tour: &mut i32) -> ResultatDegats {
+// `sur_creneau_froid` : ce créneau a été touché par le Froid en faveur de l'attaquant (il agit avant
+// l'autre, ou l'action adverse y est gelée). Seule la Synergie Élémentaire s'en sert.
+fn calculer_et_appliquer_etats(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32) -> ResultatDegats {
     let degats = calculer_degats(action, valeur, attaquant, cible);
     let degats = convertir_en_brulure(attaquant, cible, action, valeur, degats);
-    convertir_en_poison(attaquant, action, valeur, poison_du_tour, degats)
+    convertir_en_poison(attaquant, action, valeur, sur_creneau_froid, poison_du_tour, degats)
 }
 
 // Étage du Feu : l'ATTAQUE (et elle seule) cesse de blesser directement — elle devient une brûlure
@@ -70,20 +81,35 @@ fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionT
     let Some(multiplicateur) = attaquant.multiplicateur_brulure else { return degats; };
     if *action != ActionType::A || degats.esquive { return degats; }
 
-    let dose = (valeur as f32 * multiplicateur).round() as i32;
+    // Synergie Élémentaire : la brûlure profite du Pacte de la Foudre. Sans ça elle passe à côté,
+    // le multiplicateur vivant dans `calculer_degats` — dont une action convertie sort à zéro.
+    let amplifiee = if attaquant.synergie_active == Some(Synergie::Elementaire) {
+        appliquer_foudre(valeur, attaquant, cible)
+    } else { valeur };
+
+    let dose = (amplifiee as f32 * multiplicateur).round() as i32;
     cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + dose);
-    aucun_degat()
+    ResultatDegats {
+        brulure_posee: dose,
+        chance_esquive: degats.chance_esquive,
+        foudre_appliquee: amplifiee != valeur,
+        ..aucun_degat()
+    }
 }
 
 // Étage du Poison : miroir exact sur la PRÉCISE. Les doses s'additionnent sans jamais décroître —
 // dans le tour comme d'un tour à l'autre. C'est ce qui fait du poison une course contre la montre :
 // laisser traîner un combat coûte de plus en plus cher à chaque tour.
-fn convertir_en_poison(attaquant: &Entite, action: &ActionType, valeur: i32, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
+fn convertir_en_poison(attaquant: &Entite, action: &ActionType, valeur: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
     let Some(multiplicateur) = attaquant.multiplicateur_poison else { return degats; };
     if *action != ActionType::P || degats.esquive { return degats; }
 
-    *poison_du_tour += (valeur as f32 * multiplicateur).round() as i32;
-    aucun_degat()
+    let mut dose = (valeur as f32 * multiplicateur).round() as i32;
+    // Synergie Élémentaire : une dose injectée sur un créneau où le Froid est intervenu compte double.
+    if sur_creneau_froid && attaquant.synergie_active == Some(Synergie::Elementaire) { dose *= 2; }
+
+    *poison_du_tour += dose;
+    ResultatDegats { poison_pose: dose, chance_esquive: degats.chance_esquive, ..aucun_degat() }
 }
 
 // Tics de fin de tour. La brûlure se fait absorber par l'armure restante puis est divisée par deux
@@ -330,33 +356,38 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         let mut d_joueur = aucun_degat();
         let mut d_monstre = aucun_degat();
 
+        // Créneaux où le Froid est intervenu en faveur d'un camp : il y agit avant l'autre, ou
+        // l'action adverse y est gelée. Seule la Synergie Élémentaire s'en sert (poison doublé).
+        let froid_pour_joueur = creneaux_joueur_dabord.contains(&i) || gele_m;
+        let froid_pour_monstre = creneaux_monstre_dabord.contains(&i) || gele_j;
+
         if creneaux_monstre_dabord.contains(&i) {
             if !gele_m {
                 monter_garde(&mut monstre, act_m, val_m, 1);
-                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, &mut poison_sur_joueur);
+                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur);
                 encaisser(&mut joueur, &d_joueur);
             }
             if !gele_j {
                 monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier);
-                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, &mut poison_sur_monstre);
+                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre);
                 encaisser(&mut monstre, &d_monstre);
             }
         } else if creneaux_joueur_dabord.contains(&i) {
             if !gele_j {
                 monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier);
-                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, &mut poison_sur_monstre);
+                d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre);
                 encaisser(&mut monstre, &d_monstre);
             }
             if !gele_m {
                 monter_garde(&mut monstre, act_m, val_m, 1);
-                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, &mut poison_sur_joueur);
+                d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur);
                 encaisser(&mut joueur, &d_joueur);
             }
         } else {
             if !gele_j { monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier); }
             if !gele_m { monter_garde(&mut monstre, act_m, val_m, 1); }
-            if !gele_m { d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, &mut poison_sur_joueur); }
-            if !gele_j { d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, &mut poison_sur_monstre); }
+            if !gele_m { d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur); }
+            if !gele_j { d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre); }
             encaisser(&mut joueur, &d_joueur);
             encaisser(&mut monstre, &d_monstre);
         }
@@ -411,6 +442,16 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             if *act_j == ActionType::A { log_action.push_str(" <span class=\"log-combo\">(Posture : +2 Armure)</span>"); }
             if *act_j == ActionType::D { log_action.push_str(" <span class=\"log-combo\">(Posture : +2 Dégâts jusqu'à la fin du tour)</span>"); }
         }
+        // Synergie Élémentaire : les deux effets sont invisibles dans le total (une brûlure amplifiée
+        // ou un poison doublé ressemblent à un simple gros chiffre), d'où ces mentions explicites.
+        if synergie_j == Some(Synergie::Elementaire) {
+            if d_monstre.brulure_posee > 0 && d_monstre.foudre_appliquee {
+                log_action.push_str(" <span class=\"log-combo\">⚡ Élémentaire : Brûlure amplifiée par la Foudre</span>");
+            }
+            if d_monstre.poison_pose > 0 && froid_pour_joueur {
+                log_action.push_str(" <span class=\"log-combo\">❄️ Élémentaire : Poison doublé par le Froid</span>");
+            }
+        }
         if ninja_critique {
             log_action.push_str(" <span class=\"log-mort\">💥 Coup Critique !</span>");
         }
@@ -426,7 +467,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         let mut riposte_degats_infliges = 0;
 
         if d_joueur.esquive {
-            log_action.push_str(" <br>💨 Vous esquivez !");
+            log_action.push_str(&format!(" <br>💨 Vous esquivez !{}", mention_esquive(d_joueur.chance_esquive, true)));
 
             // Synergie Ninja ("Frappe Insaisissable") : n'arme le Critique que sur une Esquive
             // choisie et réussie (pas une esquive résiduelle d'une action différente).
@@ -454,13 +495,27 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         }
         // Les PV/armure ont déjà été retirés plus haut par `encaisser`, dans l'ordre de résolution
         // du créneau : ici on ne fait plus que rédiger le journal.
+        else if d_joueur.brulure_posee > 0 {
+            log_action.push_str(&format!(" <br>🔥 Vous prenez feu : +{} de brûlure.{}", d_joueur.brulure_posee, mention_esquive(d_joueur.chance_esquive, false)));
+        }
+        else if d_joueur.poison_pose > 0 {
+            log_action.push_str(&format!(" <br>🧪 Vous êtes empoisonné : +{} de poison.{}", d_joueur.poison_pose, mention_esquive(d_joueur.chance_esquive, false)));
+        }
         else if d_joueur.dmg_arm > 0 || d_joueur.dmg_pv > 0 {
-            log_action.push_str(&format!(" <br>💥 Vous perdez {} PV.", d_joueur.dmg_pv));
+            log_action.push_str(&format!(" <br>💥 Vous perdez {} PV.{}", d_joueur.dmg_pv, mention_esquive(d_joueur.chance_esquive, false)));
         }
 
-        if d_monstre.esquive { log_action.push_str(" <br>💨 L'ennemi esquive !"); }
+        if d_monstre.esquive {
+            log_action.push_str(&format!(" <br>💨 L'ennemi esquive !{}", mention_esquive(d_monstre.chance_esquive, true)));
+        }
+        else if d_monstre.brulure_posee > 0 {
+            log_action.push_str(&format!(" <br>🔥 L'ennemi s'embrase : +{} de brûlure.{}", d_monstre.brulure_posee, mention_esquive(d_monstre.chance_esquive, false)));
+        }
+        else if d_monstre.poison_pose > 0 {
+            log_action.push_str(&format!(" <br>🧪 L'ennemi s'empoisonne : +{} de poison.{}", d_monstre.poison_pose, mention_esquive(d_monstre.chance_esquive, false)));
+        }
         else if d_monstre.dmg_arm > 0 || d_monstre.dmg_pv > 0 {
-            log_action.push_str(&format!(" <br>💥 L'ennemi perd {} PV.", d_monstre.dmg_pv));
+            log_action.push_str(&format!(" <br>💥 L'ennemi perd {} PV.{}", d_monstre.dmg_pv, mention_esquive(d_monstre.chance_esquive, false)));
         }
         
         etapes.push(EtapeCombat {

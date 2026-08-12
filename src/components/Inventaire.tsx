@@ -124,7 +124,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, s
                             onClick={() => onEquiperSynergie(composition)}
                             title={`${SYNERGIES_REGISTRY[synergie].titre} — ${composition.join(', ')}`}
                         >
-                            🔮 {synergie}{dejaEquipee ? ' ✓' : ''}
+                            🔮 {SYNERGIES_REGISTRY[synergie].nom}{dejaEquipee ? ' ✓' : ''}
                         </button>
                     ))}
                 </div>

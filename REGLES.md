@@ -159,6 +159,14 @@ entre 0 et 100 %.
 
 Une esquive réussie annule **entièrement** le coup — y compris la pose d'une Brûlure ou d'un Poison.
 
+**Le journal affiche la chance appliquée** à chaque coup offensif (`💨 L'ennemi esquive ! (75% d'esquive)`,
+`💥 L'ennemi perd 16 PV. (75% d'esquive déjouée)`), et reste muet quand elle est nulle. Sans ce
+rappel, un enchaînement d'esquives ressemble à de la malchance au lieu d'un palier atteint.
+
+⚠️ **Un créneau déréglé (Froid) ne contourne pas l'esquive** : il fait frapper *avant* que la garde
+adverse ne se lève, donc contre le palier **précédent**. Face à quelqu'un qui enchaîne les Esquives,
+les chances passent de 50/75/100/100 % à 0/50/75/100 % — c'est là tout le gain du pouvoir.
+
 ---
 
 ## 7. Brûlure et Poison
@@ -201,6 +209,12 @@ Temps et critiques compris, jamais une valeur forfaitaire.
 pour le joueur comme pour les créatures. Le reliquat en cours s'affiche à côté des PV (`🔥 24`,
 `🧪 12`) et **monte action par action pendant la résolution**, pas seulement une fois le tour soldé :
 en pas-à-pas manuel, on suit la jauge se remplir.
+
+La statistique ⚔️/🎯 affiche directement **la dose posée**, pas les dégâts qui ne seront jamais
+infligés : une Attaque à 11 sous Pacte du Feu de Niveau I se lit `🔥 6`. Le détail au survol montre
+la conversion ligne par ligne. Et chaque action convertie l'annonce dans le journal
+(`🔥 L'ennemi s'embrase : +16 de brûlure.`) — sans quoi un coup qui porte sans blesser ne produirait
+aucune ligne, et resterait indistinguable d'un coup esquivé.
 
 **Conséquences importantes :**
 
@@ -381,8 +395,14 @@ Comme il n'y a que 4 emplacements, **une seule synergie peut être active à la 
 | **Ninja**<br>*Frappe Insaisissable* | Esquive · Ombre · Combo · Fluidité | Une **Esquive réussie** arme un **Coup Critique (x2)** sur la prochaine Précise du même tour. |
 | **Tank**<br>*Riposte Fluide* | Vie · Armure · Esquive · Fluidité | Une **Esquive réussie** renvoie votre **Armure actuelle** en dégâts (absorbés comme une Attaque) et vous **soigne de 10 %** de cette armure. |
 | **Assassin**<br>*Danse des Lames* | Brute · Temps · Ombre · Combo | **⚔️ et 🎯 fusionnent dans la même jauge de combo** (A-A-P-P-P = Combo x5), et la Précise profite aussi des bonus du Pacte de la Brute. |
+| **Élémentaire**<br>*Communion des Éléments* | Foudre · Feu · Poison · Froid | Vos **Brûlures profitent de la Foudre** (amplifiées si la cible porte de l'Armure), et toute **dose de Poison posée sur un créneau où le Froid est intervenu en votre faveur est doublée**. |
 
 Le bonus du Guerrier est **temporaire** : il repart de zéro à chaque tour.
+
+L'Élémentaire réunit les quatre Gardiens élémentaires, qui s'ignorent complètement sans elle : la
+Brûlure quitte le calcul de dégâts avant que la Foudre ne s'y applique, et le Froid ne touche que
+l'ordre de résolution. Un « créneau en votre faveur » est un créneau où vous agissez avant l'ennemi,
+ou dont son action est gelée.
 
 **Découverte.** La première fois qu'une synergie s'active, un message la révèle et elle entre dans les
 Archives. Ensuite, un simple rappel s'affiche en début de run. Dès qu'un joueur possède un Pacte de

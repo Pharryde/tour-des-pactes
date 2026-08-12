@@ -28,8 +28,13 @@ export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: Action
         const nbDefenses = actionsEnAttente.filter(a => a === 'D').length;
         base += 2 * nbDefenses;
     }
-    if (!entite.bonusDegatsAttaquePourcentage) return base;
-    return Math.round(base * (1 + entite.bonusDegatsAttaquePourcentage / 100));
+    if (entite.bonusDegatsAttaquePourcentage) {
+        base = Math.round(base * (1 + entite.bonusDegatsAttaquePourcentage / 100));
+    }
+    // Pacte du Feu : l'Attaque ne blesse plus, elle pose une brûlure valant une PART de ses dégâts.
+    // C'est cette dose que le joueur doit lire sous l'icône 🔥, pas les dégâts qu'il n'infligera pas.
+    if (entite.multiplicateurBrulure) return Math.round(base * entite.multiplicateurBrulure);
+    return base;
 }
 
 // Même principe pour la Précise : le Pacte de l'Ombre (I/II) double ses dégâts (degatsPrecisDoubles)
@@ -43,6 +48,8 @@ export function calculerPreciseAffichee(entite: Entite): number {
         valeur = Math.round(valeur * (1 + entite.bonusDegatsAttaquePourcentage / 100));
     }
     if (entite.degatsPrecisDoubles) valeur *= 2;
+    // Pacte du Poison : même logique que la brûlure côté Attaque — c'est la dose posée qui compte.
+    if (entite.multiplicateurPoison) return Math.round(valeur * entite.multiplicateurPoison);
     return valeur;
 }
 

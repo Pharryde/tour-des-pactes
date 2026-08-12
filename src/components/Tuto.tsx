@@ -229,7 +229,7 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                                         className={`tuto-carte tuto-carte-synergie${decouverte ? '' : ' tuto-carte--verrouille'}`}
                                     >
                                         <span className="tuto-badge">
-                                            {decouverte ? 'Secret découvert' : 'Secret à découvrir'} : Synergie {synergie}
+                                            {decouverte ? 'Secret découvert' : 'Secret à découvrir'} : Synergie {SYNERGIES_REGISTRY[synergie].nom}
                                         </span>
                                         <h2>{decouverte ? SYNERGIES_REGISTRY[synergie].titre : '???'}</h2>
                                         <p>

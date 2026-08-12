@@ -16,6 +16,7 @@ pub enum Synergie {
     Ninja,
     Tank,
     Assassin,
+    Elementaire,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

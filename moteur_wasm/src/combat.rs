@@ -8,6 +8,18 @@ pub struct ResultatDegats {
     // Puissance brute de l'attaque quand elle est esquivée (0 sinon) — sert à afficher les
     // statistiques "dégâts esquivés" en fin de run.
     pub degats_evites: i32,
+    // Chance d'esquive qui s'appliquait à ce coup, réussie ou non. Affichée dans le journal : sans
+    // elle, un enchaînement d'esquives ressemble à de la malchance pure au lieu d'un palier atteint.
+    pub chance_esquive: i32,
+    // Dose de brûlure / de poison réellement posée par ce coup (voir convertir_en_* dans lib.rs).
+    // Une action convertie n'inflige aucun dégât direct : sans ces deux champs, le journal n'aurait
+    // strictement rien à dire d'un coup qui a pourtant porté.
+    pub brulure_posee: i32,
+    pub poison_pose: i32,
+    // Le multiplicateur de la Foudre a bien joué sur ce coup (la cible portait de l'armure au moment
+    // précis de la frappe). Impossible à recalculer depuis le journal : l'armure de la cible bouge
+    // à l'intérieur même du créneau, selon l'ordre de résolution.
+    pub foudre_appliquee: bool,
 }
 
 // `fusion_ap` : Synergie Assassin ("Danse des Lames") — Attaque et Précise comptent comme la même
@@ -120,39 +132,45 @@ pub fn tenter_critique(valeur: i32, action: &ActionType, attaquant: &Entite) -> 
     ((valeur as f32 * MULTIPLICATEUR_CRITIQUE).round() as i32, true)
 }
 
+// Étage de la Foudre : tant que la cible porte de l'armure, le coup entier est amplifié — Précise
+// comprise, qui conserve par ailleurs son contournement d'armure. Se défendre contre un porteur de
+// ce pouvoir est donc un piège.
+// Exposé à part de `calculer_degats` : la Synergie Élémentaire en fait aussi profiter la brûlure,
+// qui ne passe pas par le calcul de dégâts normal (voir convertir_en_brulure dans lib.rs).
+pub fn appliquer_foudre(val_atk: i32, attaquant: &Entite, defenseur: &Entite) -> i32 {
+    match attaquant.multiplicateur_degats_si_armure {
+        Some(mult) if defenseur.armure > 0 => (val_atk as f32 * mult).round() as i32,
+        _ => val_atk,
+    }
+}
+
 // L'attaquant est passé en entier (plutôt que ses drapeaux un par un) : c'est lui qui porte à la
 // fois le doublage de la Précise, la neutralisation de l'esquive et la réduction d'esquive adverse.
 pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, attaquant: &Entite, defenseur: &Entite) -> ResultatDegats {
+    let neutre = ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false };
     if *action_atk != ActionType::A && *action_atk != ActionType::P {
-        return ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 };
+        return neutre;
     }
 
     let degats_precis_doubles = attaquant.degats_precis_doubles;
 
-    // Étage de la Foudre : tant que la cible porte de l'armure, le coup entier est amplifié —
-    // Précise comprise, qui conserve par ailleurs son contournement d'armure. Se défendre contre un
-    // porteur de ce pouvoir est donc un piège.
-    let val_atk = match attaquant.multiplicateur_degats_si_armure {
-        Some(mult) if defenseur.armure > 0 => (val_atk as f32 * mult).round() as i32,
-        _ => val_atk,
-    };
+    let val_amplifiee = appliquer_foudre(val_atk, attaquant, defenseur);
+    let neutre = ResultatDegats { foudre_appliquee: val_amplifiee != val_atk, ..neutre };
+    let val_atk = val_amplifiee;
 
+    let chance = chance_esquive(attaquant, defenseur);
     let jet = rand::thread_rng().gen_range(1..=100);
-    if jet <= chance_esquive(attaquant, defenseur) {
+    if jet <= chance {
         let degats_potentiels = if *action_atk == ActionType::P && degats_precis_doubles { val_atk * 2 } else { val_atk };
-        return ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: true, degats_evites: degats_potentiels };
+        return ResultatDegats { esquive: true, degats_evites: degats_potentiels, chance_esquive: chance, ..neutre };
     }
 
     if *action_atk == ActionType::A {
-        if defenseur.armure >= val_atk { return ResultatDegats { dmg_arm: val_atk, dmg_pv: 0, esquive: false, degats_evites: 0 }; }
-        return ResultatDegats { dmg_arm: defenseur.armure, dmg_pv: val_atk - defenseur.armure, esquive: false, degats_evites: 0 };
+        if defenseur.armure >= val_atk { return ResultatDegats { dmg_arm: val_atk, chance_esquive: chance, ..neutre }; }
+        return ResultatDegats { dmg_arm: defenseur.armure, dmg_pv: val_atk - defenseur.armure, chance_esquive: chance, ..neutre };
     }
 
-    if *action_atk == ActionType::P {
-        let mut degats = val_atk;
-        if degats_precis_doubles { degats *= 2; }
-        return ResultatDegats { dmg_arm: 0, dmg_pv: degats, esquive: false, degats_evites: 0 };
-    }
-
-    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 }
+    let mut degats = val_atk;
+    if degats_precis_doubles { degats *= 2; }
+    ResultatDegats { dmg_pv: degats, chance_esquive: chance, ..neutre }
 }

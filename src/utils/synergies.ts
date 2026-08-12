@@ -2,10 +2,18 @@
 import type { Synergie } from '../types';
 
 interface SynergieDef {
+    // Nom affiché. Distinct de la clé du registre, qui sert d'identifiant technique (sauvegardes,
+    // enum Rust) et doit donc rester sans accent : « Elementaire » en clé, « Élémentaire » à l'écran.
+    nom: string;
     titre: string;
     description: string;
     // Noms de base des 4 Pactes requis (peu importe leur niveau I/II) pour révéler la synergie.
     pactesRequis: string[];
+}
+
+// Nom à afficher pour une synergie, à utiliser partout plutôt que la clé brute.
+export function nomSynergie(synergie: Synergie): string {
+    return SYNERGIES_REGISTRY[synergie].nom;
 }
 
 // ============================================================================
@@ -16,24 +24,37 @@ interface SynergieDef {
 // ============================================================================
 export const SYNERGIES_REGISTRY: Record<Synergie, SynergieDef> = {
     Guerrier: {
+        nom: 'Guerrier',
         titre: "Posture du Seigneur de Guerre",
         description: "Chaque Attaque octroie +2 Armure. Chaque Défense augmente vos dégâts de base de +2 pour le reste du tour.",
         pactesRequis: ["Pacte de la Vie", "Pacte de l'Armure", "Pacte de la Puissance Brute", "Pacte du Temps"],
     },
     Ninja: {
+        nom: 'Ninja',
         titre: "Frappe Insaisissable",
         description: "Chaque Esquive réussie, la prochaine Attaque Précise du même tour est un Coup Critique (ajout multiplicateur x2).",
         pactesRequis: ["Pacte de l'Esquive", "Pacte de l'Ombre", "Pacte du Combo", "Pacte de la Fluidité"],
     },
     Tank: {
+        nom: 'Tank',
         titre: "Riposte Fluide",
         description: "Chaque Esquive réussie redirige la force de l'ennemi contre lui : il subit des dégâts égaux à l'Armure actuelle et vous vous soignez de 10% de cette Armure en PV.",
         pactesRequis: ["Pacte de la Vie", "Pacte de l'Armure", "Pacte de l'Esquive", "Pacte de la Fluidité"],
     },
     Assassin: {
+        nom: 'Assassin',
         titre: "Danse des Lames",
         description: "Attaque et Précise fusionnent dans la même jauge de Combo (A-A-P-P-P compte comme un Combo x5), et la Précise bénéficie aussi des bonus de dégâts du Pacte de la Puissance Brute.",
         pactesRequis: ["Pacte de la Puissance Brute", "Pacte du Temps", "Pacte de l'Ombre", "Pacte du Combo"],
+    },
+    // Réunit les quatre Gardiens élémentaires. Chacun de ces Pactes est inerte vis-à-vis des trois
+    // autres en temps normal : la Brûlure sort du calcul de dégâts avant que la Foudre ne s'applique,
+    // et le Froid ne touche que l'ordre de résolution. La synergie les fait enfin communiquer.
+    Elementaire: {
+        nom: 'Élémentaire',
+        titre: "Communion des Éléments",
+        description: "Vos Brûlures profitent du Pacte de la Foudre : elles sont amplifiées quand la cible porte de l'Armure. Et toute dose de Poison injectée sur un créneau où le Froid est intervenu en votre faveur est doublée.",
+        pactesRequis: ["Pacte de la Foudre", "Pacte du Feu", "Pacte du Poison", "Pacte du Froid"],
     },
 };
 
