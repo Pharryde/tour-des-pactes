@@ -134,21 +134,24 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
     },
     // ⚠️ Feu et Poison CONVERTISSENT une action : elle cesse de blesser sur le coup et se résout en
     // fin de tour. C'est un changement de style de jeu (dégâts différés), pas un simple bonus.
+    // La conversion n'est totale qu'au Niveau II : à 100% dès le Niveau I, le Pacte serait
+    // strictement supérieur à l'action qu'il remplace (brûlure qui s'empile, poison qui ignore
+    // l'armure) et rendrait tous les autres Pactes offensifs inutiles.
     "Pacte du Feu": {
-        desc: "(Vos Attaques deviennent de la Brûlure, cumulée)",
-        appliquer: (j) => { j.multiplicateurBrulure = 1; }
+        desc: "(Vos Attaques deviennent une Brûlure de 50% des dégâts, cumulée)",
+        appliquer: (j) => { j.multiplicateurBrulure = 0.5; }
     },
     "Pacte du Feu II": {
-        desc: "(Vos Attaques deviennent x2 Brûlure, cumulée)",
-        appliquer: (j) => { j.multiplicateurBrulure = 2; }
+        desc: "(Vos Attaques deviennent une Brûlure de 100% des dégâts, cumulée)",
+        appliquer: (j) => { j.multiplicateurBrulure = 1; }
     },
     "Pacte du Poison": {
-        desc: "(Vos Précises deviennent du Poison, ignore l'armure)",
-        appliquer: (j) => { j.multiplicateurPoison = 1; }
+        desc: "(Vos Précises deviennent un Poison de 50% des dégâts, ignore l'armure)",
+        appliquer: (j) => { j.multiplicateurPoison = 0.5; }
     },
     "Pacte du Poison II": {
-        desc: "(Vos Précises deviennent x2 Poison, ignore l'armure)",
-        appliquer: (j) => { j.multiplicateurPoison = 2; }
+        desc: "(Vos Précises deviennent un Poison de 100% des dégâts, ignore l'armure)",
+        appliquer: (j) => { j.multiplicateurPoison = 1; }
     }
 };
 // ============================================================================

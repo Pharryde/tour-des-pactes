@@ -56,7 +56,7 @@ function EtatsDifferes({ entite }: { entite: Entite }) {
                 <> | <span className="etat-brulure" title="Brûlure : encaissée en fin de tour, absorbée par l'armure restante, puis divisée par deux.">🔥 {entite.brulureActive}</span></>
             ) : null}
             {entite.poisonActif ? (
-                <> | <span className="etat-poison" title="Poison : encaissé en fin de tour, traverse l'armure et ne décroît jamais.">🧪 {entite.poisonActif}</span></>
+                <> | <span className="etat-poison" title="Poison : encaissé en fin de tour, traverse l'armure et ne décroît jamais. Chaque nouvelle dose s'ajoute à la précédente.">🧪 {entite.poisonActif}</span></>
             ) : null}
         </>
     );
@@ -307,6 +307,14 @@ export function CombatArene({
             currentMonstre.pv = etape.monstrePv;
             currentMonstre.armure = etape.monstreArmure;
             currentMonstre.nivEsquive = etape.monstreNivEsquive ?? currentMonstre.nivEsquive;
+
+            // Brûlure et poison montent action par action : c'est justement leur accumulation
+            // pendant le tour qu'il faut voir, pas seulement le total une fois tout résolu.
+            // `|| undefined` pour que le compteur disparaisse quand l'état retombe à zéro.
+            currentJoueur.brulureActive = etape.joueurBrulure || undefined;
+            currentJoueur.poisonActif = etape.joueurPoison || undefined;
+            currentMonstre.brulureActive = etape.monstreBrulure || undefined;
+            currentMonstre.poisonActif = etape.monstrePoison || undefined;
 
             setJoueur({ ...currentJoueur }); setMonstre({ ...currentMonstre });
 

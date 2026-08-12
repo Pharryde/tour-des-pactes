@@ -98,6 +98,12 @@ export interface EtapeCombat {
     degatsInfliges: number;
     degatsBloques: number;
     degatsEsquives: number;
+    // États différés au moment de cette étape, pour que les compteurs 🔥/🧪 montent AU FUR ET À
+    // MESURE des actions au lieu de n'apparaître qu'une fois le tour entièrement résolu.
+    joueurBrulure: number;
+    joueurPoison: number;
+    monstreBrulure: number;
+    monstrePoison: number;
 }
 
 export interface StructureEtage {

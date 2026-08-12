@@ -169,23 +169,38 @@ sont le miroir l'un de l'autre.
 |  | 🔥 **Brûlure** | 🧪 **Poison** |
 |---|---|---|
 | Action convertie | **⚔️ Attaque** (et elle seule) | **🎯 Précise** (et elle seule) |
-| Montant posé | Les **dégâts réels** de l'action, × le multiplicateur | Les **dégâts réels** de l'action, × le multiplicateur |
+| Montant posé | Une **part des dégâts réels** de l'action | Une **part des dégâts réels** de l'action |
 | Armure | **Absorbée** par l'armure restante | **Traverse** l'armure |
 | Cumul dans le tour | S'additionne | S'additionne |
-| D'un tour à l'autre | **S'accumule**, puis **divisée par deux** après chaque tic | On garde la **plus forte dose** ; **ne décroît jamais** |
+| D'un tour à l'autre | **S'accumule**, puis **divisée par deux** après chaque tic | **S'accumule** ; ne décroît **jamais** |
 | Esquivable | Oui | Oui |
 | Après la mort de l'ennemi | **Le tic s'applique quand même** | **Le tic s'applique quand même** |
 
-**Le montant posé vaut les dégâts réels de l'action**, combos, multiplicateurs du Pacte du Temps et
-critiques compris — jamais une valeur forfaitaire.
+**Quelle part ?** Le porteur du pouvoir en décide :
 
-> **Exemple.** Avec le Pacte du Feu, une 4ᵉ action à 12 puis une 5ᵉ action en Combo x2 à 34 posent
-> **46** de brûlure en fin de tour (12 + 34), pas 24.
+| Porteur | Part convertie |
+|---|---|
+| **Pacte de Niveau I** | **50 %** des dégâts de l'action |
+| **Pacte de Niveau II** | **100 %** des dégâts de l'action |
+| Créatures des étages du Feu et du Poison | **100 %** des dégâts de l'action |
+
+Une conversion totale dès le Niveau I rendrait ces deux Pactes strictement supérieurs à l'action
+qu'ils remplacent — une brûlure qui s'empile ou un poison qui ignore l'armure, pour le même montant.
+
+**La base de calcul, ce sont les dégâts réels de l'action** : combos, multiplicateurs du Pacte du
+Temps et critiques compris, jamais une valeur forfaitaire.
+
+> **Exemple.** Avec le Pacte du Feu **II**, une 4ᵉ action à 12 puis une 5ᵉ action en Combo x2 à 34
+> posent **46** de brûlure en fin de tour (12 + 34). Avec le Niveau I, la même séquence en pose 23.
+
+> **Exemple.** Un poison de 10 posé au tour 1, puis 10 encore au tour 2, donne **20** — et frappe 10
+> puis 20. Laisser un combat s'éterniser face au poison coûte de plus en plus cher à chaque tour.
 
 **À l'écran.** Comme ces pouvoirs *remplacent* l'action au lieu de s'y ajouter, **l'icône change** :
 ⚔️ devient 🔥 et 🎯 devient 🧪 — sur les boutons, les cases d'action, les statistiques et le journal,
 pour le joueur comme pour les créatures. Le reliquat en cours s'affiche à côté des PV (`🔥 24`,
-`🧪 12`), sans quoi on subit des dégâts en fin de tour sans comprendre d'où ils viennent.
+`🧪 12`) et **monte action par action pendant la résolution**, pas seulement une fois le tour soldé :
+en pas-à-pas manuel, on suit la jauge se remplir.
 
 **Conséquences importantes :**
 
@@ -302,7 +317,7 @@ Chaque Gardien existe en trois formes de puissance croissante : **normale**, **�
 | **Froid** | Le Souffle Immobile | **Dérègle l'ordre de résolution** : agit avant vous sur 2 créneaux. Sa forme évoluée **gèle** une action ; la finale cumule les deux. |
 | **Foudre** | La Colère du Ciel | **x1,5 / x2 / x3 sur ses dégâts totaux** tant que sa cible porte de l'armure. Se défendre contre lui est un piège. |
 | **Feu** | Le Brasier Vorace | Son **Attaque devient une Brûlure** cumulée, résolue en fin de tour. Aucune Précise. |
-| **Poison** | La Sève Noire | Sa **Précise devient un Poison** qui traverse l'armure et ne décroît jamais. Aucune Attaque. |
+| **Poison** | La Sève Noire | Sa **Précise devient un Poison** qui traverse l'armure, s'accumule de tour en tour et ne décroît jamais. Aucune Attaque. |
 
 ---
 
@@ -328,8 +343,8 @@ Chaque Pacte **retourne contre les monstres la mécanique de son Gardien**.
 | **Brute** | +10 % de dégâts d'Attaque | +20 % de dégâts d'Attaque, et +1 de combo par palier |
 | **Froid** | 2 actions résolues **avant** l'ennemi | 2 actions en premier, **et gèle 1 action ennemie** |
 | **Foudre** | **x1,5** dégâts si la cible a de l'armure | **x2** dégâts si la cible a de l'armure |
-| **Feu** | Vos **Attaques deviennent de la Brûlure** | Brûlure **x2** |
-| **Poison** | Vos **Précises deviennent du Poison** | Poison **x2** |
+| **Feu** | Vos **Attaques deviennent une Brûlure** de 50 % des dégâts | Brûlure de **100 %** des dégâts |
+| **Poison** | Vos **Précises deviennent un Poison** de 50 % des dégâts | Poison de **100 %** des dégâts |
 
 **Sur les Pactes du Temps** : sur la 5ᵉ (ou 3ᵉ) action, une Esquive monte de 2 (ou 3) paliers d'un
 coup au lieu de doubler/tripler une valeur de dégâts.

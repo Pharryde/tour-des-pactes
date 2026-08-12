@@ -21,6 +21,13 @@ pub struct CreneauxFroid {
     #[serde(default)] pub monstre_dabord: Vec<usize>,
 }
 
+// Dose de poison qui frappera en fin de tour : celle déjà installée PLUS celle accumulée depuis le
+// début du tour (les deux s'additionnent, voir convertir_en_poison). Exposée à chaque étape pour que
+// la jauge monte action par action au lieu de n'apparaître qu'une fois le tour résolu.
+fn poison_affiche(entite: &Entite, dose_du_tour: i32) -> i32 {
+    entite.poison_actif.unwrap_or(0) + dose_du_tour
+}
+
 fn aucun_degat() -> ResultatDegats {
     ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0 }
 }
@@ -63,24 +70,25 @@ fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionT
     let Some(multiplicateur) = attaquant.multiplicateur_brulure else { return degats; };
     if *action != ActionType::A || degats.esquive { return degats; }
 
-    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + valeur * multiplicateur);
+    let dose = (valeur as f32 * multiplicateur).round() as i32;
+    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + dose);
     aucun_degat()
 }
 
-// Étage du Poison : miroir exact sur la PRÉCISE. Les doses s'additionnent SUR LE TOUR (d'où
-// l'accumulateur), mais d'un tour à l'autre on ne retient que la plus forte : le poison ne décroît
-// jamais, l'empiler indéfiniment ne pardonnerait plus rien sur un combat long.
+// Étage du Poison : miroir exact sur la PRÉCISE. Les doses s'additionnent sans jamais décroître —
+// dans le tour comme d'un tour à l'autre. C'est ce qui fait du poison une course contre la montre :
+// laisser traîner un combat coûte de plus en plus cher à chaque tour.
 fn convertir_en_poison(attaquant: &Entite, action: &ActionType, valeur: i32, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
     let Some(multiplicateur) = attaquant.multiplicateur_poison else { return degats; };
     if *action != ActionType::P || degats.esquive { return degats; }
 
-    *poison_du_tour += valeur * multiplicateur;
+    *poison_du_tour += (valeur as f32 * multiplicateur).round() as i32;
     aucun_degat()
 }
 
 // Tics de fin de tour. La brûlure se fait absorber par l'armure restante puis est divisée par deux
-// (elle s'éteint d'elle-même si on survit à l'assaut) ; le poison est bien plus faible mais traverse
-// l'armure et ne décroît jamais — lui, il ne pardonne que la vitesse.
+// (elle s'éteint d'elle-même si on survit à l'assaut) ; le poison, lui, traverse l'armure, ne décroît
+// jamais et s'alourdit à chaque tour où une dose est posée — il ne pardonne que la vitesse.
 fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str) -> Vec<String> {
     let mut logs = Vec::new();
 
@@ -123,6 +131,14 @@ pub struct EtapeCombat {
     pub degats_infliges: i32,  // PV retirés au monstre par le joueur sur ce step
     pub degats_bloques: i32,   // dégâts absorbés par l'armure du joueur sur ce step
     pub degats_esquives: i32,  // dégâts évités par l'esquive du joueur sur ce step
+
+    // États différés tels qu'ils sont APRÈS cette étape : sans eux, l'interface ne peut afficher
+    // la brûlure et le poison qu'une fois le tour entièrement résolu, alors que ces jauges se
+    // remplissent action par action — c'est justement leur montée qu'il faut pouvoir suivre.
+    pub joueur_brulure: i32,
+    pub joueur_poison: i32,
+    pub monstre_brulure: i32,
+    pub monstre_poison: i32,
 }
 
 #[derive(Serialize)]
@@ -211,6 +227,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             degats_infliges: 0,
             degats_bloques: 0,
             degats_esquives: 0,
+            joueur_brulure: joueur.brulure_active.unwrap_or(0),
+            joueur_poison: poison_affiche(&joueur, poison_sur_joueur),
+            monstre_brulure: monstre.brulure_active.unwrap_or(0),
+            monstre_poison: poison_affiche(&monstre, poison_sur_monstre),
         });
     }
 
@@ -228,6 +248,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             degats_infliges: 0,
             degats_bloques: 0,
             degats_esquives: 0,
+            joueur_brulure: joueur.brulure_active.unwrap_or(0),
+            joueur_poison: poison_affiche(&joueur, poison_sur_joueur),
+            monstre_brulure: monstre.brulure_active.unwrap_or(0),
+            monstre_poison: poison_affiche(&monstre, poison_sur_monstre),
         });
     }
 
@@ -451,18 +475,22 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             degats_infliges: d_monstre.dmg_pv + riposte_degats_infliges,
             degats_bloques: d_joueur.dmg_arm,
             degats_esquives: d_joueur.degats_evites,
+            joueur_brulure: joueur.brulure_active.unwrap_or(0),
+            joueur_poison: poison_affiche(&joueur, poison_sur_joueur),
+            monstre_brulure: monstre.brulure_active.unwrap_or(0),
+            monstre_poison: poison_affiche(&monstre, poison_sur_monstre),
         });
     }
 
     let mut logs_fin_tour = Vec::new();
 
-    // Les doses posées ce tour-ci rejoignent le poison en cours : on garde la plus forte des deux,
-    // le poison ne décroissant jamais.
+    // Les doses posées ce tour-ci s'AJOUTENT au poison déjà installé : 10 au tour 1 puis 10 au
+    // tour 2 font 20, et ainsi de suite. Rien ne le fait jamais redescendre.
     if poison_sur_joueur > 0 {
-        joueur.poison_actif = Some(joueur.poison_actif.unwrap_or(0).max(poison_sur_joueur));
+        joueur.poison_actif = Some(joueur.poison_actif.unwrap_or(0) + poison_sur_joueur);
     }
     if poison_sur_monstre > 0 {
-        monstre.poison_actif = Some(monstre.poison_actif.unwrap_or(0).max(poison_sur_monstre));
+        monstre.poison_actif = Some(monstre.poison_actif.unwrap_or(0) + poison_sur_monstre);
     }
 
     // ⚠️ Brûlure et poison se résolvent HORS de la garde « les deux sont vivants » : tuer son

@@ -308,22 +308,22 @@ pub fn get_etage_foudre() -> StructureEtage {
 // d'elle-même si on survit à l'assaut initial. ---
 pub fn get_etage_feu() -> StructureEtage {
     let mut m1 = creer_base("Braise Rampante", 35, 7, 4, 8, esquive_std(), kit_sans_precise());
-    m1.multiplicateur_brulure = Some(1);
+    m1.multiplicateur_brulure = Some(1.0);
 
     let mut m2 = creer_base("Chien de Cendre", 45, 9, 4, 8, esquive_std(), kit_sans_precise());
-    m2.multiplicateur_brulure = Some(1);
+    m2.multiplicateur_brulure = Some(1.0);
 
     let mut m3 = creer_base("Salamandre Ardente", 55, 10, 5, 10, esquive_std(), kit_sans_precise());
-    m3.multiplicateur_brulure = Some(1);
+    m3.multiplicateur_brulure = Some(1.0);
 
     let mut boss = creer_base(&nom_boss("Le Brasier Vorace"), 85, 11, 5, 12, esquive_std(), kit_sans_precise());
-    boss.multiplicateur_brulure = Some(1);
+    boss.multiplicateur_brulure = Some(1.0);
 
     let mut boss_h = creer_base(&nom_boss_evolue("Le Brasier Vorace"), 115, 13, 6, 12, esquive_std(), kit_sans_precise());
-    boss_h.multiplicateur_brulure = Some(1);
+    boss_h.multiplicateur_brulure = Some(1.0);
 
     let mut boss_h2 = creer_base(&nom_boss_finale("Le Brasier Vorace"), 145, 14, 6, 14, esquive_std(), kit_sans_precise());
-    boss_h2.multiplicateur_brulure = Some(1);
+    boss_h2.multiplicateur_brulure = Some(1.0);
 
     StructureEtage {
         id_pacte: "Pacte du Feu".to_string(),
@@ -339,22 +339,22 @@ pub fn get_etage_feu() -> StructureEtage {
 // ne décroît JAMAIS : plus le combat s'étire, plus il coûte cher. Il faut conclure vite. ---
 pub fn get_etage_poison() -> StructureEtage {
     let mut m1 = creer_base("Crapaud Putride", 35, 7, 4, 8, esquive_std(), kit_sans_attaque());
-    m1.multiplicateur_poison = Some(1);
+    m1.multiplicateur_poison = Some(1.0);
 
     let mut m2 = creer_base("Rôdeur Bilieux", 45, 8, 4, 10, esquive_std(), kit_sans_attaque());
-    m2.multiplicateur_poison = Some(1);
+    m2.multiplicateur_poison = Some(1.0);
 
     let mut m3 = creer_base("Veuve Sépulcrale", 55, 9, 5, 10, esquive_std(), kit_sans_attaque());
-    m3.multiplicateur_poison = Some(1);
+    m3.multiplicateur_poison = Some(1.0);
 
     let mut boss = creer_base(&nom_boss("La Sève Noire"), 85, 10, 5, 12, esquive_std(), kit_sans_attaque());
-    boss.multiplicateur_poison = Some(1);
+    boss.multiplicateur_poison = Some(1.0);
 
     let mut boss_h = creer_base(&nom_boss_evolue("La Sève Noire"), 115, 12, 6, 12, esquive_std(), kit_sans_attaque());
-    boss_h.multiplicateur_poison = Some(1);
+    boss_h.multiplicateur_poison = Some(1.0);
 
     let mut boss_h2 = creer_base(&nom_boss_finale("La Sève Noire"), 145, 13, 6, 14, esquive_std(), kit_sans_attaque());
-    boss_h2.multiplicateur_poison = Some(1);
+    boss_h2.multiplicateur_poison = Some(1.0);
 
     StructureEtage {
         id_pacte: "Pacte du Poison".to_string(),

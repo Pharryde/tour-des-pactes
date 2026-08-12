@@ -84,13 +84,14 @@ pub struct Entite {
     // encore de l'armure : le boss punit le fait de se défendre.
     #[serde(default)] pub multiplicateur_degats_si_armure: Option<f32>,
 
-    // FEU. Brûlure ajoutée à la cible à chaque coup qui connecte. Les attaques de ces créatures ne
-    // blessent PLUS directement : toute leur valeur part dans la brûlure, qui s'accumule, se fait
-    // absorber par l'armure en fin de tour, puis est divisée par deux.
-    #[serde(default)] pub multiplicateur_brulure: Option<i32>,
-    // POISON. Multiplicateur appliqué aux dégâts PRÉCIS de l'attaquant pour obtenir la dose. Le
-    // poison traverse l'armure et ne décroît jamais.
-    #[serde(default)] pub multiplicateur_poison: Option<i32>,
+    // FEU. Part des dégâts de l'ATTAQUE convertie en brûlure (0.5 au Niveau I, 1.0 au Niveau II).
+    // L'attaque ne blesse PLUS directement : sa valeur part dans la brûlure, qui s'accumule, se
+    // fait absorber par l'armure en fin de tour, puis est divisée par deux.
+    // ⚠️ Fractionnaire : à 1.0 la conversion serait sans perte, ce qui rend le Pacte trop fort.
+    #[serde(default)] pub multiplicateur_brulure: Option<f32>,
+    // POISON. Même chose sur les dégâts PRÉCIS. Le poison traverse l'armure, ne décroît jamais, et
+    // s'additionne d'un tour à l'autre.
+    #[serde(default)] pub multiplicateur_poison: Option<f32>,
 
     // Numéro de tour à partir duquel cette créature a le droit de passer un tour ENTIER sans action
     // offensive (que de la Défense et de l'Esquive). `None` = jamais : il lui faut au moins une

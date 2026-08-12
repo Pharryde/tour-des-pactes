@@ -59,10 +59,16 @@ describe('Pactes du Froid / Foudre / Feu / Poison', () => {
 
         expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte de la Foudre']).multiplicateurDegatsSiArmure).toBe(1.5);
         expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte de la Foudre II']).multiplicateurDegatsSiArmure).toBe(2);
-        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Feu']).multiplicateurBrulure).toBe(1);
-        // Le poison vaut les dégâts Précis : le Pacte porte le multiplicateur, pas un montant fixe.
-        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Poison']).multiplicateurPoison).toBe(1);
-        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Poison II']).multiplicateurPoison).toBe(2);
+    });
+
+    // Feu et Poison convertissent une PART des dégâts de l'action : la moitié au Niveau I, la
+    // totalité au Niveau II. Une conversion sans perte dès le Niveau I rendrait ces deux Pactes
+    // strictement supérieurs à l'action qu'ils remplacent.
+    it('ne convertit que la moitié des dégâts au Niveau I, la totalité au Niveau II', () => {
+        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Feu']).multiplicateurBrulure).toBe(0.5);
+        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Feu II']).multiplicateurBrulure).toBe(1);
+        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Poison']).multiplicateurPoison).toBe(0.5);
+        expect(appliquerPactesSurJoueur(creerHeros(), ['Pacte du Poison II']).multiplicateurPoison).toBe(1);
     });
 
     // Le Niveau I du Froid ne gèle rien : c'est la marche de progression vers le Niveau II.

@@ -11,6 +11,7 @@ import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } fro
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
+import { construireEvenementRun, journaliserRun, type IssueRun } from '../utils/telemetrieRuns';
 import { DELAI_TRANSITION_MS, calculerDelai } from '../utils/rythme';
 import { effacerEtatCombat } from './useCombatResume';
 import { useLocalStorage } from './useLocalStorage';
@@ -187,10 +188,15 @@ export function useGameState() {
     // Fige les stats de la run qui vient de se terminer (mort ou victoire totale) AVANT que
     // effacerRun() ne remette indexEtageActuel et les compteurs à zéro — sinon l'écran de fin
     // n'aurait plus rien à afficher.
-    const capturerStatsFinRun = () => {
+    const capturerStatsFinRun = (issue: IssueRun) => {
         // Appelée exactement une fois par run ACHEVÉE (mort ou victoire totale) — un abandon ne
         // passe pas par ici. C'est donc le bon endroit pour compter les runs qui cadencent les
-        // apparitions du Chat.
+        // apparitions du Chat, et pour journaliser la run côté cloud.
+        // Le numéro est relu dans le localStorage plutôt que pris dans la closure : `setRunsTerminees`
+        // ci-dessous n'écrit qu'au moment où React applique la mise à jour, donc l'ancienne valeur
+        // est encore la bonne base ici, et elle est fiable même si ce callback vient d'un tour de
+        // combat déjà obsolète (même raison que les autres lectures persistantes, voir utils/logs.ts).
+        const numeroRun = lireValeurPersistante('tdp_runs_terminees', 0) + 1;
         setRunsTerminees(n => n + 1);
 
         const etageAtteint = indexEtageActuel + 1;
@@ -207,6 +213,18 @@ export function useGameState() {
             degatsBloques: lireValeurPersistante('tdp_degats_bloques_run', 0),
             degatsEsquives: lireValeurPersistante('tdp_degats_esquives_run', 0),
         });
+
+        // Volontairement pas attendu : l'écran de fin ne doit jamais dépendre du réseau, et un
+        // échec d'envoi n'a aucune conséquence pour le joueur. `benedictionActive` et
+        // `pactesEquipes` sont encore intacts ici — effacerRun() ne les remet à zéro qu'après.
+        void journaliserRun(construireEvenementRun({
+            numeroRun,
+            issue,
+            etage: etageAtteint,
+            pactesEquipes,
+            competences,
+            benediction: benedictionActive,
+        }));
     };
 
     const gererAbandon = () => {
@@ -425,7 +443,7 @@ export function useGameState() {
         // Les Pactes portés jusqu'au bout gagnent leur trophée (cumulé sans doublon d'une victoire
         // à l'autre : chaque composition victorieuse s'ajoute au palmarès).
         setPactesVictorieux(prev => [...new Set([...prev, ...pactesEquipes])]);
-        capturerStatsFinRun();
+        capturerStatsFinRun('victoire');
         setEcran('ecran-fin');
         effacerRun();
     };
@@ -491,7 +509,7 @@ export function useGameState() {
     const gererDefaite = () => {
         setLogsMort(extraireLogsDuDernierTour(lireHistoriqueLogsPersistant()));
         setVictoireTotale(false);
-        capturerStatsFinRun();
+        capturerStatsFinRun('mort');
         setEcran('ecran-fin');
         effacerRun();
     };
