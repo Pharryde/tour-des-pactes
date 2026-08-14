@@ -68,6 +68,6 @@ export function appliquerFormeMegaBoss(monstreActuel: Entite, forme: Entite): En
         multiplicateurDegatsSiArmure: forme.multiplicateurDegatsSiArmure,
         multiplicateurBrulure: forme.multiplicateurBrulure,
         multiplicateurPoison: forme.multiplicateurPoison,
-        peutTemporiserDesTour: forme.peutTemporiserDesTour,
+        peutTemporiserSiPoisonDepasse: forme.peutTemporiserSiPoisonDepasse,
     };
 }

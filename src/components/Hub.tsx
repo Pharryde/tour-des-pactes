@@ -11,13 +11,12 @@ interface HubProps {
     aNouveauteTuto: boolean;
     marquerTutoLu: () => void;
     aNouveauPacte: boolean;
-    marquerPactesVus: () => void;
     aPointsCompetenceDispo: boolean;
 }
 
 export function Hub({
     onLancerRun, onChangeEcran, forgeronPresente, aNouveauteTuto, marquerTutoLu,
-    aNouveauPacte, marquerPactesVus, aPointsCompetenceDispo
+    aNouveauPacte, aPointsCompetenceDispo
 }: HubProps) {
     // Cible du bond du Chat Mystérieux (voir ChatHub.tsx), qui mesure ce bouton à l'exécution.
     const refBoutonLancer = useRef<HTMLButtonElement>(null);
@@ -27,10 +26,9 @@ export function Hub({
         onChangeEcran('ecran-tuto');
     };
 
-    const ouvrirInventaire = () => {
-        marquerPactesVus();
-        onChangeEcran('ecran-inventaire');
-    };
+    // Le marquage "vu" a lieu à la SORTIE de l'Inventaire (voir Inventaire.tsx) : le faire ici
+    // viderait la liste des nouveautés avant même qu'elles ne soient affichées.
+    const ouvrirInventaire = () => onChangeEcran('ecran-inventaire');
 
     return (
         <div id="ecran-hub" className="ecran">

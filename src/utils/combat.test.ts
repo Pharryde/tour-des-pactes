@@ -55,6 +55,39 @@ describe('calculerAttaqueAffichee', () => {
     });
 });
 
+// Pacte de la Foudre : la seule contribution qui dépend de la CIBLE. Sans elle, la stat affichée
+// ment d'un facteur 1,5 à 3 sur tout l'Étage de la Foudre.
+describe('calculerAttaqueAffichee — Pacte de la Foudre', () => {
+    const foudroyeur = creerHeros({ multiplicateurDegatsSiArmure: 2 });
+
+    it("n'amplifie rien contre une cible sans armure", () => {
+        expect(calculerAttaqueAffichee(foudroyeur, [], creerHeros({ armure: 0 }))).toBe(10);
+    });
+
+    it('amplifie contre une cible qui porte de l\'armure', () => {
+        expect(calculerAttaqueAffichee(foudroyeur, [], creerHeros({ armure: 5 }))).toBe(20);
+    });
+
+    // L'armure de début de tour (Pelage d'Acier) n'est créditée qu'à la résolution : il faut
+    // l'anticiper, sinon la stat ment pendant toute la phase de programmation.
+    it("anticipe l'armure regénérée en début de tour", () => {
+        expect(calculerAttaqueAffichee(foudroyeur, [], creerHeros({ armure: 0, regenArmureTour: 10 }))).toBe(20);
+    });
+
+    it('reste muet quand aucune cible n\'est fournie', () => {
+        expect(calculerAttaqueAffichee(foudroyeur)).toBe(10);
+    });
+
+    // La brûlure sort du calcul de dégâts : elle ne profite de la Foudre qu'avec la Synergie.
+    it("n'applique la Foudre à la brûlure qu'avec la Synergie Élémentaire", () => {
+        const armee = creerHeros({ armure: 5 });
+        expect(calculerAttaqueAffichee(creerHeros({ multiplicateurDegatsSiArmure: 2, multiplicateurBrulure: 0.5 }), [], armee)).toBe(5);
+        expect(calculerAttaqueAffichee(creerHeros({
+            multiplicateurDegatsSiArmure: 2, multiplicateurBrulure: 0.5, synergieActive: 'Elementaire',
+        }), [], armee)).toBe(10);
+    });
+});
+
 describe('calculerPreciseAffichee', () => {
     it('renvoie la Précise de base sans bonus', () => {
         expect(calculerPreciseAffichee(creerHeros())).toBe(10);
@@ -134,11 +167,28 @@ describe('genererActionsMonstre — obligation d\'attaquer', () => {
         }
     });
 
-    // L'étage du Poison ne temporise qu'à partir du 2e tour : au 1er, il doit poser sa dose.
-    it('respecte le tour à partir duquel la temporisation est permise', () => {
-        const creature = creerHeros({ actionsPossibles: ['P', 'D', 'E'], peutTemporiserDesTour: 2 });
-        for (let essai = 0; essai < 40; essai++) {
-            expect(genererActionsMonstre(creature, 1).some(a => a === 'P')).toBe(true);
+    // Seul l'Étage du Poison déroge, et seulement une fois sa dose installée au-delà du seuil :
+    // en dessous, il doit continuer d'injecter.
+    it('exige une offensive tant que le poison posé ne dépasse pas le seuil', () => {
+        const creature = creerHeros({ actionsPossibles: ['P', 'D', 'E'], peutTemporiserSiPoisonDepasse: 10 });
+        for (const poison of [0, 5, 10]) {
+            for (let essai = 0; essai < 30; essai++) {
+                expect(genererActionsMonstre(creature, poison).some(a => a === 'P'), `poison ${poison}`).toBe(true);
+            }
+        }
+    });
+
+    it('autorise enfin la temporisation une fois le seuil dépassé', () => {
+        const creature = creerHeros({ actionsPossibles: ['P', 'D', 'E'], peutTemporiserSiPoisonDepasse: 10 });
+        const tours = Array.from({ length: 300 }, () => genererActionsMonstre(creature, 11));
+        expect(tours.some(actions => !actions.some(a => a === 'P'))).toBe(true);
+    });
+
+    // Les autres étages ont perdu ce droit : plus aucune dérogation ailleurs.
+    it("ne laisse aucun autre étage passer son tour", () => {
+        for (let essai = 0; essai < 60; essai++) {
+            const actions = genererActionsMonstre(creerHeros({ actionsPossibles: ['A', 'D', 'E'] }), 999);
+            expect(actions.some(a => a === 'A')).toBe(true);
         }
     });
 });

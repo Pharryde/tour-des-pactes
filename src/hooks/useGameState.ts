@@ -1,12 +1,13 @@
 // src/hooks/useGameState.ts
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat } from '../types';
+import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat, LeconMort } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
 import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
 import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
 import { construireMegaBoss } from '../utils/megaboss';
 import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
+import { detecterLeconMort, leconAAfficher, type CirconstancesMort } from '../utils/leconsMort';
 import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } from '../utils/tutoCombat';
 import { calculerRecompenseCombat } from '../utils/recompenses';
 import { calculerPointsDisponibles } from '../utils/competences';
@@ -80,6 +81,8 @@ export function useGameState() {
     const [, setRunsLancees] = useLocalStorage<number>('tdp_runs_lancees', runsTerminees);
     const [forgeronPresente, setForgeronPresente] = useLocalStorage<boolean>('tdp_forgeron_presente', false);
     const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
+    const [leconsMortVues, setLeconsMortVues] = useLocalStorage<LeconMort[]>('tdp_lecons_mort_vues', []);
+    const [leconMortEnAttente, setLeconMortEnAttente] = useLocalStorage<LeconMort | null>('tdp_lecon_mort_attente', null);
     const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
     const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
@@ -145,6 +148,9 @@ export function useGameState() {
     // qu'un point n'a pas été dépensé, même si l'écran a déjà été visité.
     const aNouveauPacte = pactesDebloques.length > pactesVus;
     const marquerPactesVus = () => setPactesVus(pactesDebloques.length);
+    // Les Pactes arrachés depuis la dernière visite de l'Inventaire. `pactesDebloques` étant
+    // toujours complété par la fin, la coupure au compteur suffit — inutile de stocker une 2e liste.
+    const pactesNonVus = pactesDebloques.slice(pactesVus);
     const aPointsCompetenceDispo = calculerPointsDisponibles(xpTotal, competences) > 0;
 
     useEffect(() => {
@@ -203,7 +209,7 @@ export function useGameState() {
             tutoIntroFait, monstreTuto, aPacteChat, monstresTues, competences, xpTotal, bestiaire,
             aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
             aBenedictionChat, benedictionActive, vieChatDispo, pactesVictorieux,
-            runsTerminees, forgeronPresente, leconComboFaite,
+            runsTerminees, forgeronPresente, leconComboFaite, leconsMortVues, leconMortEnAttente,
         ],
     );
 
@@ -299,6 +305,15 @@ export function useGameState() {
         if (!aBenedictionChat) { setEcran('ecran-benediction'); return; }
         if (!forgeronPresente && runsTerminees >= 2) { setEcran('ecran-forgeron'); return; }
         if (forgeronPresente && !leconComboFaite) { setEcran('ecran-lecon-combo'); return; }
+        // Les leçons de mort passent APRÈS toutes les apparitions scénarisées : elles sont
+        // circonstancielles, elles ne doivent pas doubler une scène qui, elle, a un ordre imposé.
+        if (leconMortEnAttente) { setEcran('ecran-lecon-mort'); return; }
+        setEcran('ecran-hub');
+    };
+
+    const gererLeconMortVue = () => {
+        if (leconMortEnAttente) setLeconsMortVues(prev => [...new Set([...prev, leconMortEnAttente])]);
+        setLeconMortEnAttente(null);
         setEcran('ecran-hub');
     };
 
@@ -495,6 +510,7 @@ export function useGameState() {
 
     const gererFinMegaBoss = (victoire: boolean, joueurRestant: Entite) => {
         if (!victoire) {
+            // Le Gardien Absolu n'appartient à aucun étage : aucune leçon de mort ne s'y rattache.
             gererDefaite();
             return;
         }
@@ -577,9 +593,25 @@ export function useGameState() {
         setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${gainXp} point(s) d'XP ${benedictionActive === 'apprentissage' ? '(Leçon du Maître : XP doublée) ' : ''}!</div>`]);
     };
 
-    const gererDefaite = () => {
+    const gererDefaite = (circonstances?: CirconstancesMort) => {
         setLogsMort(extraireLogsDuDernierTour(lireHistoriqueLogsPersistant()));
         setVictoireTotale(false);
+
+        // Le Chat ne revient sur une mort que si elle vient d'un pouvoir qu'on peut rater, et une
+        // seule fois par cause. La leçon est retenue ici mais ne s'affichera qu'à la sortie de
+        // l'écran de fin, derrière les apparitions déjà programmées (voir gererQuitterFin).
+        const etageActuel = listeEtages[indexEtageActuel];
+        if (circonstances && etageActuel) {
+            const lecon = detecterLeconMort({
+                ...circonstances,
+                idPacteEtage: etageActuel.idPacte,
+                estCombatDeGardien: indexSalle === etageActuel.monstres.length,
+            });
+            setLeconMortEnAttente(leconAAfficher(lecon, leconsMortVues));
+        } else {
+            setLeconMortEnAttente(null);
+        }
+
         capturerStatsFinRun('mort');
         setEcran('ecran-fin');
         effacerRun();
@@ -642,7 +674,7 @@ export function useGameState() {
         }
     };
 
-    const handleFinDeCombat = (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false) => {
+    const handleFinDeCombat = (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false, circonstances?: CirconstancesMort) => {
         if (enCombatMegaBoss) {
             gererFinMegaBoss(victoire, joueurRestant);
             return;
@@ -653,7 +685,7 @@ export function useGameState() {
         }
 
         if (!victoire) {
-            gererDefaite();
+            gererDefaite(circonstances);
             return;
         }
 
@@ -724,6 +756,7 @@ export function useGameState() {
         synergiesDecouvertes,
         aNouveauteTuto,
         aNouveauPacte,
+        pactesNonVus,
         aPointsCompetenceDispo,
 
         // Actions
@@ -738,6 +771,8 @@ export function useGameState() {
         gererLancerRun,
         gererVieDeChatConsommee,
         gererQuitterFin,
+        gererLeconMortVue,
+        leconMortEnAttente,
         gererRecevoirBenediction,
         gererForgeronPresente,
         gererLeconComboFaite,

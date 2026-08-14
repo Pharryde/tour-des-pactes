@@ -1,10 +1,13 @@
-export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo';
+export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo' | 'ecran-lecon-mort';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 export type ChoixRepos = 'soin' | 'atk' | 'pre' | 'def' | 'pv';
 export type Synergie = 'Guerrier' | 'Ninja' | 'Tank' | 'Assassin' | 'Elementaire';
 // Bonus offert par le Chat Mystérieux, tiré à la Roue de la Chance à chaque entrée dans la Tour
 // (voir utils/benedictions.ts pour leurs effets).
 export type BenedictionChat = 'esquive' | 'critique' | 'armure' | 'hypnose' | 'vieDeChat' | 'apprentissage';
+// Leçon donnée par le Chat après une mort dont la cause est facile à ne pas voir (voir
+// utils/leconsMort.ts). Chacune ne se joue qu'une fois dans la vie du joueur.
+export type LeconMort = 'chronos' | 'armure' | 'ventMortel' | 'anomalie' | 'brute';
 
 export interface Competences {
     pv: number;
@@ -79,8 +82,9 @@ export interface Entite {
     // poison). La valeur du DoT vaut donc les dégâts réels de l'action, combos compris.
     multiplicateurBrulure?: number;
     multiplicateurPoison?: number;
-    // Tour à partir duquel la créature peut passer un tour entier sans action offensive.
-    peutTemporiserDesTour?: number;
+    // Seuil de poison déjà injecté au-delà duquel la créature peut passer un tour entier sans action
+    // offensive. Absent partout sauf sur l'Étage du Poison.
+    peutTemporiserSiPoisonDepasse?: number;
     // États subis, transportés d'un tour à l'autre par l'entité elle-même.
     brulureActive?: number;
     poisonActif?: number;

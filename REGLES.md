@@ -68,6 +68,9 @@ même créneau.
 
 > **Exception — Étage du Froid.** Sur les créneaux « déréglés », le porteur du pouvoir agit **avant**
 > l'autre. Sa propre garde le protège, mais la garde adverse arrive trop tard pour amortir son coup.
+> Et s'il frappe **assez fort pour tuer**, l'adversaire n'a plus l'occasion de riposter : sur un
+> créneau déréglé, il n'y a pas de double KO. En simultané, au contraire, les deux coups partent
+> quoi qu'il arrive.
 
 **c. Fin de tour.** Voir [§8](#8-la-fin-de-tour-dans-lordre).
 
@@ -195,8 +198,17 @@ sont le miroir l'un de l'autre.
 Une conversion totale dès le Niveau I rendrait ces deux Pactes strictement supérieurs à l'action
 qu'ils remplacent — une brûlure qui s'empile ou un poison qui ignore l'armure, pour le même montant.
 
-**La base de calcul, ce sont les dégâts réels de l'action** : combos, multiplicateurs du Pacte du
-Temps et critiques compris, jamais une valeur forfaitaire.
+**La base de calcul, ce sont les dégâts réels de l'action** : **combos**, multiplicateurs du **Pacte
+du Temps** et critiques compris, jamais une valeur forfaitaire. Une 5ᵉ action doublée par le Temps
+pose donc deux fois plus de brûlure, et un combo x5 pose la dose du combo x5.
+
+**La dose affichée fait foi.** La conversion est arrondie une seule fois, sur la valeur de base, et
+les multiplicateurs de tour portent ensuite sur cette dose entière. Un héros à 7 de Précise sous
+Pacte du Poison I lit `🧪 4` : sa 5ᵉ action doublée par le Temps en pose **8**, pas 7. Ce que
+l'écran annonce et ce que l'ennemi encaisse ne peuvent pas diverger.
+
+La **Foudre**, elle, reste à part : elle vit dans le calcul de dégâts direct, dont une action
+convertie ressort à zéro. Une brûlure n'en profite **qu'avec la Synergie Élémentaire**.
 
 > **Exemple.** Avec le Pacte du Feu **II**, une 4ᵉ action à 12 puis une 5ᵉ action en Combo x2 à 34
 > posent **46** de brûlure en fin de tour (12 + 34). Avec le Niveau I, la même séquence en pose 23.
@@ -257,18 +269,14 @@ Les monstres tirent leurs 5 actions au hasard parmi leur panoplie, avec une **ch
 l'action précédente (20 % par défaut, 50 % sur l'Étage du Combo, et un bonus spécifique après une
 Défense pour les Gardiens de l'Armure : 25 / 33 / 50 % selon la forme).
 
-**Obligation d'attaquer.** Une créature ne peut pas passer un tour entier à se défendre et esquiver :
-si aucune offensive n'est sortie du tirage, l'une de ses actions est remplacée par une ⚔️ ou une 🎯.
-Un tour d'attente n'a de sens que pour les créatures dont le **pouvoir travaille pendant l'attente** ;
-seules celles-ci en sont dispensées :
+**Obligation d'attaquer.** Une créature ne peut **jamais** passer un tour entier à se défendre et
+esquiver : si aucune offensive n'est sortie du tirage, l'une de ses actions est remplacée par une ⚔️
+ou une 🎯. Un tour sans offensive serait un tour offert au joueur.
 
-| Étage | Peut temporiser | Pourquoi |
-|---|---|---|
-| Armure | Dès le tour 1 | L'armure accumulée devient une arme (Pointes d'Acier) |
-| Vie | Dès le tour 1 | Régénération de PV |
-| Temps | Dès le tour 1 | Altération temporelle |
-| Poison | **À partir du tour 2** | Le poison déjà posé continue de ronger — mais il faut d'abord le poser |
-| Tous les autres | Jamais | Un tour sans offensive serait un tour offert au joueur |
+**Unique dérogation** : les créatures de l'**Étage du Poison**, une fois que la dose déjà injectée
+dans le joueur **dépasse 10**. Leur poison travaille alors tout seul, et attendre devient une vraie
+tactique plutôt qu'un temps mort. En dessous du seuil, elles doivent continuer d'injecter comme tout
+le monde.
 
 **Panoplies restreintes.** Certains étages n'ont pas accès aux quatre actions : ni Précise sur les
 étages de la Vie, de la Brute et du Feu ; ni Attaque sur l'Étage du Poison ; ni Défense sur l'Étage
@@ -329,7 +337,7 @@ Chaque Gardien existe en trois formes de puissance croissante : **normale**, **�
 | **Fluidité** | Le Maître des Courants | **Limite vos enchaînements** (4, puis 3, puis 2 actions identiques max). En forme finale, **annule aussi vos bonus de combo**. |
 | **Brute** | Le Poing Primordial | Aucune Précise, mais une Attaque écrasante (16 → 22 de base). |
 | **Froid** | Le Souffle Immobile | **Dérègle l'ordre de résolution** : agit avant vous sur 2 créneaux. Sa forme évoluée **gèle** une action ; la finale cumule les deux. |
-| **Foudre** | La Colère du Ciel | **x1,5 / x2 / x3 sur ses dégâts totaux** tant que sa cible porte de l'armure. Se défendre contre lui est un piège. |
+| **Foudre** | La Colère du Ciel | **x1,5 / x2 / x3 sur ses dégâts totaux** tant que sa cible porte de l'armure. Se défendre contre lui est un piège. Les stats ⚔️/🎯 et la jauge de combo affichent la valeur **déjà amplifiée** dès que la cible est armée — y compris l'armure que le « Pelage d'Acier » n'a pas encore créditée, puisqu'elle tombera de toute façon. |
 | **Feu** | Le Brasier Vorace | Son **Attaque devient une Brûlure** cumulée, résolue en fin de tour. Aucune Précise. |
 | **Poison** | La Sève Noire | Sa **Précise devient un Poison** qui traverse l'armure, s'accumule de tour en tour et ne décroît jamais. Aucune Attaque. |
 
@@ -436,6 +444,30 @@ une simple ligne de journal, qui passerait inaperçue en mode automatique.
 **Le Chat apparaît aussi entre les runs**, une scène au maximum et une seule fois chacune : la
 Bénédiction après la 1ʳᵉ ascension achevée, la présentation du Forgeron à partir de la 2ᵉ, puis un
 rappel sur le Combo. L'Arbre de Compétences n'est accessible qu'**une fois le Forgeron présenté**.
+
+**Les leçons de mort.** Une fois ces trois scènes passées, le Chat revient commenter les morts dont
+la cause est facile à ne jamais voir.
+
+| Vous êtes mort... | Le Chat vous demande... | Fréquence |
+|---|---|---|
+| De l'**Altération Temporelle** de Chronos (le coup fatal tombe en fin de tour) | Si vous aviez vu qu'il tuait sans vous toucher | Une fois |
+| De l'**assaut d'armure** du Mur de Fer en fin de tour | Si vous aviez vu que sa carapace explosait | **À chaque fois** |
+| Contre **Le Vent Mortel** alors qu'il neutralisait votre esquive | Si vous aviez remarqué que vos Esquives ne servaient à rien | **À chaque fois** |
+| Contre **L'Anomalie** après qu'elle se soit régénérée | Si vous aviez vu sa barre de vie remonter | Une fois |
+| Contre **Le Poing Primordial** | S'il vous a semblé qu'il tapait fort (il n'a rien d'autre à dire) | Une fois |
+
+Les deux leçons répétées sont celles des pièges dans lesquels on **retombe** : se faire à nouveau
+bloquer l'esquive ou exploser par une armure prouve que la leçon n'a pas porté.
+
+Trois restrictions :
+
+- Il faut être tombé pendant le combat du **Gardien** — ces pouvoirs n'appartiennent qu'à lui, pas
+  aux créatures de son étage.
+- Chronos et le Mur de Fer exigent que le coup fatal soit bien leur **tic de fin de tour**. Mourir
+  sous leurs coups ordinaires n'apprend rien sur leur pouvoir.
+- Seule la **forme qui porte le pouvoir** compte. Le Vent Mortel ne bloque l'esquive que sous sa
+  forme finale : les deux autres ne déclenchent rien. Idem pour l'assaut d'armure du Mur de Fer
+  (forme finale) et la régénération de L'Anomalie (formes évoluée et finale).
 
 ---
 

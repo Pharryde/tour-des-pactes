@@ -6,6 +6,7 @@ import { detailAttaque, detailPrecise, detailDefense } from '../utils/detailStat
 import { tirerNouvelleForme, appliquerFormeMegaBoss } from '../utils/megaboss';
 import { genererBadgesPactes } from '../utils/pactes';
 import { COMPTEURS_ACTIONS_VIDES, incrementerCompteurs, type StatCombo, type StatsTour } from '../utils/telemetrieRuns';
+import type { CirconstancesMort } from '../utils/leconsMort';
 import { jouer_tour } from 'moteur_wasm';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { chargerEtatCombat, usePersisterCombat } from '../hooks/useCombatResume';
@@ -28,7 +29,7 @@ interface CombatAreneProps {
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
     ajouterStatsTour: (stats: StatsTour) => void;
-    onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean) => void;
+    onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean, circonstances?: CirconstancesMort) => void;
     onAbandon: () => void;
     enCombatPacte: boolean;
     formesMegaBoss?: Entite[];
@@ -109,6 +110,9 @@ export function CombatArene({
     const modeResolutionRef = useRef<'auto'|'manuel'>(modeResolution);
     const vitesseRef = useRef<number>(vitesseResolution);
 
+    // L'Anomalie peut s'être soignée bien avant le tour fatal : ce suivi couvre tout le combat.
+    const sestSoigneRef = useRef(false);
+
     const logEndRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => { 
@@ -128,7 +132,7 @@ export function CombatArene({
             monstreDuTour = appliquerFormeMegaBoss(monstre, nouvelleForme);
             setMonstre(monstreDuTour);
         }
-        const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour, tourActuel);
+        const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour, joueur.poisonActif ?? 0);
         // Le joueur applique son Pacte Lvl 1/2 sur le monstre
         setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5));
         setIndicesVisiblesMonstre(genererIndicesVisibles(monstreDuTour.actionsVisibles));
@@ -387,6 +391,24 @@ export function CombatArene({
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
+        // Circonstances de la mort, pour que le Chat puisse revenir dessus (voir utils/leconsMort.ts).
+        // Tout est déduit de l'ÉTAT, jamais du texte du journal : la dernière étape d'action porte
+        // les PV d'AVANT les effets de fin de tour, donc y être encore vivant puis mort à l'arrivée
+        // signifie que c'est un tic de fin de tour qui a frappé. Même principe pour la régénération,
+        // lue sur des PV qui remontent plutôt que recalculée à partir de l'intervalle du boss.
+        const derniereAction = [...resultat.etapes].reverse().find(e => e.estAction);
+        if (derniereAction !== undefined && resultat.monstre.pv > derniereAction.monstrePv) {
+            sestSoigneRef.current = true;
+        }
+        const circonstances: CirconstancesMort = {
+            mortEnFinDeTour: (derniereAction?.joueurPv ?? joueur.pv) > 0 && resultat.joueur.pv <= 0,
+            alterationDeclenchee: monstre.pertePvChaqueXTours !== undefined
+                && tourActuel % monstre.pertePvChaqueXTours === 0,
+            assautArmure: monstre.degatsArmureRestanteFinTour === true,
+            bloqueEsquive: monstre.bloqueEsquiveOpposant === true,
+            sestSoigne: sestSoigneRef.current,
+        };
+
         // Le PNJ du tutoriel ne peut jamais tuer ni être tué : il n'existe que pour dérouler son
         // script sur un nombre de tours fixe, indépendamment des PV.
         if (!estTutoriel && resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
@@ -394,11 +416,11 @@ export function CombatArene({
             setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 DOUBLE KO ! Vous avez emporté ${resultat.monstre.nom} avec vous !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
-            onFinDeCombat(false, resultat.joueur, true);
+            onFinDeCombat(false, resultat.joueur, true, circonstances);
         } else if (!estTutoriel && resultat.joueur.pv <= 0) {
             setSpriteJoueur('mort');
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000 / vitesseRef.current));
-            onFinDeCombat(false, resultat.joueur, false);
+            onFinDeCombat(false, resultat.joueur, false, circonstances);
         } else if (!estTutoriel && resultat.monstre.pv <= 0) {
             setSpriteJoueur('idle');
             setSpriteMonstre('mort');
@@ -524,9 +546,9 @@ export function CombatArene({
                         <EtatsDifferes entite={joueur} />
                     </div>
                     <div className="stats-base">
-                        <StatDetail icone={symbolePour('A', joueur)} valeur={calculerAttaqueAffichee(joueur, actionsJoueur)} detail={detailAttaque(joueur, competences, actionsJoueur)} />
+                        <StatDetail icone={symbolePour('A', joueur)} valeur={calculerAttaqueAffichee(joueur, actionsJoueur, monstre)} detail={detailAttaque(joueur, competences, actionsJoueur, monstre)} />
                         {' | '}
-                        <StatDetail icone={symbolePour('P', joueur)} valeur={calculerPreciseAffichee(joueur)} detail={detailPrecise(joueur, competences)} />
+                        <StatDetail icone={symbolePour('P', joueur)} valeur={calculerPreciseAffichee(joueur, monstre)} detail={detailPrecise(joueur, competences, monstre)} />
                         {' | '}
                         <StatDetail icone="🛡️" valeur={joueur.baseD} detail={detailDefense(joueur, competences, pactesEquipes)} />
                     </div>
@@ -549,7 +571,7 @@ export function CombatArene({
                         <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre, joueur.reductionEsquiveOpposant)[Math.min(monstre.nivEsquive, 3)]}%)</span>
                         <EtatsDifferes entite={monstre} />
                     </div>
-                    <div className="stats-base">{symbolePour('A', monstre)} {calculerAttaqueAffichee(monstre)} | {symbolePour('P', monstre)} {calculerPreciseAffichee(monstre)} | 🛡️ {monstre.baseD}</div>
+                    <div className="stats-base">{symbolePour('A', monstre)} {calculerAttaqueAffichee(monstre, [], joueur)} | {symbolePour('P', monstre)} {calculerPreciseAffichee(monstre, joueur)} | 🛡️ {monstre.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageM, monstre)}</span>
                     <div className="actions-box">
                         {[0, 1, 2, 3, 4].map(i => (

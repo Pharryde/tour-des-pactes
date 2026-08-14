@@ -57,7 +57,7 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         multiplicateur_degats_si_armure: None,
         multiplicateur_brulure: None,
         multiplicateur_poison: None,
-        peut_temporiser_des_tour: None,
+        peut_temporiser_si_poison_depasse: None,
         brulure_active: None,
         poison_actif: None,
     }
@@ -366,10 +366,11 @@ pub fn get_etage_poison() -> StructureEtage {
     }
 }
 
-// Autorise une entité à passer un tour entier sans action offensive, à partir du tour indiqué.
-// Réservé aux étages dont le pouvoir travaille pendant l'attente (voir peut_temporiser_des_tour).
-fn autoriser_temporisation(etage: StructureEtage, des_le_tour: i32) -> StructureEtage {
-    let marquer = |mut e: Entite| { e.peut_temporiser_des_tour = Some(des_le_tour); e };
+// Autorise une entité à passer un tour entier sans action offensive une fois que le poison qu'elle
+// a injecté dépasse le seuil donné. Réservé à l'Étage du Poison : ailleurs, attendre ne rapporte
+// rien à la créature et offre juste un tour au joueur.
+fn autoriser_temporisation(etage: StructureEtage, seuil_poison: i32) -> StructureEtage {
+    let marquer = |mut e: Entite| { e.peut_temporiser_si_poison_depasse = Some(seuil_poison); e };
     StructureEtage {
         monstres: etage.monstres.into_iter().map(marquer).collect(),
         boss_normal: marquer(etage.boss_normal),
@@ -381,17 +382,17 @@ fn autoriser_temporisation(etage: StructureEtage, des_le_tour: i32) -> Structure
 
 pub fn get_tous_les_etages() -> Vec<StructureEtage> {
     vec![
-        autoriser_temporisation(get_etage_armure(), 1),
+        get_etage_armure(),
         get_etage_esquive(),
         get_etage_combo(),
-        autoriser_temporisation(get_etage_vie(), 1),
+        get_etage_vie(),
         get_etage_ombre(),
-        autoriser_temporisation(get_etage_temps(), 1),
+        get_etage_temps(),
         get_etage_fluidite(),
         get_etage_puissance_brute(),
         get_etage_froid(),
         get_etage_foudre(),
         get_etage_feu(),
-        autoriser_temporisation(get_etage_poison(), 2),
+        autoriser_temporisation(get_etage_poison(), 10),
     ]
 }

@@ -22,7 +22,25 @@ export function symbolePour(action: ActionType, entite?: Entite): string {
 // Guerrier pendant que le joueur programme son tour : chaque Défense déjà posée dans la file
 // ajoute +2 aux dégâts de base affichés, avant même de valider le tour — pour que le bonus
 // "temporaire" (remis à zéro chaque tour côté moteur) reste visible plutôt qu'invisible.
-export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: ActionType[] = []): number {
+// Pacte de la Foudre : le coup entier est amplifié tant que la CIBLE porte de l'armure. C'est donc
+// la seule contribution qui dépend de l'adversaire, d'où le paramètre `cible` — sans lui, la stat
+// affichée reste muette sur l'Étage de la Foudre alors que les dégâts réels y sont jusqu'à triplés.
+// Miroir de `appliquer_foudre()` côté moteur.
+// ⚠️ L'armure regénérée en début de tour (« Pelage d'Acier », passifs de boss) n'est créditée qu'au
+// lancement de la résolution : pendant que le joueur programme, `armure` vaut encore 0 alors que la
+// cible en portera à coup sûr quand le coup partira. On l'anticipe, sinon la stat annonce des dégâts
+// simples pour un coup qui sera amplifié.
+export function cibleSeraArmee(cible?: Entite): boolean {
+    if (!cible) return false;
+    return cible.armure > 0 || (cible.regenArmureTour ?? 0) > 0;
+}
+
+function appliquerFoudre(valeur: number, entite: Entite, cible?: Entite): number {
+    if (!entite.multiplicateurDegatsSiArmure || !cibleSeraArmee(cible)) return valeur;
+    return Math.round(valeur * entite.multiplicateurDegatsSiArmure);
+}
+
+export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: ActionType[] = [], cible?: Entite): number {
     let base = entite.baseA;
     if (entite.synergieActive === 'Guerrier') {
         const nbDefenses = actionsEnAttente.filter(a => a === 'D').length;
@@ -33,8 +51,13 @@ export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: Action
     }
     // Pacte du Feu : l'Attaque ne blesse plus, elle pose une brûlure valant une PART de ses dégâts.
     // C'est cette dose que le joueur doit lire sous l'icône 🔥, pas les dégâts qu'il n'infligera pas.
-    if (entite.multiplicateurBrulure) return Math.round(base * entite.multiplicateurBrulure);
-    return base;
+    // ⚠️ La Foudre n'entre dans la brûlure QUE via la Synergie Élémentaire (cf. convertir_en_brulure).
+    if (entite.multiplicateurBrulure) {
+        const valeur = entite.synergieActive === 'Elementaire' ? appliquerFoudre(base, entite, cible) : base;
+        return Math.round(valeur * entite.multiplicateurBrulure);
+    }
+
+    return appliquerFoudre(base, entite, cible);
 }
 
 // Même principe pour la Précise : le Pacte de l'Ombre (I/II) double ses dégâts (degatsPrecisDoubles)
@@ -42,14 +65,20 @@ export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: Action
 // deux effets "toujours actifs" (contrairement au Pacte du Combo ou du Temps, conditionnés au
 // combo/à la position dans le tour) qui doivent donc être visibles directement sur 🎯.
 // Même ordre d'opérations que le moteur : bonus % (get_valeur_action) puis doublage (calculer_degats).
-export function calculerPreciseAffichee(entite: Entite): number {
+export function calculerPreciseAffichee(entite: Entite, cible?: Entite): number {
     let valeur = entite.baseP;
     if (entite.synergieActive === 'Assassin' && entite.bonusDegatsAttaquePourcentage) {
         valeur = Math.round(valeur * (1 + entite.bonusDegatsAttaquePourcentage / 100));
     }
-    if (entite.degatsPrecisDoubles) valeur *= 2;
-    // Pacte du Poison : même logique que la brûlure côté Attaque — c'est la dose posée qui compte.
+
+    // Pacte du Poison : la dose se calcule sur la valeur BRUTE de l'action. Ni la Foudre ni le
+    // doublage de l'Ombre n'y entrent — ils vivent dans `calculer_degats`, dont une action convertie
+    // ressort à zéro (cf. convertir_en_poison).
     if (entite.multiplicateurPoison) return Math.round(valeur * entite.multiplicateurPoison);
+
+    // Ordre imposé par le moteur : la Foudre amplifie, PUIS l'Ombre double.
+    valeur = appliquerFoudre(valeur, entite, cible);
+    if (entite.degatsPrecisDoubles) valeur *= 2;
     return valeur;
 }
 
@@ -128,7 +157,9 @@ export function tirerCreneauxFroid(joueur: Entite, monstre: Entite): CreneauxFro
     };
 }
 
-export function genererActionsMonstre(monstre: Entite, tourActuel: number = 1): ActionType[] {
+// `poisonSurCible` : dose de poison déjà installée sur l'adversaire de cette créature. Elle seule
+// décide du droit de temporiser (voir peutTemporiserSiPoisonDepasse).
+export function genererActionsMonstre(monstre: Entite, poisonSurCible: number = 0): ActionType[] {
     const possibilites = monstre.actionsPossibles;
     const actions: ActionType[] = [];
     const chancePoursuiteCombo = monstre.chanceCombo !== undefined ? monstre.chanceCombo : 20;
@@ -153,11 +184,11 @@ export function genererActionsMonstre(monstre: Entite, tourActuel: number = 1): 
         actions.push(choix);
     }
 
-    // Un tour entier passé à se défendre et esquiver n'a de sens que pour les créatures dont le
-    // pouvoir travaille pendant l'attente (régénération, Pointes d'Acier, altération temporelle,
-    // poison déjà posé). Partout ailleurs, c'est un tour offert au joueur : on force alors au moins
-    // une action offensive.
-    const peutTemporiser = monstre.peutTemporiserDesTour !== undefined && tourActuel >= monstre.peutTemporiserDesTour;
+    // Un tour entier passé à se défendre et esquiver n'a de sens que pour une créature dont le
+    // poison déjà injecté fait le travail à sa place. Partout ailleurs, c'est un tour offert au
+    // joueur : on force alors au moins une action offensive.
+    const peutTemporiser = monstre.peutTemporiserSiPoisonDepasse !== undefined
+        && poisonSurCible > monstre.peutTemporiserSiPoisonDepasse;
     const offensives = possibilites.filter(a => a === 'A' || a === 'P');
     if (!peutTemporiser && offensives.length > 0 && !actions.some(a => a === 'A' || a === 'P')) {
         actions[Math.floor(Math.random() * 5)] = offensives[Math.floor(Math.random() * offensives.length)];

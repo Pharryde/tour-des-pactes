@@ -20,6 +20,10 @@ pub struct ResultatDegats {
     // précis de la frappe). Impossible à recalculer depuis le journal : l'armure de la cible bouge
     // à l'intérieur même du créneau, selon l'ordre de résolution.
     pub foudre_appliquee: bool,
+    // Valeur RÉELLEMENT portée par le coup, une fois tout appliqué (Foudre, doublage de la Précise,
+    // conversion en brûlure/poison). Le journal affiche ça et non la valeur brute du combo : sur
+    // l'Étage de la Foudre, la seconde ment d'un facteur 1,5 à 3.
+    pub valeur_appliquee: i32,
 }
 
 // `fusion_ap` : Synergie Assassin ("Danse des Lames") — Attaque et Précise comptent comme la même
@@ -147,7 +151,7 @@ pub fn appliquer_foudre(val_atk: i32, attaquant: &Entite, defenseur: &Entite) ->
 // L'attaquant est passé en entier (plutôt que ses drapeaux un par un) : c'est lui qui porte à la
 // fois le doublage de la Précise, la neutralisation de l'esquive et la réduction d'esquive adverse.
 pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, attaquant: &Entite, defenseur: &Entite) -> ResultatDegats {
-    let neutre = ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false };
+    let neutre = ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0 };
     if *action_atk != ActionType::A && *action_atk != ActionType::P {
         return neutre;
     }
@@ -158,19 +162,20 @@ pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, attaquant: &Entite
     let neutre = ResultatDegats { foudre_appliquee: val_amplifiee != val_atk, ..neutre };
     let val_atk = val_amplifiee;
 
+    // Valeur finale du coup : la Précise double APRÈS l'amplification de la Foudre.
+    let porte = if *action_atk == ActionType::P && degats_precis_doubles { val_atk * 2 } else { val_atk };
+    let neutre = ResultatDegats { valeur_appliquee: porte, ..neutre };
+
     let chance = chance_esquive(attaquant, defenseur);
     let jet = rand::thread_rng().gen_range(1..=100);
     if jet <= chance {
-        let degats_potentiels = if *action_atk == ActionType::P && degats_precis_doubles { val_atk * 2 } else { val_atk };
-        return ResultatDegats { esquive: true, degats_evites: degats_potentiels, chance_esquive: chance, ..neutre };
+        return ResultatDegats { esquive: true, degats_evites: porte, chance_esquive: chance, ..neutre };
     }
 
     if *action_atk == ActionType::A {
-        if defenseur.armure >= val_atk { return ResultatDegats { dmg_arm: val_atk, chance_esquive: chance, ..neutre }; }
-        return ResultatDegats { dmg_arm: defenseur.armure, dmg_pv: val_atk - defenseur.armure, chance_esquive: chance, ..neutre };
+        if defenseur.armure >= porte { return ResultatDegats { dmg_arm: porte, chance_esquive: chance, ..neutre }; }
+        return ResultatDegats { dmg_arm: defenseur.armure, dmg_pv: porte - defenseur.armure, chance_esquive: chance, ..neutre };
     }
 
-    let mut degats = val_atk;
-    if degats_precis_doubles { degats *= 2; }
-    ResultatDegats { dmg_pv: degats, chance_esquive: chance, ..neutre }
+    ResultatDegats { dmg_pv: porte, chance_esquive: chance, ..neutre }
 }

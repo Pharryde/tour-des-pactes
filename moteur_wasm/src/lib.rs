@@ -38,7 +38,7 @@ fn mention_esquive(chance: i32, reussie: bool) -> String {
 }
 
 fn aucun_degat() -> ResultatDegats {
-    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false }
+    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0 }
 }
 
 // Monte la garde d'une entité d'après l'action qu'elle vient de jouer : armure gagnée par une
@@ -71,28 +71,45 @@ fn calculer_et_appliquer_etats(attaquant: &Entite, cible: &mut Entite, action: &
     convertir_en_poison(attaquant, action, valeur, sur_creneau_froid, poison_du_tour, degats)
 }
 
+// Part de l'action convertie en brûlure (Attaque) ou en poison (Précise), arrondie ICI et pas plus
+// tard. ⚠️ L'arrondi doit tomber sur la valeur de base, AVANT les multiplicateurs de tour (Pacte du
+// Temps, critique) : c'est la seule façon que la dose annoncée au joueur reste la dose de référence.
+// Avec 7 de Précise et un Pacte du Poison I, on affiche « 🧪 4 » — une 5e action doublée doit alors
+// en poser 8, pas 7 (soit round(7*0.5)*2 et non round(7*2*0.5)).
+fn convertir_valeur(valeur: i32, action: &ActionType, entite: &Entite) -> i32 {
+    let multiplicateur = match action {
+        ActionType::A => entite.multiplicateur_brulure,
+        ActionType::P => entite.multiplicateur_poison,
+        _ => None,
+    };
+    match multiplicateur {
+        Some(m) => (valeur as f32 * m).round() as i32,
+        None => valeur,
+    }
+}
+
 // Étage du Feu : l'ATTAQUE (et elle seule) cesse de blesser directement — elle devient une brûlure
-// d'un montant égal aux DÉGÂTS QU'ELLE AURAIT INFLIGÉS (combos et multiplicateurs compris), qui
-// s'AJOUTE à la brûlure en cours. Une Attaque à 12 puis une à 34 posent donc 46 de brûlure, pas deux
+// qui s'AJOUTE à celle en cours. Une Attaque à 12 puis une à 34 posent donc 46 de brûlure, pas deux
 // fois une valeur forfaitaire. Elle se résout en fin de tour, jusqu'à extinction, même après la mort
 // de celui qui l'a allumée. Une esquive coupe la conversion : la brûlure reste esquivable.
+// `dose` arrive DÉJÀ convertie (voir convertir_valeur) : ici on ne fait plus que la poser.
 // Renvoie les dégâts à appliquer réellement : nuls dès qu'il y a conversion.
-fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, degats: ResultatDegats) -> ResultatDegats {
-    let Some(multiplicateur) = attaquant.multiplicateur_brulure else { return degats; };
+fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionType, dose: i32, degats: ResultatDegats) -> ResultatDegats {
+    if attaquant.multiplicateur_brulure.is_none() { return degats; }
     if *action != ActionType::A || degats.esquive { return degats; }
 
     // Synergie Élémentaire : la brûlure profite du Pacte de la Foudre. Sans ça elle passe à côté,
     // le multiplicateur vivant dans `calculer_degats` — dont une action convertie sort à zéro.
     let amplifiee = if attaquant.synergie_active == Some(Synergie::Elementaire) {
-        appliquer_foudre(valeur, attaquant, cible)
-    } else { valeur };
+        appliquer_foudre(dose, attaquant, cible)
+    } else { dose };
 
-    let dose = (amplifiee as f32 * multiplicateur).round() as i32;
-    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + dose);
+    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + amplifiee);
     ResultatDegats {
-        brulure_posee: dose,
+        brulure_posee: amplifiee,
+        valeur_appliquee: amplifiee,
         chance_esquive: degats.chance_esquive,
-        foudre_appliquee: amplifiee != valeur,
+        foudre_appliquee: amplifiee != dose,
         ..aucun_degat()
     }
 }
@@ -100,16 +117,15 @@ fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionT
 // Étage du Poison : miroir exact sur la PRÉCISE. Les doses s'additionnent sans jamais décroître —
 // dans le tour comme d'un tour à l'autre. C'est ce qui fait du poison une course contre la montre :
 // laisser traîner un combat coûte de plus en plus cher à chaque tour.
-fn convertir_en_poison(attaquant: &Entite, action: &ActionType, valeur: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
-    let Some(multiplicateur) = attaquant.multiplicateur_poison else { return degats; };
+fn convertir_en_poison(attaquant: &Entite, action: &ActionType, dose: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
+    if attaquant.multiplicateur_poison.is_none() { return degats; }
     if *action != ActionType::P || degats.esquive { return degats; }
 
-    let mut dose = (valeur as f32 * multiplicateur).round() as i32;
     // Synergie Élémentaire : une dose injectée sur un créneau où le Froid est intervenu compte double.
-    if sur_creneau_froid && attaquant.synergie_active == Some(Synergie::Elementaire) { dose *= 2; }
+    let dose = if sur_creneau_froid && attaquant.synergie_active == Some(Synergie::Elementaire) { dose * 2 } else { dose };
 
     *poison_du_tour += dose;
-    ResultatDegats { poison_pose: dose, chance_esquive: degats.chance_esquive, ..aucun_degat() }
+    ResultatDegats { poison_pose: dose, valeur_appliquee: dose, chance_esquive: degats.chance_esquive, ..aucun_degat() }
 }
 
 // Tics de fin de tour. La brûlure se fait absorber par l'armure restante puis est divisée par deux
@@ -327,6 +343,14 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             log_annulation_m = " <span class=\"log-mort\">(Le combo ennemi est brisé)</span>";
         }
 
+        // ⚠️ Conversion Feu/Poison ICI, avant tout multiplicateur de tour : à partir de ce point,
+        // `val_j`/`val_m` ne sont plus des dégâts mais une DOSE, et les multiplicateurs qui suivent
+        // (Ninja, Pacte du Temps, critique) portent sur cette dose entière. C'est ce qui garantit
+        // que le joueur à qui l'on affiche « 🧪 4 » obtienne bien 8 sur une 5e action doublée, au
+        // lieu des 7 que donnerait un arrondi effectué après coup.
+        val_j = convertir_valeur(val_j, act_j, &joueur);
+        val_m = convertir_valeur(val_m, act_m, &monstre);
+
         // Synergie Ninja ("Frappe Insaisissable") : consomme le Coup Critique en attente (armé par
         // une Esquive réussie plus tôt ce tour) sur la prochaine Précise, quel que soit le combo.
         let ninja_critique = synergie_j == Some(Synergie::Ninja) && *act_j == ActionType::P && ninja_crit_pret;
@@ -361,13 +385,17 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         let froid_pour_joueur = creneaux_joueur_dabord.contains(&i) || gele_m;
         let froid_pour_monstre = creneaux_monstre_dabord.contains(&i) || gele_j;
 
+        // ⚠️ Sur un créneau déréglé, celui qui frappe en premier frappe VRAIMENT en premier : si son
+        // coup est fatal, l'autre n'a plus l'occasion de riposter. Sans cette garde, le dérèglement
+        // n'était qu'un ordre d'affichage — on tuait son adversaire et on encaissait quand même son
+        // attaque. (En simultané, au contraire, le double KO est le comportement voulu.)
         if creneaux_monstre_dabord.contains(&i) {
             if !gele_m {
                 monter_garde(&mut monstre, act_m, val_m, 1);
                 d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur);
                 encaisser(&mut joueur, &d_joueur);
             }
-            if !gele_j {
+            if !gele_j && joueur.pv > 0 {
                 monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier);
                 d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre);
                 encaisser(&mut monstre, &d_monstre);
@@ -378,7 +406,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
                 d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre);
                 encaisser(&mut monstre, &d_monstre);
             }
-            if !gele_m {
+            if !gele_m && monstre.pv > 0 {
                 monter_garde(&mut monstre, act_m, val_m, 1);
                 d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur);
                 encaisser(&mut joueur, &d_joueur);
@@ -402,19 +430,26 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         
         // Pas de mention de combo sur un créneau gelé : l'action n'a pas eu lieu, afficher sa
         // valeur laisserait croire qu'elle a porté (et le compteur n'a de toute façon pas bougé).
+        // Valeur annoncée par la jauge de combo : celle RÉELLEMENT portée par le coup, pas la valeur
+        // brute. Sur l'Étage de la Foudre, la seconde ment d'un facteur 1,5 à 3 dès que la cible
+        // porte de l'armure — le joueur voyait « Combo x3 = 20 » pour un coup qui en infligeait 60.
+        // `valeur_appliquee` vaut 0 sur une Défense ou une Esquive : on retombe alors sur la valeur brute.
+        let affichage_j = if d_monstre.valeur_appliquee > 0 { d_monstre.valeur_appliquee } else { val_j };
+        let affichage_m = if d_joueur.valeur_appliquee > 0 { d_joueur.valeur_appliquee } else { val_m };
+
         if combo_j_count > 1 && *act_j != ActionType::E && !gele_j {
             if monstre.annule_bonus_combo {
                 log_action.push_str(log_annulation_j);
             } else {
-                log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_j_count, val_j));
+                log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_j_count, affichage_j));
             }
         }
-        
+
         if combo_m_count > 1 && *act_m != ActionType::E && !gele_m {
             if joueur.annule_bonus_combo {
                 log_action.push_str(log_annulation_m);
             } else {
-                log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_m_count, val_m));
+                log_action.push_str(&format!(" <span class=\"log-combo\">(Combo x{} = {})</span>", combo_m_count, affichage_m));
             }
         }
         

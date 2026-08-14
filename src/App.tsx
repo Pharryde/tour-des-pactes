@@ -13,6 +13,7 @@ import { TutoConclusion } from './components/TutoConclusion';
 import { BenedictionChat } from './components/BenedictionChat';
 import { PresentationForgeron } from './components/PresentationForgeron';
 import { LeconCombo } from './components/LeconCombo';
+import { LeconMortEcran } from './components/LeconMortEcran';
 import { RoueChance } from './components/RoueChance';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
@@ -31,9 +32,9 @@ function App() {
       pactesDebloques, pactesEquipes, pactesVictorieux, aPacteChat,
       aBenedictionChat, benedictionActive, vieChatDispo, forgeronPresente,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
-      aNouveauPacte, aPointsCompetenceDispo,
+      aNouveauPacte, pactesNonVus, aPointsCompetenceDispo,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie,
-      gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction,
+      gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction, gererLeconMortVue, leconMortEnAttente,
       gererForgeronPresente, gererLeconComboFaite,
       gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss,
       gererFinTutoriel, gererConclusionTuto, gererAbandonTuto, handleFinDeCombat,
@@ -87,7 +88,6 @@ function App() {
                   aNouveauteTuto={aNouveauteTuto}
                   marquerTutoLu={marquerTutoLu}
                   aNouveauPacte={aNouveauPacte}
-                  marquerPactesVus={marquerPactesVus}
                   aPointsCompetenceDispo={aPointsCompetenceDispo}
               />
           )}
@@ -119,6 +119,8 @@ function App() {
                   pactesDebloques={pactesDebloques}
                   pactesEquipes={pactesEquipes}
                   pactesVictorieux={pactesVictorieux}
+                  pactesNonVus={pactesNonVus}
+                  marquerPactesVus={marquerPactesVus}
                   synergiesDecouvertes={synergiesDecouvertes}
                   aPacteChat={aPacteChat}
                   onBasculerPacte={gererBasculerPacte}
@@ -134,6 +136,7 @@ function App() {
           {ecran === 'ecran-benediction' && <BenedictionChat aVaincuLaTour={victoireTotale} onContinuer={gererRecevoirBenediction} />}
           {ecran === 'ecran-forgeron' && <PresentationForgeron onContinuer={gererForgeronPresente} />}
           {ecran === 'ecran-lecon-combo' && <LeconCombo onContinuer={gererLeconComboFaite} />}
+          {ecran === 'ecran-lecon-mort' && leconMortEnAttente && <LeconMortEcran lecon={leconMortEnAttente} onContinuer={gererLeconMortVue} />}
           {ecran === 'ecran-roue' && benedictionActive && <RoueChance benediction={benedictionActive} onEntrer={() => gererLancerRun(benedictionActive)} />}
 
           {ecran === 'ecran-choix-boss' && (

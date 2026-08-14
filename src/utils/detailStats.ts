@@ -6,7 +6,7 @@
 // (seuls Puissance Brute et l'Ombre passent par un multiplicateur, calculé au moment du combat),
 // tout ce qui dépasse (base + arbre) sur ces deux stats vient forcément de la Zone de Repos.
 import type { ActionType, Competences, Entite } from '../types';
-import { calculerAttaqueAffichee, calculerPreciseAffichee } from './combat';
+import { calculerAttaqueAffichee, calculerPreciseAffichee, cibleSeraArmee } from './combat';
 
 const BASE_ATTAQUE = 10;
 const BASE_PRECISE = 4;
@@ -21,7 +21,16 @@ function pourcentage(multiplicateur: number): string {
     return `${Math.round(multiplicateur * 100)}%`;
 }
 
-export function detailAttaque(entite: Entite, competences: Competences, actionsEnAttente: ActionType[]): string[] {
+// Pacte de la Foudre : la seule contribution qui dépend de la CIBLE. On l'annonce dans les deux
+// cas — actif, pour justifier le chiffre ; en veille, pour que le joueur sache quoi provoquer.
+function ligneFoudre(entite: Entite, cible?: Entite): string[] {
+    if (!entite.multiplicateurDegatsSiArmure) return [];
+    return cibleSeraArmee(cible)
+        ? [`Pacte de la Foudre (cible armée) : x${entite.multiplicateurDegatsSiArmure}`]
+        : [`Pacte de la Foudre : x${entite.multiplicateurDegatsSiArmure} dès que la cible porte de l'Armure`];
+}
+
+export function detailAttaque(entite: Entite, competences: Competences, actionsEnAttente: ActionType[], cible?: Entite): string[] {
     const lignes = [`Base : ${BASE_ATTAQUE}`];
     if (competences.atk) lignes.push(`Arbre de compétence (Force Brute) : +${competences.atk}`);
 
@@ -37,15 +46,20 @@ export function detailAttaque(entite: Entite, competences: Competences, actionsE
         lignes.push(`Pacte de la Puissance Brute : x${(1 + entite.bonusDegatsAttaquePourcentage / 100).toFixed(2).replace(/\.?0+$/, '')}`);
     }
 
+    // La Foudre n'entre dans la brûlure que via la Synergie Élémentaire — sinon elle ne concerne
+    // que les dégâts directs, et ne doit donc pas apparaître sous un Pacte du Feu.
+    const foudreCompte = !entite.multiplicateurBrulure || entite.synergieActive === 'Elementaire';
+    if (foudreCompte) lignes.push(...ligneFoudre(entite, cible));
+
     if (entite.multiplicateurBrulure) {
         lignes.push(`Pacte du Feu (converti en Brûlure) : ${pourcentage(entite.multiplicateurBrulure)}`);
     }
 
-    lignes.push(`= ${calculerAttaqueAffichee(entite, actionsEnAttente)}${entite.multiplicateurBrulure ? ' de brûlure' : ''}`);
+    lignes.push(`= ${calculerAttaqueAffichee(entite, actionsEnAttente, cible)}${entite.multiplicateurBrulure ? ' de brûlure' : ''}`);
     return lignes;
 }
 
-export function detailPrecise(entite: Entite, competences: Competences): string[] {
+export function detailPrecise(entite: Entite, competences: Competences, cible?: Entite): string[] {
     const lignes = [`Base : ${BASE_PRECISE}`];
     if (competences.pre) lignes.push(`Arbre de compétence (Œil de Faucon) : +${competences.pre}`);
 
@@ -55,13 +69,18 @@ export function detailPrecise(entite: Entite, competences: Competences): string[
     if (entite.synergieActive === 'Assassin' && entite.bonusDegatsAttaquePourcentage) {
         lignes.push(`Synergie Assassin (Pacte de la Puissance Brute) : x${(1 + entite.bonusDegatsAttaquePourcentage / 100).toFixed(2).replace(/\.?0+$/, '')}`);
     }
-    if (entite.degatsPrecisDoubles) lignes.push(`Pacte de l'Ombre (Dégâts Précis) : x2`);
-
+    // Une Précise convertie en poison ignore et la Foudre et le doublage de l'Ombre : sa dose se
+    // calcule sur la valeur brute (cf. convertir_en_poison).
     if (entite.multiplicateurPoison) {
         lignes.push(`Pacte du Poison (converti en Poison) : ${pourcentage(entite.multiplicateurPoison)}`);
+        lignes.push(`= ${calculerPreciseAffichee(entite, cible)} de poison`);
+        return lignes;
     }
 
-    lignes.push(`= ${calculerPreciseAffichee(entite)}${entite.multiplicateurPoison ? ' de poison' : ''}`);
+    lignes.push(...ligneFoudre(entite, cible));
+    if (entite.degatsPrecisDoubles) lignes.push(`Pacte de l'Ombre (Dégâts Précis) : x2`);
+
+    lignes.push(`= ${calculerPreciseAffichee(entite, cible)}`);
     return lignes;
 }
 

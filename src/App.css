@@ -529,10 +529,18 @@
 
 /* --- Grimoire des Pactes : la référence chiffrée, en colonnes serrées --- */
 .tuto-grimoire h2 { color: #cba6f7; }
+/* Plafonné à 6 colonnes : `auto-fit` seul en tassait 7 sur écran très large, et les noms de Pactes
+   s'y coupaient. Le `max()` impose à chaque colonne au moins un sixième de la largeur utile (6
+   colonnes = 5 gouttières), tout en laissant la grille retomber à moins de colonnes quand 230px
+   ne tiennent plus. */
 .grimoire-liste {
+    --grimoire-gouttiere: 1.2rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
-    gap: 0.5rem 1.2rem;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(max(230px, (100% - 5 * var(--grimoire-gouttiere)) / 6), 1fr)
+    );
+    gap: 0.5rem var(--grimoire-gouttiere);
     margin-top: 0.6rem;
 }
 .grimoire-pacte {
@@ -713,7 +721,19 @@
    la largeur de la carte et écrasait le reste. Le halo doré de la carte porte déjà le message. */
 .pacte-etat--suggere { background-color: transparent; color: #f9e2af; padding: 0; font-size: 0.95em; }
 .pacte-etat--trophee { padding: 0; font-size: 1em; }
+/* Pacte arraché depuis la dernière visite de l'Inventaire. Le marqueur ne survit pas à la visite :
+   il disparaît dès qu'on retourne au Hub, comme la pastille du menu. */
+.pacte-etat--nouveau { background-color: #cba6f7; }
 .pacte-carte--speciale .pacte-etat--equipe { background-color: #f9e2af; }
+
+.pacte-carte--nouveau {
+    box-shadow: inset 0 0 0 1px #cba6f7, 0 0 14px rgba(203, 166, 247, 0.25);
+    animation: eclat-nouveau-pacte 1.6s ease-in-out 3;
+}
+@keyframes eclat-nouveau-pacte {
+    0%, 100% { box-shadow: inset 0 0 0 1px #cba6f7, 0 0 8px rgba(203, 166, 247, 0.2); }
+    50% { box-shadow: inset 0 0 0 1px #cba6f7, 0 0 20px rgba(203, 166, 247, 0.55); }
+}
 
 @media (max-width: 768px) {
     .pacte-carte { flex: 1 1 100%; max-width: 100%; }

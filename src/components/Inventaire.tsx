@@ -8,6 +8,10 @@ interface InventaireProps {
     pactesEquipes: string[];
     // Pactes portés lors d'une victoire totale : ils arborent un trophée définitif.
     pactesVictorieux: string[];
+    // Pactes arrachés depuis la dernière visite : ils portent un marqueur "Nouveau" le temps de
+    // cette visite, puis sont marqués comme vus à la sortie.
+    pactesNonVus: string[];
+    marquerPactesVus: () => void;
     // Synergies déjà découvertes : elles seules donnent droit au raccourci d'équipement.
     synergiesDecouvertes: Synergie[];
     aPacteChat: boolean;
@@ -20,7 +24,7 @@ interface InventaireProps {
 // verrouillés dans la grille et donner au joueur une idée de sa progression vers la collection.
 const TOUS_LES_PACTES = Object.keys(PACTES_REGISTRY);
 
-export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, synergiesDecouvertes, aPacteChat, onBasculerPacte, onEquiperSynergie, onChangeEcran }: InventaireProps) {
+export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, pactesNonVus, marquerPactesVus, synergiesDecouvertes, aPacteChat, onBasculerPacte, onEquiperSynergie, onChangeEcran }: InventaireProps) {
 
     // Tant que le joueur n'a encore arraché aucun Pacte d'un niveau donné, on ne montre même pas
     // les emplacements verrouillés de ce niveau (sinon la 1ère partie révèlerait déjà la liste
@@ -61,6 +65,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, s
         const estEquipe = pactesEquipes.includes(pacte);
         const estSuggere = !estEquipe && pactesManquants.includes(pacte.replace(" II", ""));
         const aVaincuLaTour = pactesVictorieux.includes(pacte);
+        const estNouveau = pactesNonVus.includes(pacte);
         const infoPacte = genererBadgesPactes([pacte])[0];
         const description = infoPacte ? infoPacte.desc : "Effet inconnu";
 
@@ -68,7 +73,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, s
             <div
                 key={pacte}
                 onClick={() => onBasculerPacte(pacte)}
-                className={`pacte-carte${estEquipe ? ' pacte-carte--equipe' : ''}${estSuggere ? ' pacte-carte--suggere' : ''}${aVaincuLaTour ? ' pacte-carte--victorieux' : ''}`}
+                className={`pacte-carte${estEquipe ? ' pacte-carte--equipe' : ''}${estSuggere ? ' pacte-carte--suggere' : ''}${aVaincuLaTour ? ' pacte-carte--victorieux' : ''}${estNouveau ? ' pacte-carte--nouveau' : ''}`}
             >
                 <h3 className="pacte-carte-titre">{pacte}</h3>
                 <p className="pacte-carte-desc">{description}</p>
@@ -77,6 +82,9 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, s
                 <div className="pacte-carte-etats">
                     {aVaincuLaTour && (
                         <span className="pacte-etat pacte-etat--trophee" title="Vous avez terminé la Tour en portant ce Pacte">🏆</span>
+                    )}
+                    {estNouveau && (
+                        <span className="pacte-etat pacte-etat--nouveau" title="Arraché depuis votre dernière visite">Nouveau</span>
                     )}
                     {estEquipe && <span className="pacte-etat pacte-etat--equipe">Équipé</span>}
                     {/* Volontairement réduit à une pastille : le halo doré de la carte porte déjà le
@@ -156,7 +164,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, s
                 )}
             </div>
 
-            <button className="btn-menu btn-jouer" onClick={() => onChangeEcran('ecran-hub')}>
+            <button className="btn-menu btn-jouer" onClick={() => { marquerPactesVus(); onChangeEcran('ecran-hub'); }}>
                 Retour au Hub
             </button>
         </div>

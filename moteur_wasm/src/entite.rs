@@ -94,13 +94,12 @@ pub struct Entite {
     // s'additionne d'un tour à l'autre.
     #[serde(default)] pub multiplicateur_poison: Option<f32>,
 
-    // Numéro de tour à partir duquel cette créature a le droit de passer un tour ENTIER sans action
-    // offensive (que de la Défense et de l'Esquive). `None` = jamais : il lui faut au moins une
-    // Attaque ou une Précise par tour. Seuls les étages dont le pouvoir récompense l'attente en
-    // profitent — Vie (régénération), Armure (Pointes d'Acier), Temps (altération), Poison (dès le
-    // 2e tour, une fois sa dose posée). Ailleurs, temporiser n'a aucun sens et donne juste un tour
-    // creux au joueur.
-    #[serde(default)] pub peut_temporiser_des_tour: Option<i32>,
+    // Seule dérogation à la règle « toute créature doit attaquer à chaque tour » : une créature de
+    // l'Étage du Poison peut se contenter de Défense/Esquive une fois que la dose déjà injectée
+    // dépasse ce seuil — son poison travaille alors tout seul, attendre devient une vraie tactique.
+    // `None` (tout le reste de la Tour) = doit toujours placer une offensive : un tour d'attente y
+    // serait un tour offert au joueur.
+    #[serde(default)] pub peut_temporiser_si_poison_depasse: Option<i32>,
 
     // États SUBIS par cette entité. Ils doivent voyager avec elle d'un tour à l'autre (le moteur est
     // sans mémoire entre deux appels), d'où leur place sur l'entité plutôt que dans une variable
