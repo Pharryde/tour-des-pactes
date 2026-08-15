@@ -1100,3 +1100,122 @@
     .roue-moyeu { width: 46px; height: 46px; font-size: 1.3em; }
     .roue-secteur-emoji { font-size: 1.25em; }
 }
+/* ======================================================= */
+/* --- MODE HARDCORE (bannière du Hub, intro, extraction) --- */
+/* ======================================================= */
+
+/* Signal permanent que le profil actif est le profil hardcore : les deux modes partagent le même
+   Hub, le joueur doit voir lequel est en jeu avant de lancer quoi que ce soit. */
+.ecran--hardcore {
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(243, 139, 168, 0.14), transparent 65%),
+        radial-gradient(ellipse at 50% 100%, rgba(243, 139, 168, 0.08), transparent 60%);
+}
+
+.hub-banniere-hardcore {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 10px 22px;
+    background-color: rgba(243, 139, 168, 0.08);
+    border: 1px solid #f38ba8;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+.hub-banniere-hardcore-titre {
+    color: #f38ba8;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+.hub-banniere-hardcore-detail {
+    color: #a6adc8;
+    font-size: 0.85em;
+    text-align: center;
+}
+
+/* --- Écran de consentement, affiché avant la bascule (qui recharge la page) --- */
+#ecran-hardcore-intro { overflow-y: auto; }
+
+.hardcore-regles {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 18px 20px;
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    box-sizing: border-box;
+    text-align: left;
+}
+.hardcore-regle {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.95em;
+    line-height: 1.45;
+    color: #cdd6f4;
+}
+.hardcore-regle-icone {
+    flex: 0 0 auto;
+    font-size: 1.3em;
+    line-height: 1.1;
+}
+
+/* --- Porte de sortie de fin d'étage : ce qui est affiché ici est ce qu'une mort effacerait --- */
+#ecran-extraction { overflow-y: auto; }
+
+.extraction-enjeu {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 15px 20px;
+    background-color: #181825;
+    border: 1px solid #f38ba8;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+.extraction-enjeu-titre {
+    color: #f38ba8;
+    margin-top: 0;
+    border-bottom: 1px solid #313244;
+    padding-bottom: 10px;
+    text-align: center;
+}
+.extraction-enjeu-grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+.extraction-enjeu-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background-color: #11111b;
+    border-radius: 6px;
+    padding: 10px 8px;
+}
+.extraction-enjeu-valeur { font-size: 1.6em; font-weight: bold; color: #f9e2af; }
+.extraction-enjeu-label { font-size: 0.8em; color: #a6adc8; text-align: center; }
+.extraction-avertissement {
+    margin: 14px 0 0;
+    color: #a6adc8;
+    font-size: 0.9em;
+    line-height: 1.45;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .hardcore-regles { padding: 14px; gap: 10px; }
+    .hardcore-regle { font-size: 0.88em; }
+    .extraction-enjeu { padding: 12px 14px; }
+    .extraction-enjeu-valeur { font-size: 1.35em; }
+    .hub-banniere-hardcore { padding: 10px 14px; }
+}

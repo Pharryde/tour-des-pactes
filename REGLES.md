@@ -29,6 +29,7 @@ répercutée ici.**
 16. [XP et Arbre de Compétences](#16-xp-et-arbre-de-compétences)
 17. [Le Gardien Absolu](#17-le-gardien-absolu)
 18. [Ce qui se perd et ce qui reste](#18-ce-qui-se-perd-et-ce-qui-reste)
+19. [Le Mode Hardcore](#19-le-mode-hardcore)
 
 ---
 
@@ -546,3 +547,61 @@ les progrès du Chat (Bénédiction, Forgeron présenté, leçons vues).
 
 La progression vit dans le **navigateur** (`localStorage`), doublée d'une **sauvegarde cloud**
 anonyme et automatique — un miroir de secours, pas un compte.
+
+Le [Mode Hardcore](#19-le-mode-hardcore) renverse cette règle : là-bas, la mort reprend tout.
+
+---
+
+## 19. Le Mode Hardcore
+
+**Déblocage.** Une fois la Tour vaincue **et quittée** (Gardien Absolu terrassé), un bouton apparaît
+au Hub. Le déblocage est acquis à vie.
+
+**Les règles de combat sont strictement inchangées.** Ce qui change, c'est ce que coûte la mort.
+
+### Deux progressions séparées
+
+Le mode hardcore ouvre un **second profil**, vierge, qui ne communique jamais avec la partie
+normale : Pactes, XP, points de compétence, Pactes victorieux et étage record y sont propres. Le
+joueur bascule de l'un à l'autre depuis le Hub, entre deux ascensions. **Mourir en hardcore ne
+touche jamais la partie normale**, qui attend intacte.
+
+### La mort efface tout
+
+Mourir en hardcore vide le profil : **plus de Pactes, plus d'XP, plus de points de compétence, plus
+de record**. On repart de zéro.
+
+Trois choses seulement traversent la mort :
+
+- le **Pacte du Chat** (cosmétique, jamais perdu) ;
+- tout ce qui relève du **savoir** — Archives, Synergies découvertes, bestiaire, tutoriel, progrès du
+  Chat. Le joueur ne désapprend pas ce qu'il a compris ;
+- la **partie normale**, rangée à part.
+
+En revanche, les entrées d'Archives qui dépendent des Pactes suivent le profil actif : un profil
+hardcore neuf n'a pas encore de Pactes, donc pas encore ces entrées-là.
+
+### La porte de sortie
+
+C'est la seule parade, et le cœur du mode. **À la fin de chaque étage, juste avant la Zone de Repos**,
+la Tour ouvre une brèche et propose de partir.
+
+- **Sortir** → l'ascension s'arrête, et **tout ce qui a été arraché est définitivement acquis**. La
+  run compte comme achevée (record, statistiques, journal).
+- **Rester** → la porte se referme : **plus aucune issue avant le prochain Gardien vaincu**. Mourir
+  d'ici là ne laisse rien.
+
+L'écran affiche l'enjeu exact : Pactes possédés, XP accumulée, étages restants.
+
+La porte est également offerte **au sommet**, sur l'écran de Sortie de la Tour : repartir avec son
+butin plutôt que d'affronter le Gardien Absolu. C'est le pari le plus cher du jeu, puisque la
+victoire totale se joue là.
+
+### Deux facilités
+
+Le mode ne s'adresse qu'à un vainqueur de la Tour, donc les paliers d'apprentissage sautent :
+
+- le **Forgeron** (Arbre de Compétences) est disponible dès le premier pas, sans attendre deux runs ;
+- la **Roue de la Chance** est tirée dès la première ascension ;
+- les trois **scènes scénarisées du Chat** (Bénédiction, Forgeron, leçon de Combo) ne se jouent pas.
+  Les leçons de mort, elles, restent.

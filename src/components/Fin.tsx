@@ -5,20 +5,43 @@ interface FinProps {
     onRetourHub: () => void;
     logsMort?: string[];
     stats?: StatsRun | null;
+    modeHardcore?: boolean;
 }
 
-export function Fin({ victoire, onRetourHub, logsMort = [], stats = null }: FinProps) {
+export function Fin({ victoire, onRetourHub, logsMort = [], stats = null, modeHardcore = false }: FinProps) {
+    // L'extraction est portée par les stats de la run et non par `victoire` : c'est une troisième
+    // issue, ni mort ni victoire totale. Une sauvegarde antérieure au mode hardcore n'a pas ce
+    // champ, d'où le repli sur l'ancien booléen.
+    const estExtraction = stats?.issue === 'extraction';
+    const estMort = !victoire && !estExtraction;
+
     return (
         <div id="ecran-fin" className="ecran">
-            {victoire ? (
+            {victoire && (
                 <>
                     <h1 className="titre-geant c-vert">🏆 ASCENSION RÉUSSIE !</h1>
                     <p className="texte-fin">Vous avez terrassé tous les gardiens de la Tour des Pactes !</p>
                 </>
-            ) : (
+            )}
+
+            {estExtraction && (
+                <>
+                    <h1 className="titre-geant c-orange">🚪 VOUS AVEZ QUITTÉ LA TOUR</h1>
+                    <p className="texte-fin">
+                        Vous ressortez vivant, les mains pleines. Tout ce que vous avez arraché là-haut
+                        est désormais à vous, définitivement.
+                    </p>
+                </>
+            )}
+
+            {estMort && (
                 <>
                     <h1 className="titre-geant c-rose">💀 VOUS ÊTES MORT...</h1>
-                    <p className="texte-fin">La tour a eu raison de vous. Relevez-vous et essayez encore.</p>
+                    <p className="texte-fin">
+                        {modeHardcore
+                            ? "La Tour a tout repris. Pactes, XP, compétences : il ne reste rien."
+                            : "La tour a eu raison de vous. Relevez-vous et essayez encore."}
+                    </p>
                 </>
             )}
 
@@ -63,7 +86,7 @@ export function Fin({ victoire, onRetourHub, logsMort = [], stats = null }: FinP
                 </div>
             )}
 
-            {!victoire && logsMort.length > 0 && (
+            {estMort && logsMort.length > 0 && (
                 <div className="bloc-coup-de-grace">
                     <h3 className="coup-de-grace-titre">Le Coup de Grâce (Dernier Tour)</h3>
                     <div className="coup-de-grace-logs">

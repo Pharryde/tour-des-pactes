@@ -12,11 +12,16 @@ interface HubProps {
     marquerTutoLu: () => void;
     aNouveauPacte: boolean;
     aPointsCompetenceDispo: boolean;
+    // Mode hardcore : le bouton n'apparaît qu'à un joueur ayant vaincu la Tour, et la bascule
+    // n'est proposée qu'ici, au Hub, où aucune ascension n'est en cours.
+    modeHardcore: boolean;
+    aVaincuLaTour: boolean;
+    onQuitterHardcore: () => void;
 }
 
 export function Hub({
     onLancerRun, onChangeEcran, forgeronPresente, aNouveauteTuto, marquerTutoLu,
-    aNouveauPacte, aPointsCompetenceDispo
+    aNouveauPacte, aPointsCompetenceDispo, modeHardcore, aVaincuLaTour, onQuitterHardcore
 }: HubProps) {
     // Cible du bond du Chat Mystérieux (voir ChatHub.tsx), qui mesure ce bouton à l'exécution.
     const refBoutonLancer = useRef<HTMLButtonElement>(null);
@@ -31,10 +36,20 @@ export function Hub({
     const ouvrirInventaire = () => onChangeEcran('ecran-inventaire');
 
     return (
-        <div id="ecran-hub" className="ecran">
+        <div id="ecran-hub" className={`ecran${modeHardcore ? ' ecran--hardcore' : ''}`}>
             <ChatHub refCible={refBoutonLancer} onLancer={onLancerRun} />
 
             <h1 className="titre-geant">Tour des Pactes</h1>
+
+            {/* Rappel permanent : les deux profils partagent le même Hub, le joueur doit voir en
+                permanence lequel est en jeu avant de lancer quoi que ce soit. */}
+            {modeHardcore && (
+                <div className="hub-banniere-hardcore">
+                    <span className="hub-banniere-hardcore-titre">☠️ MODE HARDCORE</span>
+                    <span className="hub-banniere-hardcore-detail">La mort efface tout. Sortez de la Tour pour garder votre butin.</span>
+                </div>
+            )}
+
             <div className="menu-vertical">
                 <button ref={refBoutonLancer} className="btn-menu btn-jouer" onClick={onLancerRun}>▶️ Commencer l'Ascension</button>
 
@@ -59,6 +74,14 @@ export function Hub({
                             <span title="Point de compétence disponible" className="badge-nouveaute" />
                         )}
                     </button>
+                )}
+
+                {aVaincuLaTour && (
+                    modeHardcore ? (
+                        <button className="btn-menu" onClick={onQuitterHardcore}>🛡️ Revenir en Mode Normal</button>
+                    ) : (
+                        <button className="btn-menu btn-danger" onClick={() => onChangeEcran('ecran-hardcore-intro')}>☠️ Mode Hardcore</button>
+                    )
                 )}
             </div>
         </div>

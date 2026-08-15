@@ -9,10 +9,11 @@ import type { ChoixRepos } from '../types';
 
 const COMPETENCES_VIDES = { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 };
 
-function construire(pactesEquipes: string[]) {
+function construire(pactesEquipes: string[], hardcore = false) {
     return construireEvenementRun({
         numeroRun: 1,
         issue: 'mort',
+        hardcore,
         etage: 3,
         salle: 2,
         etages: ['armure', 'vie', 'feu'],
@@ -67,6 +68,13 @@ describe('construireEvenementRun', () => {
         const [premier, ...reste] = SYNERGIES_REGISTRY.Assassin.pactesRequis;
 
         expect(construire([`${premier} II`, ...reste]).synergie).toBe('Assassin');
+    });
+
+    // Sans ce drapeau, les runs hardcore (profil reparti de zéro, donc Pactes et arbre bien plus
+    // faibles à étage égal) se mélangeraient aux normales et fausseraient tous les agrégats.
+    it('distingue les runs hardcore des runs normales', () => {
+        expect(construire([], false).hardcore).toBe(false);
+        expect(construire([], true).hardcore).toBe(true);
     });
 
     // C'est `version` qui permet de comparer l'équilibrage d'avant et d'après une mise à jour :

@@ -2,6 +2,7 @@
 // Miroir asynchrone de l'état persistant du joueur vers Supabase. localStorage reste la source de
 // vérité immédiate (voir useLocalStorage.ts) ; ce module ne fait que pousser/tirer un instantané
 // JSON de ce qui s'y trouve déjà, identifié par un utilisateur Supabase anonyme.
+import { CLES_PROFIL_HARDCORE } from './hardcore';
 import { supabase } from './supabaseClient';
 import { obtenirTokenTurnstile } from './turnstile';
 import { APP_VERSION } from './versionApp';
@@ -10,7 +11,12 @@ import { APP_VERSION } from './versionApp';
 // run) à synchroniser. Exclut volontairement `tdp_version` (détail d'implémentation purement
 // local) et la clé `tdp_combat_actif` de useCombatResume.ts, écrite à chaque
 // tick de combat non pausé — trop bavard et purement éphémère (reprise de combat après un refresh).
-const CLES_SYNCHRONISEES = [
+//
+// Les clés de progression listées ici sont celles du profil NORMAL ; celles du profil hardcore
+// (`tdp_hc_*`) sont ajoutées en bloc plus bas. Les deux sont synchronisées, y compris le profil
+// dormant : sans lui, une restauration cloud faite pendant que l'autre mode est actif effacerait
+// une progression entière.
+const CLES_JEU = [
     'tdp_pactes_debloques',
     'tdp_pactes_equipes',
     'tdp_ecran',
@@ -59,7 +65,11 @@ const CLES_SYNCHRONISEES = [
     'tdp_combo_monstres_run',
     'tdp_etage_record',
     'tdp_stats_derniere_run',
+    'tdp_mode_hardcore',
+    'tdp_tour_vaincue',
 ] as const;
+
+const CLES_SYNCHRONISEES: readonly string[] = [...CLES_JEU, ...CLES_PROFIL_HARDCORE];
 
 type SnapshotSauvegarde = Record<string, unknown>;
 

@@ -37,7 +37,8 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 /* On centre tout sauf le combat et l'inventaire (voir .inventaire-ecran : le centrage vertical
    classique coupe le haut du contenu sans qu'on puisse y remonter dès que ça dépasse la hauteur
    de l'écran, ex: beaucoup de Pactes débloqués). */
-#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair, #ecran-tuto-conclusion {
+#ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair, #ecran-tuto-conclusion,
+#ecran-hardcore-intro, #ecran-extraction {
     align-items: center;
     justify-content: center;
 }

@@ -10,11 +10,12 @@
 // ouverte pour la sauvegarde, et l'identifiant reste l'utilisateur anonyme qui existe déjà.
 import { detecterSynergie } from './synergies';
 import { APP_VERSION } from './versionApp';
-import type { ActionType, BenedictionChat, ChoixRepos, Competences, Synergie } from '../types';
+import type { ActionType, BenedictionChat, ChoixRepos, Competences, IssueAscension, Synergie } from '../types';
 
 // L'abandon n'est pas une run « achevée » (il ne compte ni pour runsTerminees ni pour le record),
 // mais c'est le signal de frustration le plus fort du jeu, et le seul qui disparaissait entièrement.
-export type IssueRun = 'mort' | 'victoire' | 'abandon';
+// Les trois autres issues sont celles d'une ascension menée à son terme, extraction hardcore comprise.
+export type IssueRun = IssueAscension | 'abandon';
 
 export type CompteursRepos = Record<ChoixRepos, number>;
 export type CompteursActions = Record<ActionType, number>;
@@ -64,6 +65,10 @@ export interface EvenementRun {
     numero_run: number;
     version: string;
     issue: IssueRun;
+    // Une run hardcore se joue sur un profil reparti de zéro : à étage égal, ses Pactes et son
+    // arbre sont bien plus faibles. Les mélanger aux runs normales fausserait toute analyse
+    // d'équilibrage, d'où ce drapeau plutôt qu'une issue supplémentaire.
+    hardcore: boolean;
     etage: number;
     salle: number;
     etages: string[];
@@ -90,6 +95,7 @@ export interface EvenementRun {
 export function construireEvenementRun(params: {
     numeroRun: number;
     issue: IssueRun;
+    hardcore: boolean;
     etage: number;
     salle: number;
     etages: string[];
@@ -111,6 +117,7 @@ export function construireEvenementRun(params: {
         numero_run: params.numeroRun,
         version: APP_VERSION,
         issue: params.issue,
+        hardcore: params.hardcore,
         etage: params.etage,
         salle: params.salle,
         // Séquence réellement tirée : `etage` seul ne veut rien dire puisque la Tour est mélangée

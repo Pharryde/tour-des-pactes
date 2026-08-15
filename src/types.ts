@@ -1,5 +1,8 @@
-export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo' | 'ecran-lecon-mort';
+export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo' | 'ecran-lecon-mort' | 'ecran-hardcore-intro' | 'ecran-extraction';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
+// Comment une ascension s'est arrêtée. L'extraction n'existe qu'en mode hardcore : c'est la sortie
+// volontaire par la porte offerte à la fin de chaque étage (voir utils/hardcore.ts).
+export type IssueAscension = 'mort' | 'victoire' | 'extraction';
 export type ChoixRepos = 'soin' | 'atk' | 'pre' | 'def' | 'pv';
 export type Synergie = 'Guerrier' | 'Ninja' | 'Tank' | 'Assassin' | 'Elementaire';
 // Bonus offert par le Chat Mystérieux, tiré à la Roue de la Chance à chaque entrée dans la Tour
@@ -122,6 +125,9 @@ export interface StructureEtage {
 // Statistiques figées d'une run, capturées au moment de la mort/victoire (avant la remise à zéro
 // de l'état de run) pour être affichées sur l'écran de fin.
 export interface StatsRun {
+    // Optionnelle : les sauvegardes antérieures au mode hardcore ont un `statsDerniereRun` sans ce
+    // champ, et l'écran de fin doit continuer de s'afficher pour elles.
+    issue?: IssueAscension;
     etageAtteint: number;
     etageRecord: number;
     estNouveauRecord: boolean;

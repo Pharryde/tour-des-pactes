@@ -1,8 +1,9 @@
 // src/hooks/useGameState.ts
 import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
-import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat, LeconMort } from '../types';
+import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat, LeconMort, IssueAscension } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
+import { cleProfil } from '../utils/hardcore';
 import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
 import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
 import { construireMegaBoss } from '../utils/megaboss';
@@ -44,8 +45,17 @@ export function useGameState() {
     const [erreurMoteur, setErreurMoteur] = useState<string | null>(null);
     const [donneesBaseEtages, setDonneesBaseEtages] = useState<StructureEtage[]>([]);
 
-    const [pactesDebloques, setPactesDebloques] = useLocalStorage<string[]>('tdp_pactes_debloques', []);
-    const [pactesEquipes, setPactesEquipes] = useLocalStorage<string[]>('tdp_pactes_equipes', []);
+    // --- MODE HARDCORE (voir utils/hardcore.ts) ---
+    // Le setter n'est volontairement PAS récupéré : changer de mode change la clé de stockage de
+    // toute la progression, ce qui impose un rechargement de page (cf. basculerProfil). Passer par
+    // un setState laisserait les états sur l'ancien profil — l'omission rend l'erreur impossible.
+    const [modeHardcore] = useLocalStorage<boolean>('tdp_mode_hardcore', false);
+    // Déblocage à vie du mode, partagé par les deux profils. Distinct de `victoireTotale`, qui ne
+    // décrit que l'issue de la DERNIÈRE run et repasse à false à la mort suivante.
+    const [aVaincuLaTour, setAVaincuLaTour] = useLocalStorage<boolean>('tdp_tour_vaincue', false);
+
+    const [pactesDebloques, setPactesDebloques] = useLocalStorage<string[]>(cleProfil('tdp_pactes_debloques', modeHardcore), []);
+    const [pactesEquipes, setPactesEquipes] = useLocalStorage<string[]>(cleProfil('tdp_pactes_equipes', modeHardcore), []);
 
     const [ecran, setEcran] = useLocalStorage<Ecran>('tdp_ecran', 'ecran-hub');
     const [listeEtages, setListeEtages] = useLocalStorage<StructureEtage[]>('tdp_liste_etages', []);
@@ -67,7 +77,7 @@ export function useGameState() {
     const [aPacteChat, setAPacteChat] = useLocalStorage<boolean>('tdp_a_pacte_chat', false);
     // Pactes avec lesquels le joueur a déjà terrassé la Tour entière : trophée à vie, jamais remis
     // à zéro d'une run à l'autre (contrairement aux stats de run).
-    const [pactesVictorieux, setPactesVictorieux] = useLocalStorage<string[]>('tdp_pactes_victorieux', []);
+    const [pactesVictorieux, setPactesVictorieux] = useLocalStorage<string[]>(cleProfil('tdp_pactes_victorieux', modeHardcore), []);
     const [aBenedictionChat, setABenedictionChat] = useLocalStorage<boolean>('tdp_benediction_chat', false);
     // Apparitions successives du Chat entre deux runs (voir gererQuitterFin) : chacune ne se joue
     // qu'une fois, dans l'ordre, et `runsTerminees` sert de minimum d'ancienneté.
@@ -87,13 +97,13 @@ export function useGameState() {
     const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
     const [monstresTues, setMonstresTues] = useLocalStorage<number>('tdp_monstres_tues', 0);
-    const [competences, setCompetences] = useLocalStorage<Competences>('tdp_competences', { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
-    const [xpTotal, setXpTotal] = useLocalStorage<number>('tdp_xp_total', 0);
+    const [competences, setCompetences] = useLocalStorage<Competences>(cleProfil('tdp_competences', modeHardcore), { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
+    const [xpTotal, setXpTotal] = useLocalStorage<number>(cleProfil('tdp_xp_total', modeHardcore), 0);
     const [bestiaire, setBestiaire] = useLocalStorage<Bestiaire>('tdp_bestiaire', { normal: 0, boss: 0, evolue: 0, final: 0 });
 
     const [aConnuBuff, setAConnuBuff] = useLocalStorage<boolean>('tdp_a_connu_buff', false);
     const [connaissancesVues, setConnaissancesVues] = useLocalStorage<number>('tdp_tuto_vues', 0);
-    const [pactesVus, setPactesVus] = useLocalStorage<number>('tdp_pactes_vus', 0);
+    const [pactesVus, setPactesVus] = useLocalStorage<number>(cleProfil('tdp_pactes_vus', modeHardcore), 0);
     const [premierePartieFaite, setPremierePartieFaite] = useLocalStorage<boolean>('tdp_premiere_partie_faite', false);
 
     // --- Statistiques de la run en cours (remises à zéro à chaque lancement), pour l'écran de fin ---
@@ -116,7 +126,7 @@ export function useGameState() {
     const [, setActionsRun] = useLocalStorage<CompteursActions>('tdp_actions_run', COMPTEURS_ACTIONS_VIDES);
     const [, setComboJoueurRun] = useLocalStorage<StatCombo>('tdp_combo_joueur_run', COMBO_VIDE);
     const [, setComboMonstresRun] = useLocalStorage<StatCombo>('tdp_combo_monstres_run', COMBO_VIDE);
-    const [etageRecord, setEtageRecord] = useLocalStorage<number>('tdp_etage_record', 0);
+    const [etageRecord, setEtageRecord] = useLocalStorage<number>(cleProfil('tdp_etage_record', modeHardcore), 0);
     const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
 
     // Toutes les écritures du journal passent par ici (une douzaine d'appelants) : c'est le seul
@@ -153,6 +163,13 @@ export function useGameState() {
     const pactesNonVus = pactesDebloques.slice(pactesVus);
     const aPointsCompetenceDispo = calculerPointsDisponibles(xpTotal, competences) > 0;
 
+    // En hardcore, le Forgeron et la Roue de la Chance sont acquis d'emblée : le mode ne s'ouvre
+    // qu'à un joueur qui a déjà terrassé la Tour, lui refaire attendre deux runs pour rouvrir la
+    // forge n'aurait aucun sens. Ces deux valeurs remplacent partout les drapeaux bruts côté jeu ;
+    // les drapeaux eux-mêmes (partagés entre les profils) ne sont posés que par les scènes du Chat.
+    const forgeronDisponible = forgeronPresente || modeHardcore;
+    const benedictionDisponible = aBenedictionChat || modeHardcore;
+
     useEffect(() => {
         const demarrer = async () => {
             try {
@@ -180,6 +197,14 @@ export function useGameState() {
                 // donc au-dessus des runs déjà journalisées, et libéré pour la suivante.
                 if (window.localStorage.getItem('tdp_runs_lancees') === null) {
                     setRunsLancees(runsTerminees + (listeEtages.length > 0 ? 1 : 0));
+                }
+
+                // Sauvegardes antérieures au mode hardcore : le joueur a peut-être déjà terrassé
+                // la Tour, il ne doit pas avoir à recommencer pour rouvrir le mode. `tdp_victoire`
+                // ne dit que l'issue de la DERNIÈRE run (il repasse à false à la mort suivante),
+                // d'où le repli sur les Pactes victorieux, eux cumulés à vie.
+                if (window.localStorage.getItem('tdp_tour_vaincue') === null && (victoireTotale || pactesVictorieux.length > 0)) {
+                    setAVaincuLaTour(true);
                 }
 
                 if (!tutoIntroFait && ecran === 'ecran-hub' && monstresTues === 0 && pactesDebloques.length === 0) {
@@ -210,6 +235,7 @@ export function useGameState() {
             aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
             aBenedictionChat, benedictionActive, vieChatDispo, pactesVictorieux,
             runsTerminees, forgeronPresente, leconComboFaite, leconsMortVues, leconMortEnAttente,
+            modeHardcore, aVaincuLaTour,
         ],
     );
 
@@ -231,6 +257,10 @@ export function useGameState() {
     const construireEvenementDeLaRun = (issue: IssueRun) => construireEvenementRun({
         numeroRun: lireValeurPersistante('tdp_runs_lancees', 0),
         issue,
+        // Sans ce drapeau, les runs hardcore se mélangeraient aux normales dans toutes les
+        // analyses — alors qu'elles se jouent sur un profil reparti de zéro, avec des Pactes et
+        // un arbre bien plus faibles à étage égal.
+        hardcore: modeHardcore,
         etage: indexEtageActuel + 1,
         salle: indexSalle,
         // La Tour est mélangée à chaque run : sans la séquence tirée, `etage` ne dit pas quels
@@ -251,10 +281,10 @@ export function useGameState() {
         comboMonstres: lireValeurPersistante('tdp_combo_monstres_run', COMBO_VIDE),
     });
 
-    const capturerStatsFinRun = (issue: 'mort' | 'victoire') => {
-        // Appelée exactement une fois par run ACHEVÉE (mort ou victoire totale) — un abandon ne
-        // passe pas par ici. C'est donc le bon endroit pour compter les runs qui cadencent les
-        // apparitions du Chat, et pour journaliser la run côté cloud.
+    const capturerStatsFinRun = (issue: IssueAscension) => {
+        // Appelée exactement une fois par run ACHEVÉE (mort, victoire totale ou extraction
+        // hardcore) — un abandon ne passe pas par ici. C'est donc le bon endroit pour compter les
+        // runs qui cadencent les apparitions du Chat, et pour journaliser la run côté cloud.
         setRunsTerminees(n => n + 1);
 
         const etageAtteint = indexEtageActuel + 1;
@@ -262,6 +292,7 @@ export function useGameState() {
         if (estNouveauRecord) setEtageRecord(etageAtteint);
 
         setStatsDerniereRun({
+            issue,
             etageAtteint,
             etageRecord: estNouveauRecord ? etageAtteint : etageRecord,
             estNouveauRecord,
@@ -293,6 +324,40 @@ export function useGameState() {
     // mourir, il ne reste plus rien à dépenser pour le reste de la run.
     const gererVieDeChatConsommee = () => setVieChatDispo(false);
 
+    // --- MODE HARDCORE (voir utils/hardcore.ts) ---
+
+    // Bascule d'un profil à l'autre. Deux contraintes imposent le rechargement de page :
+    //  1. `useLocalStorage` ne lit sa clé qu'à l'initialisation (useState) — changer la clé en
+    //     cours de session laisserait toute la progression sur les valeurs de l'ancien profil tout
+    //     en écrivant dans les clés du nouveau. Même remède que la restauration cloud, pour la
+    //     même raison (voir useSauvegardeCloud.ts).
+    //  2. L'écriture passe DIRECTEMENT par localStorage et non par les setters : l'updater de
+    //     `useLocalStorage` n'est exécuté que lors du rendu suivant, qui n'aura jamais lieu
+    //     puisque le rechargement part immédiatement après.
+    // Le bouton n'existe qu'au Hub, où aucune ascension n'est en cours (toutes les routes vers le
+    // Hub passent par effacerRun) : il n'y a donc pas d'état de run à nettoyer ici.
+    const basculerProfil = (versHardcore: boolean) => {
+        window.localStorage.setItem('tdp_mode_hardcore', JSON.stringify(versHardcore));
+        window.localStorage.setItem('tdp_ecran', JSON.stringify('ecran-hub' satisfies Ecran));
+        window.location.reload();
+    };
+
+    const gererEntrerHardcore = () => basculerProfil(true);
+    const gererQuitterHardcore = () => basculerProfil(false);
+
+    // La règle du mode : mourir efface le profil hardcore. Seule la PUISSANCE accumulée disparaît —
+    // le savoir (Synergies découvertes, bestiaire, Archives, progrès du Chat) vit dans des clés
+    // partagées que ce nettoyage ne touche pas, et le profil normal dort dans les siennes.
+    const effacerProfilHardcore = () => {
+        setPactesDebloques([]);
+        setPactesEquipes([]);
+        setPactesVus(0);
+        setPactesVictorieux([]);
+        setXpTotal(0);
+        setCompetences({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
+        setEtageRecord(0);
+    };
+
     // Sortie de l'écran de fin : le Chat s'y invite à intervalles scénarisés, une apparition par
     // run achevée au maximum et toujours dans cet ordre.
     //  1. 1re run  → il commente la performance et offre sa Bénédiction.
@@ -302,9 +367,14 @@ export function useGameState() {
     // `runsTerminees` a été incrémentée par capturerStatsFinRun avant l'affichage de l'écran de fin :
     // au moment de ce clic, elle vaut donc bien le nombre de runs achevées, celle-ci comprise.
     const gererQuitterFin = () => {
-        if (!aBenedictionChat) { setEcran('ecran-benediction'); return; }
-        if (!forgeronPresente && runsTerminees >= 2) { setEcran('ecran-forgeron'); return; }
-        if (forgeronPresente && !leconComboFaite) { setEcran('ecran-lecon-combo'); return; }
+        // En hardcore, les trois scènes scénarisées sont sautées : elles cadencent la DÉCOUVERTE
+        // du mode normal (Bénédiction, Forgeron, Combo), et les deux premières y sont de toute
+        // façon acquises d'emblée (cf. forgeronDisponible / benedictionDisponible).
+        if (!modeHardcore) {
+            if (!aBenedictionChat) { setEcran('ecran-benediction'); return; }
+            if (!forgeronPresente && runsTerminees >= 2) { setEcran('ecran-forgeron'); return; }
+            if (forgeronPresente && !leconComboFaite) { setEcran('ecran-lecon-combo'); return; }
+        }
         // Les leçons de mort passent APRÈS toutes les apparitions scénarisées : elles sont
         // circonstancielles, elles ne doivent pas doubler une scène qui, elle, a un ordre imposé.
         if (leconMortEnAttente) { setEcran('ecran-lecon-mort'); return; }
@@ -470,7 +540,7 @@ export function useGameState() {
     // la Roue de la Chance. Le tirage doit être connu AVANT de construire le héros (il modifie ses
     // stats), d'où ce passage en deux temps — la Roue rend la main à gererLancerRun.
     const gererDemarrerAscension = () => {
-        if (!aBenedictionChat) {
+        if (!benedictionDisponible) {
             gererLancerRun(null);
             return;
         }
@@ -478,22 +548,48 @@ export function useGameState() {
         setEcran('ecran-roue');
     };
 
+    // Extraite de gererPassageEtageSuivant : en hardcore la porte de sortie s'intercale avant, et
+    // « Continuer l'ascension » doit retomber exactement ici.
+    const ouvrirZoneDeRepos = () => {
+        // 1ère zone de repos de la run : les 5 choix sont disponibles. Ensuite, seuls 3
+        // (tirés aléatoirement à chaque visite) restent utilisables, les 2 autres sont grisés.
+        const toutesLesOptions: ChoixRepos[] = ['soin', 'pv', 'atk', 'pre', 'def'];
+        const actifs = reposVisites === 0 ? null : melangerAleatoirement(toutesLesOptions).slice(0, 3);
+        setChoixReposActifs(actifs);
+        setReposVisites(v => v + 1);
+        // `null` signifie « les 5 options », d'où le repli sur la liste complète : c'est le
+        // dénominateur du taux d'utilisation de chaque choix.
+        setReposProposesRun(c => incrementerCompteurs(c, actifs ?? toutesLesOptions));
+        setEcran('ecran-repos');
+    };
+
     const gererPassageEtageSuivant = () => {
         if (indexEtageActuel >= listeEtages.length - 1) {
             setEcran('ecran-sortie-tour');
+            return;
         }
-        else {
-            // 1ère zone de repos de la run : les 5 choix sont disponibles. Ensuite, seuls 3
-            // (tirés aléatoirement à chaque visite) restent utilisables, les 2 autres sont grisés.
-            const toutesLesOptions: ChoixRepos[] = ['soin', 'pv', 'atk', 'pre', 'def'];
-            const actifs = reposVisites === 0 ? null : melangerAleatoirement(toutesLesOptions).slice(0, 3);
-            setChoixReposActifs(actifs);
-            setReposVisites(v => v + 1);
-            // `null` signifie « les 5 options », d'où le repli sur la liste complète : c'est le
-            // dénominateur du taux d'utilisation de chaque choix.
-            setReposProposesRun(c => incrementerCompteurs(c, actifs ?? toutesLesOptions));
-            setEcran('ecran-repos');
+        // Hardcore : une porte de sortie est offerte à la fin de CHAQUE étage, juste avant la Zone
+        // de Repos. C'est la seule façon de mettre son butin à l'abri de la remise à zéro ; la
+        // refuser, c'est le remettre en jeu jusqu'au prochain Gardien.
+        if (modeHardcore) {
+            setEcran('ecran-extraction');
+            return;
         }
+        ouvrirZoneDeRepos();
+    };
+
+    // Sortie volontaire par la porte hardcore : l'ascension s'arrête ici et TOUT ce qui a été
+    // arraché reste acquis. Rien n'est à « verser » au profil — Pactes et XP y sont déjà écrits au
+    // fil de la run ; sortir, c'est simplement échapper à l'effacement qu'aurait causé la mort.
+    const gererQuitterLaTour = () => {
+        setVictoireTotale(false);
+        // Sans ce nettoyage, l'écran de fin afficherait le « Coup de Grâce » d'une mort
+        // précédente : `tdp_logs_mort` n'est écrit qu'à la mort et survit d'une run à l'autre.
+        setLogsMort([]);
+        setLeconMortEnAttente(null);
+        capturerStatsFinRun('extraction');
+        setEcran('ecran-fin');
+        effacerRun();
     };
 
     // Déclenché depuis l'écran "Sortie de la Tour" : fait apparaître le Gardien Absolu, agglomérat
@@ -519,6 +615,8 @@ export function useGameState() {
         setJoueur({ ...joueurRestant, armure: 0, nivEsquive: 0, brulureActive: undefined, poisonActif: undefined });
         setXpTotal(prev => prev + appliquerBonusXp(10, benedictionActive));
         setVictoireTotale(true);
+        // Déblocage à vie du mode hardcore : « avoir vaincu la Tour et en être sorti ».
+        setAVaincuLaTour(true);
         // Les Pactes portés jusqu'au bout gagnent leur trophée (cumulé sans doublon d'une victoire
         // à l'autre : chaque composition victorieuse s'ajoute au palmarès).
         setPactesVictorieux(prev => [...new Set([...prev, ...pactesEquipes])]);
@@ -613,6 +711,9 @@ export function useGameState() {
         }
 
         capturerStatsFinRun('mort');
+        // APRÈS la capture des stats : l'écran de fin doit encore pouvoir montrer ce que cette
+        // ascension avait accompli, y compris le record qu'elle vient de battre.
+        if (modeHardcore) effacerProfilHardcore();
         setEcran('ecran-fin');
         effacerRun();
     };
@@ -745,7 +846,11 @@ export function useGameState() {
         aBenedictionChat,
         benedictionActive,
         vieChatDispo,
-        forgeronPresente,
+        forgeronDisponible,
+
+        // Mode hardcore
+        modeHardcore,
+        aVaincuLaTour,
 
         // Progression méta (hors-run)
         monstresTues,
@@ -777,6 +882,10 @@ export function useGameState() {
         gererForgeronPresente,
         gererLeconComboFaite,
         gererPassageEtageSuivant,
+        gererEntrerHardcore,
+        gererQuitterHardcore,
+        gererResterDansLaTour: ouvrirZoneDeRepos,
+        gererQuitterLaTour,
         gererChoixRepos,
         declencherCombatPacte,
         gererDeclenchementMegaBoss,

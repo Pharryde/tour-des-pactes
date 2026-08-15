@@ -8,6 +8,8 @@ import { Fin } from './components/Fin';
 import { ChoixBoss } from './components/ChoixBoss';
 import { Repos } from './components/Repos';
 import { SortieTour } from './components/SortieTour';
+import { ChoixExtraction } from './components/ChoixExtraction';
+import { HardcoreIntro } from './components/HardcoreIntro';
 import { EtagePair } from './components/EtagePair';
 import { TutoConclusion } from './components/TutoConclusion';
 import { BenedictionChat } from './components/BenedictionChat';
@@ -30,12 +32,14 @@ function App() {
       joueur, historiqueLogs, victoireTotale, enCombatPacte, typeCombatPacte, logsMort, statsDerniereRun,
       enCombatMegaBoss, monstreMegaBoss, choixReposActifs, monstreTuto,
       pactesDebloques, pactesEquipes, pactesVictorieux, aPacteChat,
-      aBenedictionChat, benedictionActive, vieChatDispo, forgeronPresente,
+      aBenedictionChat, benedictionActive, vieChatDispo, forgeronDisponible,
+      modeHardcore, aVaincuLaTour,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, pactesNonVus, aPointsCompetenceDispo,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie,
       gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction, gererLeconMortVue, leconMortEnAttente,
       gererForgeronPresente, gererLeconComboFaite,
+      gererEntrerHardcore, gererQuitterHardcore, gererResterDansLaTour, gererQuitterLaTour,
       gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss,
       gererFinTutoriel, gererConclusionTuto, gererAbandonTuto, handleFinDeCombat,
   } = useGameState();
@@ -84,11 +88,14 @@ function App() {
               <Hub
                   onLancerRun={gererDemarrerAscension}
                   onChangeEcran={setEcran}
-                  forgeronPresente={forgeronPresente}
+                  forgeronPresente={forgeronDisponible}
                   aNouveauteTuto={aNouveauteTuto}
                   marquerTutoLu={marquerTutoLu}
                   aNouveauPacte={aNouveauPacte}
                   aPointsCompetenceDispo={aPointsCompetenceDispo}
+                  modeHardcore={modeHardcore}
+                  aVaincuLaTour={aVaincuLaTour}
+                  onQuitterHardcore={gererQuitterHardcore}
               />
           )}
 
@@ -128,9 +135,20 @@ function App() {
                   onChangeEcran={setEcran}
               />
           )}
-          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={gererQuitterFin} logsMort={logsMort} stats={statsDerniereRun} />}
+          {ecran === 'ecran-fin' && <Fin victoire={victoireTotale} onRetourHub={gererQuitterFin} logsMort={logsMort} stats={statsDerniereRun} modeHardcore={modeHardcore} />}
           {ecran === 'ecran-repos' && joueur && <Repos joueur={joueur} soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
-          {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} />}
+          {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} modeHardcore={modeHardcore} onQuitterLaTour={gererQuitterLaTour} />}
+          {ecran === 'ecran-hardcore-intro' && <HardcoreIntro onEntrer={gererEntrerHardcore} onRetour={() => setEcran('ecran-hub')} />}
+          {ecran === 'ecran-extraction' && (
+              <ChoixExtraction
+                  numeroEtage={indexEtageActuel + 1}
+                  totalEtages={listeEtages.length}
+                  nbPactes={pactesDebloques.length}
+                  xpTotal={xpTotal}
+                  onSortir={gererQuitterLaTour}
+                  onContinuer={gererResterDansLaTour}
+              />
+          )}
           {ecran === 'ecran-etage-pair' && <EtagePair onContinuer={() => setEcran('ecran-combat')} />}
           {ecran === 'ecran-tuto-conclusion' && <TutoConclusion onContinuer={gererConclusionTuto} />}
           {ecran === 'ecran-benediction' && <BenedictionChat aVaincuLaTour={victoireTotale} onContinuer={gererRecevoirBenediction} />}
