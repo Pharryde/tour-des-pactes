@@ -81,13 +81,20 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
 
 .stats-base { font-size: 0.9em; background: #1e1e2e; padding: 5px; border-radius: 0 0 8px 8px; margin-bottom: 10px; color: #a6adc8; border: 1px solid #181825; border-top: none; }
 
-/* Détail du calcul d'une stat au survol (arbre de compétence, repos, pactes, synergies...). */
-.stat-detail { position: relative; cursor: help; border-bottom: 1px dotted #6c7086; }
-.stat-detail-bulle {
+/* --- INFOBULLES (survol à la souris, appui long au doigt) — voir InfoBulle.tsx --- */
+/* `user-select` / `-webkit-touch-callout` : sans eux, un appui long sur tactile déclenche la
+   sélection de texte ou la bulle « Copier » du navigateur par-dessus la nôtre. `touch-action:
+   manipulation` laisse le défilement passer (l'appui long s'annule alors de lui-même, voir
+   useAppuiLong.ts) tout en supprimant le délai du double-tap. */
+.info-ancre {
+    position: relative;
+    cursor: help;
+    -webkit-touch-callout: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+.info-bulle {
     position: absolute;
-    bottom: 100%;
-    left: 0;
-    margin-bottom: 8px;
     background-color: #11111b;
     border: 1px solid #45475a;
     border-radius: 8px;
@@ -96,6 +103,7 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
     line-height: 1.5;
     color: #cdd6f4;
     text-align: left;
+    font-weight: normal;
     white-space: normal;
     width: max-content;
     max-width: 200px;
@@ -106,7 +114,18 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
     z-index: 30;
     box-shadow: 0 4px 10px rgba(0,0,0,0.4);
 }
-.stat-detail:hover .stat-detail-bulle { opacity: 1; visibility: visible; }
+.info-bulle--haut { bottom: 100%; margin-bottom: 8px; }
+/* Pour les éléments collés au sommet de l'écran : vers le haut, la bulle sortirait de la page. */
+.info-bulle--bas { top: 100%; margin-top: 8px; }
+/* L'alignement suit le côté de l'écran où vit l'ancre, sinon la bulle déborde sur mobile. */
+.info-bulle--debut { left: 0; }
+.info-bulle--fin { right: 0; }
+/* Deux chemins vers la même bulle : le survol à la souris, l'appui long au doigt. */
+.info-ancre:hover .info-bulle,
+.info-ancre--ouverte .info-bulle { opacity: 1; visibility: visible; }
+
+/* Détail du calcul d'une stat (arbre de compétence, repos, pactes, synergies...). */
+.stat-detail { border-bottom: 1px dotted #6c7086; }
 
 .combo { color: #fab387; display: block; margin-top: 10px; font-weight: bold;}
 

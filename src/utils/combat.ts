@@ -213,7 +213,14 @@ export function genererIndicesVisibles(nombreVisible?: number): number[] {
 
 // Remplace toute action qui prolongerait un combo au-delà de `limiteCombo` par une alternative
 // aléatoire, pour respecter le Pacte de la Fluidité imposé par l'adversaire.
-export function corrigerActionsPourLimiteCombo(actions: ActionType[], limiteCombo: number): ActionType[] {
+// ⚠️ L'alternative se tire dans la panoplie de la CRÉATURE (`actionsPossibles`), jamais dans la
+// liste complète des 4 actions : sinon briser le combo d'un Gardien lui met dans les mains une
+// action qu'il ne possède pas — une Précise chez le Brasier Vorace, une Attaque chez la Sève Noire.
+export function corrigerActionsPourLimiteCombo(
+    actions: ActionType[],
+    limiteCombo: number,
+    actionsPossibles: ActionType[],
+): ActionType[] {
     if (limiteCombo >= 5) return actions;
 
     const corrigees: ActionType[] = [];
@@ -225,8 +232,12 @@ export function corrigerActionsPourLimiteCombo(actions: ActionType[], limiteComb
         }
 
         if (actionsSuite >= limiteCombo) {
-            const alternatives = (['A', 'P', 'D', 'E'] as ActionType[]).filter(a => a !== choix);
-            choix = alternatives[Math.floor(Math.random() * alternatives.length)];
+            const alternatives = actionsPossibles.filter(a => a !== choix);
+            // Une créature réduite à une seule action ne peut pas briser son propre combo : on la
+            // laisse le prolonger plutôt que de lui inventer un geste.
+            if (alternatives.length > 0) {
+                choix = alternatives[Math.floor(Math.random() * alternatives.length)];
+            }
         }
         corrigees.push(choix);
     }

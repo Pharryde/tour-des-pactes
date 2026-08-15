@@ -15,6 +15,7 @@ import { ANIMATIONS_MONSTRE, animationMonstrePourAction, animationResolutionMons
 import { ANIMATIONS_CHAT } from '../utils/animationsChat';
 import { SpriteAnime } from './SpriteAnime';
 import { StatDetail } from './StatDetail';
+import { InfoBulle } from './InfoBulle';
 
 interface CombatAreneProps {
     joueurInitial: Entite;
@@ -134,7 +135,7 @@ export function CombatArene({
         }
         const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour, joueur.poisonActif ?? 0);
         // Le joueur applique son Pacte Lvl 1/2 sur le monstre
-        setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5));
+        setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5, monstreDuTour.actionsPossibles));
         setIndicesVisiblesMonstre(genererIndicesVisibles(monstreDuTour.actionsVisibles));
         setCreneauxFroid(tirerCreneauxFroid(joueur, monstreDuTour));
     }
@@ -516,19 +517,26 @@ export function CombatArene({
                 <div className="combat-header-pactes">
                     {/* Nom seul : l'effet complet reste dans l'infobulle. Dans la Tour, ces badges
                         sont un rappel de ce qu'on porte, pas une fiche technique — les descriptions
-                        entières poussaient l'en-tête sur plusieurs lignes. */}
+                        entières poussaient l'en-tête sur plusieurs lignes.
+                        Bulle vers le BAS et alignée à droite : ces badges vivent dans le coin
+                        supérieur droit, où toute bulle ouverte vers le haut ou vers la gauche
+                        sortirait de l'écran. */}
                     {badges.length === 0 ? <span className="pacte-aucun">Aucun Pacte</span> : badges.map(b => (
-                        <span key={b.nom} className="pacte-badge" title={`${b.nom} ${b.desc}`}>{b.nom}</span>
+                        <InfoBulle key={b.nom} className="pacte-badge" sens="bas" alignement="fin" contenu={b.desc}>
+                            {b.nom}
+                        </InfoBulle>
                     ))}
                     {benedictionActive && (
-                        <span
+                        <InfoBulle
                             className="pacte-badge benediction-badge"
-                            title={BENEDICTIONS_REGISTRY[benedictionActive].description}
+                            sens="bas"
+                            alignement="fin"
                             style={{ backgroundColor: BENEDICTIONS_REGISTRY[benedictionActive].couleur }}
+                            contenu={BENEDICTIONS_REGISTRY[benedictionActive].description}
                         >
                             {BENEDICTIONS_REGISTRY[benedictionActive].emoji} {BENEDICTIONS_REGISTRY[benedictionActive].titre}
                             {benedictionActive === 'vieDeChat' && !peutRessusciter && ' (utilisée)'}
-                        </span>
+                        </InfoBulle>
                     )}
                 </div>
             </div>

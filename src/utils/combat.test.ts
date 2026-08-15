@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Entite } from '../types';
+import type { ActionType, Entite } from '../types';
 import {
     calculerAttaqueAffichee,
     calculerPaliersEsquiveAffiches,
@@ -257,16 +257,18 @@ describe('tirerCreneauxFroid', () => {
 });
 
 describe('corrigerActionsPourLimiteCombo', () => {
+    const KIT_COMPLET: ActionType[] = ['A', 'P', 'D', 'E'];
+
     it('ne touche à rien quand la limite est de 5', () => {
         const actions = ['A', 'A', 'A', 'A', 'A'] as const;
-        expect(corrigerActionsPourLimiteCombo([...actions], 5)).toEqual([...actions]);
+        expect(corrigerActionsPourLimiteCombo([...actions], 5, KIT_COMPLET)).toEqual([...actions]);
     });
 
     // La correction pioche une action de remplacement au hasard : on vérifie donc la PROPRIÉTÉ
     // garantie (jamais plus de `limite` actions identiques d'affilée), pas une sortie précise.
     it('brise toute série dépassant la limite', () => {
         for (const limite of [2, 3]) {
-            const corrigees = corrigerActionsPourLimiteCombo(['A', 'A', 'A', 'A', 'A'], limite);
+            const corrigees = corrigerActionsPourLimiteCombo(['A', 'A', 'A', 'A', 'A'], limite, KIT_COMPLET);
             expect(corrigees).toHaveLength(5);
 
             let serie = 1;
@@ -275,5 +277,39 @@ describe('corrigerActionsPourLimiteCombo', () => {
                 expect(serie).toBeLessThanOrEqual(limite);
             }
         }
+    });
+
+    // ⚠️ Le cœur du problème : briser le combo d'un Gardien ne doit jamais lui mettre en main une
+    // action absente de sa panoplie. Le Brasier Vorace n'a pas de Précise, la Sève Noire pas
+    // d'Attaque — et c'est le Pacte de la Fluidité du JOUEUR qui déclenche ce remplacement.
+    it("ne remplace jamais par une action absente de la panoplie", () => {
+        const kits: ActionType[][] = [
+            ['A', 'D', 'E'],   // Étage du Feu : aucune Précise
+            ['P', 'D', 'E'],   // Étage du Poison : aucune Attaque
+            ['A', 'P', 'D'],   // Étage de l'Armure : aucune Esquive
+            ['A', 'P', 'E'],   // Étage de la Vitesse : aucune Défense
+        ];
+        for (const kit of kits) {
+            // On part d'une action que la créature possède réellement : c'est le seul cas que
+            // `genererActionsMonstre` peut produire, et donc le seul que la correction rencontre.
+            for (const martelee of kit) {
+                for (const limite of [2, 3]) {
+                    for (let essai = 0; essai < 30; essai++) {
+                        const entree = Array<ActionType>(5).fill(martelee);
+                        const corrigees = corrigerActionsPourLimiteCombo(entree, limite, kit);
+                        for (const action of corrigees) {
+                            expect(kit, `kit ${kit.join('')} / martelée ${martelee} / limite ${limite}`).toContain(action);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Une créature à action unique ne peut pas briser son propre combo : mieux vaut la laisser le
+    // prolonger que de lui inventer un geste qu'elle ne possède pas.
+    it("laisse le combo intact quand la créature n'a qu'une seule action", () => {
+        expect(corrigerActionsPourLimiteCombo(['A', 'A', 'A', 'A', 'A'], 2, ['A']))
+            .toEqual(['A', 'A', 'A', 'A', 'A']);
     });
 });
