@@ -578,6 +578,12 @@ touche jamais la partie normale**, qui attend intacte.
 Mourir en hardcore vide le profil : **plus de Pactes, plus d'XP, plus de points de compétence, plus
 de record**. On repart de zéro.
 
+**Abandonner en pleine Tour compte comme une mort** et coûte exactement le même prix. Sans cette
+règle, il suffirait de quitter par le menu au premier coup dur pour repartir avec un butin que la
+porte de sortie est justement censée faire payer — la décision de fin d'étage n'aurait plus aucun
+enjeu. La confirmation d'abandon le rappelle explicitement en hardcore. (Hors hardcore, abandonner
+reste sans conséquence.)
+
 Trois choses seulement traversent la mort :
 
 - le **Pacte du Chat** (cosmétique, jamais perdu) ;
@@ -596,7 +602,7 @@ la Tour ouvre une brèche et propose de partir.
 - **Sortir** → l'ascension s'arrête, et **tout ce qui a été arraché est définitivement acquis**. La
   run compte comme achevée (record, statistiques, journal).
 - **Rester** → la porte se referme : **plus aucune issue avant le prochain Gardien vaincu**. Mourir
-  d'ici là ne laisse rien.
+  — ou renoncer — d'ici là ne laisse rien.
 
 L'écran affiche l'enjeu exact : Pactes possédés, XP accumulée, étages restants.
 

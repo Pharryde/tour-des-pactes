@@ -198,6 +198,7 @@ function App() {
                 formesMegaBoss={enCombatMegaBoss ? listeEtages.map(e => e.bossHeroiqueLvl2) : undefined}
                 onFinDeCombat={handleFinDeCombat}
                 onAbandon={gererAbandon}
+                modeHardcore={modeHardcore}
                 enCombatPacte={enCombatPacte}
                 benedictionActive={benedictionActive}
                 peutRessusciter={vieChatDispo}

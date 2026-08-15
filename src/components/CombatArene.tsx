@@ -32,6 +32,9 @@ interface CombatAreneProps {
     ajouterStatsTour: (stats: StatsTour) => void;
     onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean, circonstances?: CirconstancesMort) => void;
     onAbandon: () => void;
+    // En hardcore, abandonner efface le profil au même titre qu'une mort : la confirmation doit le
+    // dire, sinon un bouton jusque-là sans conséquence devient un piège.
+    modeHardcore?: boolean;
     enCombatPacte: boolean;
     formesMegaBoss?: Entite[];
     // Bénédiction du Chat tirée pour cette run : affichée en entête, et pour "Vie de Chat",
@@ -68,7 +71,7 @@ function EtatsDifferes({ entite }: { entite: Entite }) {
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
     pactesEquipes, competences, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
-    enCombatPacte, formesMegaBoss, benedictionActive, peutRessusciter, onRessusciter,
+    modeHardcore, enCombatPacte, formesMegaBoss, benedictionActive, peutRessusciter, onRessusciter,
     estTutoriel, actionsMonstreScriptees, actionsAutoriseesTuto, dialogueTuto, onFinTutoriel
 }: CombatAreneProps) {
 
@@ -459,6 +462,15 @@ export function CombatArene({
     const animationsMonstreActives = estTutoriel ? ANIMATIONS_CHAT : ANIMATIONS_MONSTRE;
     const badges = genererBadgesPactes(pactesEquipes);
 
+    // En hardcore, ce bouton ne quitte pas seulement l'ascension : il efface le profil, exactement
+    // comme une mort. Le dire noir sur blanc est indispensable — le même bouton est sans
+    // conséquence dans l'autre mode, et rien à l'écran ne distingue les deux.
+    const messageAbandon = estTutoriel
+        ? "Passer le tutoriel ?"
+        : modeHardcore
+            ? "☠️ MODE HARDCORE\n\nAbandonner compte comme une mort : vos Pactes, votre XP et vos compétences seront DÉFINITIVEMENT perdus.\n\nPour conserver votre butin, il faut sortir par la porte offerte à la fin d'un étage.\n\nAbandonner quand même ?"
+            : "Abandonner l'ascension en cours ?";
+
     return (
         <div className="arene-wrapper">
 
@@ -487,7 +499,7 @@ export function CombatArene({
             <div className="combat-header">
                 <div className="combat-header-actions">
                     <button
-                        onClick={() => { if (window.confirm(estTutoriel ? "Passer le tutoriel ?" : "Abandonner l'ascension en cours ?")) onAbandon(); }}
+                        onClick={() => { if (window.confirm(messageAbandon)) onAbandon(); }}
                         className="btn-abandonner"
                         disabled={combatEnCours}
                     >

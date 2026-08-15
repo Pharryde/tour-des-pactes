@@ -16,7 +16,7 @@ import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPers
 import {
     COMBO_VIDE, COMPTEURS_ACTIONS_VIDES, COMPTEURS_REPOS_VIDES, construireEvenementRun,
     fusionnerCombo, incrementerCompteurs, journaliserRun,
-    type CompteursActions, type CompteursRepos, type IssueRun, type StatCombo, type StatsTour,
+    type CompteursActions, type CompteursRepos, type StatCombo, type StatsTour,
 } from '../utils/telemetrieRuns';
 import { DELAI_TRANSITION_MS, calculerDelai } from '../utils/rythme';
 import { effacerEtatCombat } from './useCombatResume';
@@ -262,7 +262,7 @@ export function useGameState() {
     // Charge utile du journal cloud, commune aux trois issues. Toutes les valeurs de run sont
     // relues dans le localStorage plutôt que prises dans la closure : ce code part d'un callback de
     // fin de combat, dont l'état capturé peut dater d'avant le tour fatal (cf. utils/logs.ts).
-    const construireEvenementDeLaRun = (issue: IssueRun) => construireEvenementRun({
+    const construireEvenementDeLaRun = (issue: IssueAscension) => construireEvenementRun({
         numeroRun: lireValeurPersistante('tdp_runs_lancees', 0),
         issue,
         // Sans ce drapeau, les runs hardcore se mélangeraient aux normales dans toutes les
@@ -290,8 +290,9 @@ export function useGameState() {
     });
 
     const capturerStatsFinRun = (issue: IssueAscension) => {
-        // Appelée exactement une fois par run ACHEVÉE (mort, victoire totale ou extraction
-        // hardcore) — un abandon ne passe pas par ici. C'est donc le bon endroit pour compter les
+        // Appelée exactement une fois par run ACHEVÉE — mort, victoire totale, extraction, et en
+        // hardcore l'abandon (qui y coûte le profil, donc achève bel et bien la run). Un abandon
+        // hors hardcore, lui, ne passe pas par ici. C'est donc le bon endroit pour compter les
         // runs qui cadencent les apparitions du Chat, et pour journaliser la run côté cloud.
         setRunsTerminees(n => n + 1);
 
@@ -315,17 +316,6 @@ export function useGameState() {
         // échec d'envoi n'a aucune conséquence pour le joueur. `benedictionActive`, `listeEtages`
         // et `pactesEquipes` sont encore intacts ici — effacerRun() ne les vide qu'après.
         void journaliserRun(construireEvenementDeLaRun(issue));
-    };
-
-    const gererAbandon = () => {
-        // Un abandon ne passe PAS par capturerStatsFinRun : il ne compte ni pour `runsTerminees`
-        // (qui cadence les apparitions du Chat) ni pour le record. Il est en revanche journalisé,
-        // parce que c'est le signal de frustration le plus fort du jeu — et le seul qui
-        // disparaissait entièrement. La garde protège d'un appel sans run en cours, qui
-        // enregistrerait une run fantôme à l'étage 1.
-        if (listeEtages.length > 0) void journaliserRun(construireEvenementDeLaRun('abandon'));
-        effacerRun();
-        setEcran('ecran-hub');
     };
 
     // Bénédiction "Vie de Chat" consommée : CombatArene a relevé le joueur au lieu de le laisser
@@ -367,6 +357,37 @@ export function useGameState() {
         // Le score du classement repart avec le reste : c'est ce qui lui donne son sens (« fini en
         // N runs en partant de rien »). `tdp_hc_runs_totales`, lui, n'est jamais remis à zéro.
         setRunsHc(0);
+    };
+
+    const gererAbandon = () => {
+        // En hardcore, renoncer en pleine Tour revient à y mourir. Sans cette règle, il suffirait
+        // d'abandonner au premier coup dur pour repartir avec un butin que la porte de sortie est
+        // justement censée faire payer : la décision de fin d'étage n'aurait plus aucun enjeu, et
+        // tout le mode avec elle. La run compte donc comme achevée (record, statistiques, écran de
+        // fin) et le profil est effacé, score du classement compris.
+        // Seule l'issue JOURNALISÉE reste `abandon` : en analyse, un joueur qui renonce et un
+        // joueur que la Tour a tué ne se confondent pas, quelles qu'en soient les conséquences.
+        if (modeHardcore && listeEtages.length > 0) {
+            setVictoireTotale(false);
+            // Personne n'a porté de coup fatal : afficher le dernier tour sous le titre
+            // « Coup de Grâce » raconterait une mort qui n'a pas eu lieu.
+            setLogsMort([]);
+            setLeconMortEnAttente(null);
+            capturerStatsFinRun('abandon');
+            effacerProfilHardcore();
+            setEcran('ecran-fin');
+            effacerRun();
+            return;
+        }
+
+        // Hors hardcore, un abandon ne passe PAS par capturerStatsFinRun : il ne compte ni pour
+        // `runsTerminees` (qui cadence les apparitions du Chat) ni pour le record. Il est en
+        // revanche journalisé, parce que c'est le signal de frustration le plus fort du jeu — et le
+        // seul qui disparaissait entièrement. La garde protège d'un appel sans run en cours, qui
+        // enregistrerait une run fantôme à l'étage 1.
+        if (listeEtages.length > 0) void journaliserRun(construireEvenementDeLaRun('abandon'));
+        effacerRun();
+        setEcran('ecran-hub');
     };
 
     // Sortie de l'écran de fin : le Chat s'y invite à intervalles scénarisés, une apparition par

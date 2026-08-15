@@ -12,10 +12,11 @@ import { detecterSynergie } from './synergies';
 import { APP_VERSION } from './versionApp';
 import type { ActionType, BenedictionChat, ChoixRepos, Competences, IssueAscension, Synergie } from '../types';
 
-// L'abandon n'est pas une run « achevée » (il ne compte ni pour runsTerminees ni pour le record),
-// mais c'est le signal de frustration le plus fort du jeu, et le seul qui disparaissait entièrement.
-// Les trois autres issues sont celles d'une ascension menée à son terme, extraction hardcore comprise.
-export type IssueRun = IssueAscension | 'abandon';
+// Hors hardcore, l'abandon n'est pas une run « achevée » (il ne compte ni pour runsTerminees ni
+// pour le record), mais c'est le signal de frustration le plus fort du jeu, et le seul qui
+// disparaissait entièrement. En hardcore il coûte le profil, donc il achève bel et bien la run —
+// mais il reste journalisé comme `abandon` : en analyse, renoncer et se faire tuer ne se confondent
+// pas, quelles qu'en soient les conséquences pour le joueur.
 
 export type CompteursRepos = Record<ChoixRepos, number>;
 export type CompteursActions = Record<ActionType, number>;
@@ -64,7 +65,7 @@ export interface StatsTour {
 export interface EvenementRun {
     numero_run: number;
     version: string;
-    issue: IssueRun;
+    issue: IssueAscension;
     // Une run hardcore se joue sur un profil reparti de zéro : à étage égal, ses Pactes et son
     // arbre sont bien plus faibles. Les mélanger aux runs normales fausserait toute analyse
     // d'équilibrage, d'où ce drapeau plutôt qu'une issue supplémentaire.
@@ -94,7 +95,7 @@ export interface EvenementRun {
 
 export function construireEvenementRun(params: {
     numeroRun: number;
-    issue: IssueRun;
+    issue: IssueAscension;
     hardcore: boolean;
     etage: number;
     salle: number;

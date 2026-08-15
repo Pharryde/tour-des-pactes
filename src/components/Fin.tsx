@@ -13,7 +13,10 @@ export function Fin({ victoire, onRetourHub, logsMort = [], stats = null, modeHa
     // issue, ni mort ni victoire totale. Une sauvegarde antérieure au mode hardcore n'a pas ce
     // champ, d'où le repli sur l'ancien booléen.
     const estExtraction = stats?.issue === 'extraction';
-    const estMort = !victoire && !estExtraction;
+    // Un abandon n'atteint cet écran qu'en hardcore : ailleurs il renvoie droit au Hub sans écrire
+    // de statistiques de run.
+    const estAbandon = stats?.issue === 'abandon';
+    const estMort = !victoire && !estExtraction && !estAbandon;
 
     return (
         <div id="ecran-fin" className="ecran">
@@ -30,6 +33,16 @@ export function Fin({ victoire, onRetourHub, logsMort = [], stats = null, modeHa
                     <p className="texte-fin">
                         Vous ressortez vivant, les mains pleines. Tout ce que vous avez arraché là-haut
                         est désormais à vous, définitivement.
+                    </p>
+                </>
+            )}
+
+            {estAbandon && (
+                <>
+                    <h1 className="titre-geant c-rose">🏳️ VOUS AVEZ FUI LA TOUR</h1>
+                    <p className="texte-fin">
+                        Renoncer en pleine ascension coûte exactement le même prix que d'y mourir.
+                        Pactes, XP, compétences : il ne reste rien.
                     </p>
                 </>
             )}
