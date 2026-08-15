@@ -43,6 +43,11 @@ export function appliquerFormeMegaBoss(monstreActuel: Entite, forme: Entite): En
         baseA: forme.baseA,
         baseP: forme.baseP,
         baseD: forme.baseD,
+        // ⚠️ La panoplie fait partie de l'emprunt, au même titre que les stats et le pouvoir : sous
+        // les traits du Brasier Vorace, il ne doit pas sortir une Précise que l'original ne possède
+        // pas, et sous ceux de la Sève Noire, aucune offensive qui ne soit pas du poison. Sans ça
+        // il gardait son propre kit complet et trahissait la forme qu'il venait de prendre.
+        actionsPossibles: forme.actionsPossibles,
         paliersEsquive: forme.paliersEsquive,
         actionsVisibles: forme.actionsVisibles,
         bloqueEsquiveOpposant: forme.bloqueEsquiveOpposant,

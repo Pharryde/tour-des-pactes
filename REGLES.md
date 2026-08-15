@@ -478,14 +478,19 @@ Entre deux étages, le joueur choisit **un** bonus.
 
 | Choix | Effet |
 |---|---|
-| **Se soigner** | Rend **50 % des PV max** (**+10 %** avec un Pacte de la Vie) |
-| **+ PV Max** | **+10 PV max** et actuels (**+10 %** avec un Pacte de la Vie) |
+| **Se soigner** | Rend **50 % des PV max** |
+| **+ PV Max** | **+10 PV max** et actuels |
 | **+ Attaque** | **+2** ⚔️ |
 | **+ Précise** | **+1** 🎯 |
 | **+ Défense** | **+2** 🛡️ |
 
 Les **cinq** choix sont disponibles à la **première** Zone de Repos d'une ascension. Ensuite, seuls
 **trois** — tirés au hasard à chaque visite — restent actifs ; les deux autres sont grisés.
+
+**Le Pacte de la Vie majore les deux bonus de vitalité** (le soin et le gain de PV max), à hauteur
+de ce qu'il donne par ailleurs : **+10 %** au Niveau I, **+25 %** au Niveau II. Un gain de base de
+10 PV max passe donc à 11, puis à **13**. Deux Pactes porteurs d'un tel bonus ne se cumulent pas :
+on retient le plus fort.
 
 ---
 
@@ -525,8 +530,10 @@ entité**, à affronter avant la victoire totale.
 - **PV** : nombre d'étages **× 100**, soit **1200 PV**, sans régénération globale.
 - **Changement de forme à chaque tour**, sans jamais répéter la précédente, parmi tous les Gardiens de
   **Niveau II** de la run.
-- Il emprunte à sa forme du tour **ses statistiques *et* son pouvoir spécial** : renvoi d'armure,
-  esquive neutralisée, brûlure, poison, gel, multiplicateur contre l'armure, régénération…
+- Il emprunte à sa forme du tour **ses statistiques, sa panoplie d'actions et son pouvoir spécial** :
+  renvoi d'armure, esquive neutralisée, brûlure, poison, gel, multiplicateur contre l'armure,
+  régénération… Sous les traits du Brasier Vorace il n'a donc **pas de Précise**, et sous ceux de la
+  Sève Noire **pas d'Attaque** — exactement comme les originaux.
 - Les effets « tous les X tours » sont forcés à **chaque tour** où la forme est active — la forme
   changeant à chaque tour, un intervalle réel de 3 à 5 tours ne se déclencherait presque jamais.
 - Seuls ses **PV, son armure et son palier d'esquive** en cours restent les siens d'un tour à l'autre.

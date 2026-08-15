@@ -145,8 +145,23 @@ describe('bonus de la Zone de Repos', () => {
         expect(calculerGainPvMaxRepos(['Pacte de la Vie'])).toBe(11);
     });
 
-    // Deux Pactes porteurs d'un bonus de repos ne doivent pas empiler leurs multiplicateurs.
+    // Le Niveau II doit apporter DAVANTAGE que le Niveau I en Zone de Repos : les deux portaient
+    // le même multiplicateur (1.1), le Niveau II n'y servait donc à rien de plus.
+    it('majore le repos à hauteur du +25% du Pacte de la Vie II', () => {
+        expect(calculerGainPvMaxRepos(['Pacte de la Vie II'])).toBe(13);
+        expect(calculerSoinRepos(100, ['Pacte de la Vie II'])).toBe(63);
+    });
+
+    // Arrondi et non troncature, comme partout ailleurs dans le jeu : 10 x 1.25 = 12.5 doit donner
+    // 13. `Math.floor` rendait 12 et privait le joueur d'un point à chaque repos.
+    it('arrondit le gain au lieu de le tronquer', () => {
+        expect(calculerGainPvMaxRepos(['Pacte de la Vie II'])).toBe(Math.round(10 * 1.25));
+    });
+
+    // Deux Pactes porteurs d'un bonus de repos ne doivent pas empiler leurs multiplicateurs :
+    // on retient le plus fort, jamais leur produit.
     it('ne cumule pas les multiplicateurs de repos', () => {
-        expect(calculerSoinRepos(100, ['Pacte de la Vie', 'Pacte de la Vie II'])).toBe(55);
+        expect(calculerSoinRepos(100, ['Pacte de la Vie', 'Pacte de la Vie II'])).toBe(63);
+        expect(calculerGainPvMaxRepos(['Pacte de la Vie', 'Pacte de la Vie II'])).toBe(13);
     });
 });

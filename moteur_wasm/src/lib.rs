@@ -473,7 +473,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             log_action.push_str(" <span class=\"log-mort\">(L'esquive ennemie est neutralisée !)</span>");
         }
 
-        if synergie_j == Some(Synergie::Guerrier) {
+        // ⚠️ `!gele_j` : une action gelée n'accorde AUCUN bonus de posture (ni l'armure, tributaire
+        // de `monter_garde_joueur`, ni les dégâts, tributaires de `guerrier_bonus_base_a` — les deux
+        // sont déjà sautés plus haut). Sans cette garde, seul le JOURNAL prétendait le contraire.
+        if synergie_j == Some(Synergie::Guerrier) && !gele_j {
             if *act_j == ActionType::A { log_action.push_str(" <span class=\"log-combo\">(Posture : +2 Armure)</span>"); }
             if *act_j == ActionType::D { log_action.push_str(" <span class=\"log-combo\">(Posture : +2 Dégâts jusqu'à la fin du tour)</span>"); }
         }

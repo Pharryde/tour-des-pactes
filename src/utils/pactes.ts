@@ -29,8 +29,10 @@ export const PACTES_REGISTRY: Record<string, PacteDef> = {
             j.pv = j.pvMax;
             j.pacteSoinVieII = true;
         },
-        bonusSoinRepos: 1.1,
-        bonusGainPvMaxRepos: 1.1
+        // Alignés sur le +25% du Pacte lui-même. Ils valaient 1.1, soit exactement le Niveau I :
+        // en Zone de Repos, le Niveau II n'apportait donc rien de plus que le Niveau I.
+        bonusSoinRepos: 1.25,
+        bonusGainPvMaxRepos: 1.25
     },
     "Pacte de l'Armure": {
         desc: "(+5 Défense)",
@@ -182,7 +184,7 @@ export function calculerSoinRepos(pvMax: number, pactesEquipes: string[]): numbe
         }
     });
 
-    return Math.floor(baseSoin * multiplicateur);
+    return Math.round(baseSoin * multiplicateur);
 }
 
 export function calculerGainPvMaxRepos(pactesEquipes: string[]): number {
@@ -196,7 +198,7 @@ export function calculerGainPvMaxRepos(pactesEquipes: string[]): number {
         }
     });
 
-    return Math.floor(gainPvMax * multiplicateur);
+    return Math.round(gainPvMax * multiplicateur);
 }
 
 export function genererBadgesPactes(pactesEquipes: string[]): { nom: string, desc: string }[] {
