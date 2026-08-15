@@ -45,6 +45,10 @@ const CLES_JEU = [
     'tdp_hc_runs_totales',
     'tdp_forgeron_presente',
     'tdp_lecon_combo_faite',
+    // Leçons de mort du Chat : `vues` évite de re-servir une leçon déjà donnée sur un nouvel
+    // appareil, `attente` porte celle retenue par la dernière mort et pas encore montrée.
+    'tdp_lecons_mort_vues',
+    'tdp_lecon_mort_attente',
     'tdp_benediction_active',
     'tdp_vie_chat_dispo',
     'tdp_monstres_tues',
