@@ -38,7 +38,7 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
    classique coupe le haut du contenu sans qu'on puisse y remonter dès que ça dépasse la hauteur
    de l'écran, ex: beaucoup de Pactes débloqués). */
 #ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair, #ecran-tuto-conclusion,
-#ecran-hardcore-intro, #ecran-extraction {
+#ecran-hardcore-intro, #ecran-extraction, #ecran-classement, #ecran-classement-saisie {
     align-items: center;
     justify-content: center;
 }
@@ -261,7 +261,7 @@ div.log-tour { margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10p
 
 .repos-container { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
 .repos-col { display: flex; flex-direction: column; gap: 15px; justify-content: center; margin: 0; }
-.c-vert { color: #a6e3a1; } .c-rose { color: #f38ba8; } .c-orange { color: #fab387; }
+.c-vert { color: #a6e3a1; } .c-rose { color: #f38ba8; } .c-orange { color: #fab387; } .c-or { color: #f9e2af; }
 .bg-vert { background-color: #a6e3a1 !important; color: #11111b !important; } .bg-orange { background-color: #fab387 !important; color: #11111b !important; }
 .bg-bleu { background-color: #89b4fa !important; color: #11111b !important; } .bg-violet { background-color: #cba6f7 !important; color: #11111b !important; }
 .bg-rose { background-color: #f38ba8 !important; color: #11111b !important; }

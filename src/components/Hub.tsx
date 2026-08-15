@@ -83,6 +83,12 @@ export function Hub({
                         <button className="btn-menu btn-danger" onClick={() => onChangeEcran('ecran-hardcore-intro')}>☠️ Mode Hardcore</button>
                     )
                 )}
+
+                {/* Même seuil que le mode hardcore : le classement ne récompense que lui, l'afficher
+                    plus tôt révélerait une fin de jeu que le joueur n'a pas encore atteinte. */}
+                {aVaincuLaTour && (
+                    <button className="btn-menu" onClick={() => onChangeEcran('ecran-classement')}>🏆 Classement</button>
+                )}
             </div>
         </div>
     );

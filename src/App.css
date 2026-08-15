@@ -1219,3 +1219,75 @@
     .extraction-enjeu-valeur { font-size: 1.35em; }
     .hub-banniere-hardcore { padding: 10px 14px; }
 }
+
+/* ===================== CLASSEMENT HARDCORE ===================== */
+/* Largeur bornée et commune aux deux écrans : la liste des noms doit rester lisible sur un grand
+   écran, où une ligne pleine largeur séparerait le nom de son score de plusieurs dizaines de cm. */
+.classement-tableau {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(560px, 92vw);
+    margin: 10px 0 24px;
+}
+
+.classement-ligne {
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background-color: #1e1e2e;
+    border: 1px solid #313244;
+}
+
+.classement-ligne:nth-child(-n+3) { border-color: #f9e2af; }
+
+.classement-rang { font-size: 1.3em; text-align: center; }
+/* Un nom saisi par un joueur peut être long et sans espace : sans cette coupure il déborderait
+   de sa carte au lieu de passer à la ligne. */
+.classement-nom { font-weight: bold; overflow-wrap: anywhere; }
+.classement-runs { color: #a6adc8; white-space: nowrap; }
+
+.classement-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 10px 0 24px;
+}
+
+.classement-score-valeur { font-size: 3.5em; font-weight: bold; color: #f9e2af; line-height: 1; }
+.classement-score-label { color: #a6adc8; }
+
+.classement-champ {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: min(420px, 92vw);
+}
+
+.classement-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #45475a;
+    background-color: #11111b;
+    color: #cdd6f4;
+    font-family: inherit;
+    font-size: 1.1em;
+    text-align: center;
+}
+
+.classement-input:focus { outline: none; border-color: #f9e2af; }
+
+.classement-compteur { color: #6c7086; font-size: 0.85em; }
+.classement-avertissement { color: #a6adc8; font-size: 0.9em; margin: 14px 0 0; }
+.classement-echec { color: #f38ba8; margin: 12px 0 0; }
+
+@media (max-width: 768px) {
+    .classement-ligne { grid-template-columns: 36px 1fr auto; gap: 8px; padding: 10px 12px; }
+    .classement-score-valeur { font-size: 2.8em; }
+}

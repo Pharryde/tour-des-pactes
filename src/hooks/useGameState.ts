@@ -89,6 +89,14 @@ export function useGameState() {
     // installé, les runs déjà journalisées portent des numéros jusqu'à ce total, on repart donc
     // juste au-dessus au lieu de réutiliser des numéros pris.
     const [, setRunsLancees] = useLocalStorage<number>('tdp_runs_lancees', runsTerminees);
+    // Score du classement hardcore (voir utils/classement.ts). Compteur DÉDIÉ : `runsLancees` et
+    // `runsTerminees` sont partagés entre les deux profils, ils incluraient donc toutes les runs
+    // normales jouées avant même que le mode ne soit débloqué. Celui-ci est remis à zéro par
+    // effacerProfilHardcore() — la mort effaçant toute la puissance, un petit nombre veut dire
+    // « fini presque en partant de rien ». `runsHcTotales` garde la trace des tentatives à vie :
+    // il n'entre pas dans le classement mais permet de le relire autrement plus tard.
+    const [runsHc, setRunsHc] = useLocalStorage<number>('tdp_hc_runs', 0);
+    const [runsHcTotales, setRunsHcTotales] = useLocalStorage<number>('tdp_hc_runs_totales', 0);
     const [forgeronPresente, setForgeronPresente] = useLocalStorage<boolean>('tdp_forgeron_presente', false);
     const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
     const [leconsMortVues, setLeconsMortVues] = useLocalStorage<LeconMort[]>('tdp_lecons_mort_vues', []);
@@ -356,6 +364,9 @@ export function useGameState() {
         setXpTotal(0);
         setCompetences({ pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
         setEtageRecord(0);
+        // Le score du classement repart avec le reste : c'est ce qui lui donne son sens (« fini en
+        // N runs en partant de rien »). `tdp_hc_runs_totales`, lui, n'est jamais remis à zéro.
+        setRunsHc(0);
     };
 
     // Sortie de l'écran de fin : le Chat s'y invite à intervalles scénarisés, une apparition par
@@ -504,6 +515,7 @@ export function useGameState() {
         // Incrémenté au LANCEMENT et non à la fin : c'est ce qui donne un numéro unique à chaque
         // run du journal cloud, abandons compris (voir la déclaration de tdp_runs_lancees).
         setRunsLancees(n => n + 1);
+        if (modeHardcore) { setRunsHc(n => n + 1); setRunsHcTotales(n => n + 1); }
 
         const messageBuff = genererMessageBuff(melange[0], pactesEquipes);
         if (messageBuff) setAConnuBuff(true);
@@ -621,9 +633,14 @@ export function useGameState() {
         // à l'autre : chaque composition victorieuse s'ajoute au palmarès).
         setPactesVictorieux(prev => [...new Set([...prev, ...pactesEquipes])]);
         capturerStatsFinRun('victoire');
-        setEcran('ecran-fin');
+        // En hardcore, la victoire passe d'abord par la saisie du nom pour le classement public :
+        // c'est le seul exploit du jeu qui se compare entre joueurs, et l'occasion ne se
+        // représentera pas (l'écran de fin, lui, reste accessible juste après).
+        setEcran(modeHardcore ? 'ecran-classement-saisie' : 'ecran-fin');
         effacerRun();
     };
+
+    const gererClassementSaisi = () => setEcran('ecran-fin');
 
     const gererChoixRepos = (choix: ChoixRepos) => {
         if (!joueur) return;
@@ -851,6 +868,9 @@ export function useGameState() {
         // Mode hardcore
         modeHardcore,
         aVaincuLaTour,
+        runsHc,
+        runsHcTotales,
+        gererClassementSaisi,
 
         // Progression méta (hors-run)
         monstresTues,

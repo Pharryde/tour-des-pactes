@@ -10,6 +10,8 @@ import { Repos } from './components/Repos';
 import { SortieTour } from './components/SortieTour';
 import { ChoixExtraction } from './components/ChoixExtraction';
 import { HardcoreIntro } from './components/HardcoreIntro';
+import { ClassementSaisie } from './components/ClassementSaisie';
+import { Classement } from './components/Classement';
 import { EtagePair } from './components/EtagePair';
 import { TutoConclusion } from './components/TutoConclusion';
 import { BenedictionChat } from './components/BenedictionChat';
@@ -33,7 +35,7 @@ function App() {
       enCombatMegaBoss, monstreMegaBoss, choixReposActifs, monstreTuto,
       pactesDebloques, pactesEquipes, pactesVictorieux, aPacteChat,
       aBenedictionChat, benedictionActive, vieChatDispo, forgeronDisponible,
-      modeHardcore, aVaincuLaTour,
+      modeHardcore, aVaincuLaTour, runsHc, runsHcTotales, gererClassementSaisi,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, pactesNonVus, aPointsCompetenceDispo,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie,
@@ -139,6 +141,8 @@ function App() {
           {ecran === 'ecran-repos' && joueur && <Repos joueur={joueur} soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} modeHardcore={modeHardcore} onQuitterLaTour={gererQuitterLaTour} />}
           {ecran === 'ecran-hardcore-intro' && <HardcoreIntro onEntrer={gererEntrerHardcore} onRetour={() => setEcran('ecran-hub')} />}
+          {ecran === 'ecran-classement-saisie' && <ClassementSaisie nbRuns={runsHc} runsTotales={runsHcTotales} onTermine={gererClassementSaisi} />}
+          {ecran === 'ecran-classement' && <Classement onRetour={() => setEcran('ecran-hub')} />}
           {ecran === 'ecran-extraction' && (
               <ChoixExtraction
                   numeroEtage={indexEtageActuel + 1}

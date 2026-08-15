@@ -41,6 +41,8 @@ const CLES_JEU = [
     'tdp_benediction_chat',
     'tdp_runs_terminees',
     'tdp_runs_lancees',
+    'tdp_hc_runs',
+    'tdp_hc_runs_totales',
     'tdp_forgeron_presente',
     'tdp_lecon_combo_faite',
     'tdp_benediction_active',
