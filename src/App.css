@@ -646,6 +646,9 @@
 .inventaire-section-titre--lvl1 { color: #cba6f7; }
 .inventaire-section-titre--lvl2 { color: #f38ba8; }
 .inventaire-section-compteur { font-size: 0.6em; color: #a6adc8; font-weight: normal; margin-left: 10px; }
+/* Emplacements tous pris : le compteur passe au vert pour signaler qu'il n'y a plus de place, et
+   qu'un nouveau Pacte en remplacera forcément un autre. */
+.inventaire-section-compteur--plein { color: #a6e3a1; font-weight: bold; }
 .inventaire-grille { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
 /* Cartes calibrées pour que les 8 Pactes d'un niveau tiennent sur UNE rangée en écran large
@@ -949,6 +952,95 @@
 /* ======================================================= */
 /* En overlay dans l'arène, et non comme un écran à part : la résolution du tour est suspendue en
    plein vol (voir CombatArene), donc démonter le combat pour changer d'écran perdrait son état. */
+/* ======================================================= */
+/* --- ÉCRAN DE PACTE ARRACHÉ --- */
+/* ======================================================= */
+.pacte-obtenu-carte {
+    background-color: #181825;
+    border: 2px solid #f9e2af;
+    border-radius: 12px;
+    padding: 18px 28px;
+    margin: 6px 0 14px;
+    box-shadow: 0 0 26px rgba(249, 226, 175, 0.2);
+    animation: fadeIn 0.5s ease-in-out;
+}
+.pacte-obtenu-rang {
+    display: inline-block;
+    color: #a6adc8;
+    font-size: 0.8em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.pacte-obtenu-nom { color: #f9e2af; font-size: 1.5em; margin: 4px 0 8px; }
+.pacte-obtenu-effet { color: #a6e3a1; font-weight: bold; margin: 0; }
+/* Le conseil du Chat n'apparaît qu'au tout premier Pacte : ton distinct du reste de l'écran. */
+.pacte-obtenu-astuce {
+    color: #cba6f7;
+    border-left: 2px solid #cba6f7;
+    padding-left: 12px;
+    text-align: left;
+    max-width: 520px;
+}
+
+/* Sortie de secours d'une scénette : dépouillée, pour ne jamais rivaliser avec le bouton
+   principal — c'est un repli, pas une alternative de même poids. */
+.scenette-secondaire {
+    display: block;
+    margin: 12px auto 0;
+    background: none;
+    border: none;
+    color: #a6adc8;
+    font-size: 0.85em;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.scenette-secondaire:hover { color: #cdd6f4; }
+
+/* ======================================================= */
+/* --- LEÇON DU TUTORIEL (overlay avant chaque tour) --- */
+/* ======================================================= */
+/* Même mise en scène que l'écran de Vie de Chat, et pour la même raison technique : le tour est en
+   attente à l'intérieur de l'arène, on ne peut pas la démonter pour changer d'écran. */
+.lecon-tuto-ecran {
+    position: absolute;
+    inset: 0;
+    z-index: 45;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: rgba(17, 17, 27, 0.94);
+    animation: fadeIn 0.3s ease-in-out;
+    overflow-y: auto;
+}
+.lecon-tuto-carte {
+    width: 100%;
+    max-width: 560px;
+    background-color: #181825;
+    border: 2px solid #cba6f7;
+    border-radius: 12px;
+    padding: 20px 24px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(203, 166, 247, 0.25);
+}
+.lecon-tuto-sprite { --sprite-echelle: 2; display: flex; justify-content: center; }
+.lecon-tuto-etape {
+    display: inline-block;
+    margin-top: 8px;
+    color: #a6adc8;
+    font-size: 0.8em;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.lecon-tuto-titre { color: #cba6f7; font-size: 1.5em; margin: 4px 0 14px; }
+.lecon-tuto-texte {
+    text-align: left;
+    line-height: 1.55;
+    margin: 0 0 12px;
+    color: #cdd6f4;
+}
+.lecon-tuto-texte b { color: #f9e2af; }
+
 .vie-chat-ecran {
     position: absolute;
     inset: 0;

@@ -1,6 +1,7 @@
 // src/hooks/useCombatResume.ts
 import { useEffect } from 'react';
 import type { ActionType, Entite } from '../types';
+import type { CreneauxFroid } from '../utils/combat';
 
 export interface EtatCombat {
     joueur: Entite;
@@ -9,6 +10,10 @@ export interface EtatCombat {
     actionsMonstre: ActionType[];
     actionsJoueur: ActionType[];
     indicesVisiblesMonstre: number[];
+    // Créneaux déréglés / gelés de l'Étage du Froid. Tirés une fois à l'ouverture du tour, ils font
+    // partie de l'état du tour au même titre que les actions : sans eux, recharger la page en plein
+    // tour les efface et le tour se résout sans le moindre effet de Froid.
+    creneauxFroid: CreneauxFroid;
 }
 
 // Un seul enregistrement pour tout le combat en cours. L'état était auparavant éclaté sur 7 clés
@@ -75,18 +80,19 @@ export function usePersisterCombat(
     actionsMonstre: ActionType[],
     actionsJoueur: ActionType[],
     indicesVisiblesMonstre: number[],
+    creneauxFroid: CreneauxFroid,
     enPause: boolean
 ) {
     useEffect(() => {
         if (enPause) return;
         const persiste: CombatPersiste = {
             cle: combatKey,
-            etat: { joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre },
+            etat: { joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, creneauxFroid },
         };
         try {
             window.localStorage.setItem(CLE_COMBAT, JSON.stringify(persiste));
         } catch (error) {
             console.error("Erreur d'écriture de l'état de combat:", error);
         }
-    }, [combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, enPause]);
+    }, [combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, creneauxFroid, enPause]);
 }

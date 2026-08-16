@@ -26,6 +26,11 @@ const TOUS_LES_PACTES = Object.keys(PACTES_REGISTRY);
 
 export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, pactesNonVus, marquerPactesVus, synergiesDecouvertes, aPacteChat, onBasculerPacte, onEquiperSynergie, onChangeEcran }: InventaireProps) {
 
+    // Emplacements réellement occupés : le joueur doit voir d'un coup d'œil ce qu'il lui reste,
+    // sans avoir à recompter ses cartes surlignées.
+    const equipesLvl1 = pactesEquipes.filter(p => !p.endsWith(' II')).length;
+    const equipesLvl2 = pactesEquipes.filter(p => p.endsWith(' II')).length;
+
     // Tant que le joueur n'a encore arraché aucun Pacte d'un niveau donné, on ne montre même pas
     // les emplacements verrouillés de ce niveau (sinon la 1ère partie révèlerait déjà la liste
     // complète des Pactes de Niveau I/II avant que le joueur en ait seulement vu un).
@@ -145,7 +150,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, p
                 {possedeLvl1 && (
                     <div>
                         <h2 className="inventaire-section-titre inventaire-section-titre--lvl1">
-                            Pactes de Niveau I <span className="inventaire-section-compteur">(3 max équipés)</span>
+                            Pactes de Niveau I <span className={`inventaire-section-compteur${equipesLvl1 >= 3 ? ' inventaire-section-compteur--plein' : ''}`}>{equipesLvl1} / 3 équipés</span>
                         </h2>
                         <div className="inventaire-grille">
                             {pactesLvl1.map(renderPacte)}
@@ -155,7 +160,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, p
                 {possedeLvl2 && (
                     <div>
                         <h2 className="inventaire-section-titre inventaire-section-titre--lvl2">
-                            Pactes de Niveau II <span className="inventaire-section-compteur">(1 max équipé)</span>
+                            Pactes de Niveau II <span className={`inventaire-section-compteur${equipesLvl2 >= 1 ? ' inventaire-section-compteur--plein' : ''}`}>{equipesLvl2} / 1 équipé</span>
                         </h2>
                         <div className="inventaire-grille">
                             {pactesLvl2.map(renderPacte)}

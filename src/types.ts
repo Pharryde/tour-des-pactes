@@ -1,4 +1,4 @@
-export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo' | 'ecran-lecon-mort' | 'ecran-hardcore-intro' | 'ecran-extraction' | 'ecran-classement' | 'ecran-classement-saisie';
+export type Ecran = 'ecran-hub' | 'ecran-combat' | 'ecran-fin' | 'ecran-choix-boss' | 'ecran-repos' | 'ecran-inventaire' | 'ecran-cinematique' | 'ecran-tuto' | 'ecran-arbre' | 'ecran-sortie-tour' | 'ecran-etage-pair' | 'ecran-tuto-intro' | 'ecran-tuto-conclusion' | 'ecran-benediction' | 'ecran-roue' | 'ecran-forgeron' | 'ecran-lecon-combo' | 'ecran-lecon-mort' | 'ecran-pacte-obtenu' | 'ecran-rappel-inventaire' | 'ecran-hardcore-intro' | 'ecran-extraction' | 'ecran-classement' | 'ecran-classement-saisie';
 export type ActionType = 'A' | 'P' | 'D' | 'E';
 // Comment une ascension s'est arrêtée.
 //  - `extraction` : sortie volontaire par la porte hardcore, offerte à la fin de chaque étage.

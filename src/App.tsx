@@ -1,6 +1,7 @@
 import { getImageCinematique } from './utils/etages';
 import { calculerSoinRepos, calculerGainPvMaxRepos } from './utils/pactes';
 import { useGameState } from './hooks/useGameState';
+import { LIMITE_COMBO_PREMIERE_RUN } from './utils/combat';
 import { Hub } from './components/Hub';
 import { Inventaire } from './components/Inventaire';
 import { CombatArene } from './components/CombatArene';
@@ -18,12 +19,14 @@ import { BenedictionChat } from './components/BenedictionChat';
 import { PresentationForgeron } from './components/PresentationForgeron';
 import { LeconCombo } from './components/LeconCombo';
 import { LeconMortEcran } from './components/LeconMortEcran';
+import { PacteObtenu } from './components/PacteObtenu';
+import { RappelInventaire } from './components/RappelInventaire';
 import { RoueChance } from './components/RoueChance';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CinematiqueBoss } from './components/CinematiqueBoss';
 import { Tuto } from './components/Tuto';
 import { ArbreCompetences } from './components/ArbreCompetences';
-import { ACTIONS_CHAT_TUTO, ACTIONS_AUTORISEES_TUTO, DIALOGUE_CHAT_TUTO } from './utils/tutoCombat';
+import { ACTIONS_CHAT_TUTO, ACTIONS_AUTORISEES_TUTO, DIALOGUE_CHAT_TUTO, LECONS_TUTO } from './utils/tutoCombat';
 import './App.css';
 
 function App() {
@@ -37,9 +40,9 @@ function App() {
       aBenedictionChat, benedictionActive, vieChatDispo, forgeronDisponible,
       modeHardcore, aVaincuLaTour, runsHc, runsHcTotales, gererClassementSaisi,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
-      aNouveauPacte, pactesNonVus, aPointsCompetenceDispo,
+      aNouveauPacte, pactesNonVus, aPointsCompetenceDispo, estPremiereRun,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie,
-      gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction, gererLeconMortVue, leconMortEnAttente,
+      gererDemarrerAscension, gererLancerRun, gererVieDeChatConsommee, gererQuitterFin, gererRecevoirBenediction, gererLeconMortVue, leconMortEnAttente, pacteObtenu, gererPacteObtenuVu,
       gererForgeronPresente, gererLeconComboFaite,
       gererEntrerHardcore, gererQuitterHardcore, gererResterDansLaTour, gererQuitterLaTour,
       gererPassageEtageSuivant, gererChoixRepos, declencherCombatPacte, gererDeclenchementMegaBoss,
@@ -159,6 +162,20 @@ function App() {
           {ecran === 'ecran-forgeron' && <PresentationForgeron onContinuer={gererForgeronPresente} />}
           {ecran === 'ecran-lecon-combo' && <LeconCombo onContinuer={gererLeconComboFaite} />}
           {ecran === 'ecran-lecon-mort' && leconMortEnAttente && <LeconMortEcran lecon={leconMortEnAttente} onContinuer={gererLeconMortVue} />}
+          {ecran === 'ecran-pacte-obtenu' && pacteObtenu && (
+              <PacteObtenu
+                  nomPacte={pacteObtenu}
+                  estPremierPacte={pactesDebloques.length <= 1}
+                  onContinuer={gererPacteObtenuVu}
+              />
+          )}
+          {ecran === 'ecran-rappel-inventaire' && (
+              <RappelInventaire
+                  nbPactesDisponibles={pactesDebloques.length}
+                  onAllerInventaire={() => setEcran('ecran-inventaire')}
+                  onPartirQuandMeme={() => gererDemarrerAscension(true)}
+              />
+          )}
           {ecran === 'ecran-roue' && benedictionActive && <RoueChance benediction={benedictionActive} onEntrer={() => gererLancerRun(benedictionActive)} />}
 
           {ecran === 'ecran-choix-boss' && (
@@ -200,6 +217,7 @@ function App() {
                 onAbandon={gererAbandon}
                 modeHardcore={modeHardcore}
                 enCombatPacte={enCombatPacte}
+                limiteComboMonstre={estPremiereRun ? LIMITE_COMBO_PREMIERE_RUN : undefined}
                 benedictionActive={benedictionActive}
                 peutRessusciter={vieChatDispo}
                 onRessusciter={gererVieDeChatConsommee}
@@ -230,6 +248,7 @@ function App() {
                 actionsMonstreScriptees={ACTIONS_CHAT_TUTO}
                 actionsAutoriseesTuto={ACTIONS_AUTORISEES_TUTO}
                 dialogueTuto={DIALOGUE_CHAT_TUTO}
+                leconsTuto={LECONS_TUTO}
                 onFinTutoriel={gererFinTutoriel}
               />
             </div>

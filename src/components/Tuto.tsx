@@ -59,7 +59,7 @@ export function Tuto({ pactesDebloques, xpTotal, bestiaire, aConnuBuff, synergie
                     <ul>
                         <li>⚔️ <b>Attaque (A)</b> : Inflige des dégâts bruts équivalents à votre Force.</li>
                         <li>🎯 <b>Précise (P)</b> : Inflige des dégâts basés sur votre Précision en ignorant totalement l'armure ennemie.</li>
-                        <li>🛡️ <b>Défense (D)</b> : Génère de l'Armure pour absorber les coups. Elle s'accumule et vous protège pendant tout le tour, puis <b>retombe à zéro à la fin de celui-ci</b> — rien ne se reporte sur le tour suivant.</li>
+                        <li>🛡️ <b>Défense (D)</b> : Génère de l'Armure pour absorber les coups. <b>Elle s'accumule et tient pendant TOUT le tour</b> : trois Défenses ne vous protègent pas trois fois séparément, elles empilent une seule et même réserve qui encaisse tout ce qui arrive jusqu'à la fin du tour — une Défense au 1<sup>er</sup> créneau vous couvre donc encore au 5<sup>e</sup>. En revanche elle <b>retombe à zéro à la fin du tour</b> : rien ne se reporte, il faut la reconstruire à chaque fois.</li>
                         <li>💨 <b>Esquive (E)</b> : Augmente votre jauge d'esquive d'un palier. Plus le niveau monte, plus vous avez de chances d'annuler complètement l'attaque adverse — jusqu'au <b>palier 3, le maximum</b>. Enchaîner l'Esquive au-delà n'apporte plus rien, et toute autre action fait redescendre la jauge.</li>
                     </ul>
                 </div>

@@ -1,6 +1,11 @@
 // src/utils/combat.ts
 import type { ActionType, Entite } from '../types';
 
+// Plafond de combo imposé aux monstres tant que le joueur n'a achevé aucune run : enchaîner cinq
+// fois la même action est le pic de puissance d'une créature, et un débutant ne sait pas encore
+// que ça se voit venir dans ses cases d'action. La borne saute dès la 2e ascension.
+export const LIMITE_COMBO_PREMIERE_RUN = 4;
+
 export const SYMBOLES: Record<ActionType, string> = { 'A': '⚔️', 'P': '🎯', 'D': '🛡️', 'E': '💨' };
 
 // Le Feu et le Poison ne s'AJOUTENT pas à une action : ils la remplacent (l'Attaque cesse de blesser
@@ -13,19 +18,6 @@ export function symbolePour(action: ActionType, entite?: Entite): string {
     return SYMBOLES[action];
 }
 
-// Valeur d'Attaque affichée dans les stats : contrairement aux pactes à bonus plat (ex: Pacte de
-// la Vie qui augmente directement pvMax), le Pacte de la Puissance Brute n'agit qu'au moment du
-// calcul de dégâts côté moteur Rust — sans ceci, le joueur ne verrait jamais son ⚔️ bouger à
-// l'écran alors que le bonus est bien actif. Même formule d'arrondi que le moteur (get_valeur_action).
-//
-// `actionsEnAttente` (optionnel) permet en plus un aperçu LIVE du bonus temporaire de la Synergie
-// Guerrier pendant que le joueur programme son tour : chaque Défense déjà posée dans la file
-// ajoute +2 aux dégâts de base affichés, avant même de valider le tour — pour que le bonus
-// "temporaire" (remis à zéro chaque tour côté moteur) reste visible plutôt qu'invisible.
-// Pacte de la Foudre : le coup entier est amplifié tant que la CIBLE porte de l'armure. C'est donc
-// la seule contribution qui dépend de l'adversaire, d'où le paramètre `cible` — sans lui, la stat
-// affichée reste muette sur l'Étage de la Foudre alors que les dégâts réels y sont jusqu'à triplés.
-// Miroir de `appliquer_foudre()` côté moteur.
 // ⚠️ L'armure regénérée en début de tour (« Pelage d'Acier », passifs de boss) n'est créditée qu'au
 // lancement de la résolution : pendant que le joueur programme, `armure` vaut encore 0 alors que la
 // cible en portera à coup sûr quand le coup partira. On l'anticipe, sinon la stat annonce des dégâts
@@ -35,11 +27,24 @@ export function cibleSeraArmee(cible?: Entite): boolean {
     return cible.armure > 0 || (cible.regenArmureTour ?? 0) > 0;
 }
 
+// Pacte de la Foudre : le coup entier est amplifié tant que la CIBLE porte de l'armure. C'est la
+// seule contribution qui dépende de l'adversaire, d'où le paramètre `cible` partout en aval — sans
+// lui, la stat resterait muette sur l'Étage de la Foudre alors que les dégâts y sont jusqu'à
+// triplés. Miroir de `appliquer_foudre()` côté moteur.
 function appliquerFoudre(valeur: number, entite: Entite, cible?: Entite): number {
     if (!entite.multiplicateurDegatsSiArmure || !cibleSeraArmee(cible)) return valeur;
     return Math.round(valeur * entite.multiplicateurDegatsSiArmure);
 }
 
+// Valeur d'Attaque affichée dans les stats : contrairement aux pactes à bonus plat (ex: Pacte de
+// la Vie qui augmente directement pvMax), le Pacte de la Puissance Brute n'agit qu'au moment du
+// calcul de dégâts côté moteur Rust — sans ceci, le joueur ne verrait jamais son ⚔️ bouger à
+// l'écran alors que le bonus est bien actif. Même formule d'arrondi que le moteur (get_valeur_action).
+//
+// `actionsEnAttente` (optionnel) permet en plus un aperçu LIVE du bonus temporaire de la Synergie
+// Guerrier pendant que le joueur programme son tour : chaque Défense déjà posée dans la file
+// ajoute +2 aux dégâts de base affichés, avant même de valider le tour — pour que le bonus
+// "temporaire" (remis à zéro chaque tour côté moteur) reste visible plutôt qu'invisible.
 export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: ActionType[] = [], cible?: Entite): number {
     let base = entite.baseA;
     if (entite.synergieActive === 'Guerrier') {

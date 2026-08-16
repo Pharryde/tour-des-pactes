@@ -16,6 +16,8 @@ import { ANIMATIONS_CHAT } from '../utils/animationsChat';
 import { SpriteAnime } from './SpriteAnime';
 import { StatDetail } from './StatDetail';
 import { InfoBulle } from './InfoBulle';
+import { LeconTutoEcran } from './LeconTutoEcran';
+import type { LeconTuto } from '../utils/tutoCombat';
 
 interface CombatAreneProps {
     joueurInitial: Entite;
@@ -37,6 +39,9 @@ interface CombatAreneProps {
     modeHardcore?: boolean;
     enCombatPacte: boolean;
     formesMegaBoss?: Entite[];
+    // Plafond de combo imposé aux monstres en plus de celui du Pacte de la Fluidité : sert à brider
+    // les créatures pendant la 1re run (voir LIMITE_COMBO_PREMIERE_RUN).
+    limiteComboMonstre?: number;
     // Bénédiction du Chat tirée pour cette run : affichée en entête, et pour "Vie de Chat",
     // consommée ici même — le joueur se relève au lieu de mourir (voir utils/benedictions.ts).
     benedictionActive?: BenedictionChat | null;
@@ -49,6 +54,9 @@ interface CombatAreneProps {
     actionsMonstreScriptees?: ActionType[][];
     actionsAutoriseesTuto?: ActionType[][];
     dialogueTuto?: Record<number, string[]>;
+    // Contenu structuré des mêmes leçons, présenté en plein écran AVANT chaque tour scripté : dans
+    // le journal, l'explication se noie entre les lignes de résolution.
+    leconsTuto?: Record<number, LeconTuto>;
     onFinTutoriel?: (joueurRestant: Entite) => void;
 }
 
@@ -59,10 +67,16 @@ function EtatsDifferes({ entite }: { entite: Entite }) {
     return (
         <>
             {entite.brulureActive ? (
-                <> | <span className="etat-brulure" title="Brûlure : encaissée en fin de tour, absorbée par l'armure restante, puis divisée par deux.">🔥 {entite.brulureActive}</span></>
+                <> | <InfoBulle
+                    className="etat-brulure"
+                    contenu="Brûlure : encaissée en fin de tour, absorbée par l'armure restante, puis divisée par deux."
+                >🔥 {entite.brulureActive}</InfoBulle></>
             ) : null}
             {entite.poisonActif ? (
-                <> | <span className="etat-poison" title="Poison : encaissé en fin de tour, traverse l'armure et ne décroît jamais. Chaque nouvelle dose s'ajoute à la précédente.">🧪 {entite.poisonActif}</span></>
+                <> | <InfoBulle
+                    className="etat-poison"
+                    contenu="Poison : encaissé en fin de tour, traverse l'armure et ne décroît jamais. Chaque nouvelle dose s'ajoute à la précédente."
+                >🧪 {entite.poisonActif}</InfoBulle></>
             ) : null}
         </>
     );
@@ -71,14 +85,15 @@ function EtatsDifferes({ entite }: { entite: Entite }) {
 export function CombatArene({
     joueurInitial, monstreInitial, nomEtage, numeroEtage, totalEtages, numeroSalle, totalSalles,
     pactesEquipes, competences, logsGlobaux, ajouterLogGlobal, ajouterStatsTour, onFinDeCombat, onAbandon,
-    modeHardcore, enCombatPacte, formesMegaBoss, benedictionActive, peutRessusciter, onRessusciter,
-    estTutoriel, actionsMonstreScriptees, actionsAutoriseesTuto, dialogueTuto, onFinTutoriel
+    modeHardcore, enCombatPacte, formesMegaBoss, limiteComboMonstre, benedictionActive, peutRessusciter, onRessusciter,
+    estTutoriel, actionsMonstreScriptees, actionsAutoriseesTuto, dialogueTuto, leconsTuto, onFinTutoriel
 }: CombatAreneProps) {
 
     const combatKey = `${nomEtage}-${numeroSalle}-${enCombatPacte}`;
 
     const [etatInitial] = useState(() => chargerEtatCombat(combatKey, {
-        joueur: joueurInitial, monstre: monstreInitial, tourActuel: 1, actionsMonstre: [], actionsJoueur: [], indicesVisiblesMonstre: [0, 1, 2, 3, 4]
+        joueur: joueurInitial, monstre: monstreInitial, tourActuel: 1, actionsMonstre: [], actionsJoueur: [],
+        indicesVisiblesMonstre: [0, 1, 2, 3, 4], creneauxFroid: AUCUN_CRENEAU_FROID,
     }));
 
     const [joueur, setJoueur] = useState<Entite>(etatInitial.joueur);
@@ -89,12 +104,19 @@ export function CombatArene({
     const [indicesVisiblesMonstre, setIndicesVisiblesMonstre] = useState<number[]>(etatInitial.indicesVisiblesMonstre);
     const [combatEnCours, setCombatEnCours] = useState(false);
 
-    usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, combatEnCours);
-
     // Créneaux déréglés / gelés par l'Étage du Froid. Tirés à l'OUVERTURE du tour, en même temps
     // que les actions du monstre, pour être affichés sur les cases pendant que le joueur programme
     // — l'information n'aurait aucun intérêt tactique si elle n'arrivait qu'à la résolution.
-    const [creneauxFroid, setCreneauxFroid] = useState<CreneauxFroid>(AUCUN_CRENEAU_FROID);
+    // ⚠️ Restaurés depuis l'état persisté : ils appartiennent au tour au même titre que les actions,
+    // et sans ça un rechargement de page en plein tour le résolvait sans le moindre effet de Froid.
+    // Le `??` couvre les combats sauvegardés avant l'ajout de ce champ.
+    const [creneauxFroid, setCreneauxFroid] = useState<CreneauxFroid>(etatInitial.creneauxFroid ?? AUCUN_CRENEAU_FROID);
+
+    usePersisterCombat(combatKey, joueur, monstre, tourActuel, actionsMonstre, actionsJoueur, indicesVisiblesMonstre, creneauxFroid, combatEnCours);
+
+    // Dernière leçon du tutoriel acquittée par le joueur. Elle s'affiche tant qu'elle est en retard
+    // sur le tour courant — le tour 1 compris, dès l'arrivée sur l'écran.
+    const [leconVue, setLeconVue] = useState(0);
 
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
@@ -138,10 +160,18 @@ export function CombatArene({
         }
         const generated = actionsMonstreScriptees ? actionsMonstreScriptees[tourActuel - 1] : genererActionsMonstre(monstreDuTour, joueur.poisonActif ?? 0);
         // Le joueur applique son Pacte Lvl 1/2 sur le monstre
-        setActionsMonstre(corrigerActionsPourLimiteCombo(generated, joueur.limiteComboMax ?? 5, monstreDuTour.actionsPossibles));
+        // Le plafond le plus SÉVÈRE des deux s'applique : celui du Pacte de la Fluidité que porte le
+        // joueur, et celui de la 1re run.
+        const plafondCombo = Math.min(joueur.limiteComboMax ?? 5, limiteComboMonstre ?? 5);
+        setActionsMonstre(corrigerActionsPourLimiteCombo(generated, plafondCombo, monstreDuTour.actionsPossibles));
         setIndicesVisiblesMonstre(genererIndicesVisibles(monstreDuTour.actionsVisibles));
         setCreneauxFroid(tirerCreneauxFroid(joueur, monstreDuTour));
     }
+
+    // Leçon à montrer maintenant : celle du tour courant, tant qu'elle n'a pas été acquittée.
+    const leconEnAttente = estTutoriel && !combatEnCours && leconVue < tourActuel
+        ? leconsTuto?.[tourActuel]
+        : undefined;
 
     const formatterCombo = (comboObj: {type: ActionType|null, count: number}, entite: Entite) => {
         if(comboObj.count <= 1 || comboObj.type === 'E' || comboObj.type === null) return "Aucun";
@@ -163,8 +193,21 @@ export function CombatArene({
 
         return {
             className: `action-slot${estGelee ? ' action-slot--gelee' : ''}${estDabord ? ' action-slot--premier' : ''}${estAnnulee ? ' action-slot--annulee' : ''}`,
-            title: titres.length > 0 ? titres.join(' ') : undefined,
+            explication: titres.length > 0 ? titres.join(' ') : undefined,
         };
+    };
+
+    // Case d'action : simple `div` tant qu'il n'y a rien à expliquer, ancre d'infobulle dès qu'un
+    // repère du Froid s'y pose. Un `title=` natif ne s'affiche jamais au doigt, et c'est justement
+    // pendant qu'on programme son tour qu'il faut pouvoir lire ce qu'un flocon signifie.
+    const rendreCreneau = (i: number, contenu: string, gelees: number[], dabord: number[], libelleDabord: string) => {
+        const { className, explication } = marqueurCreneau(i, gelees, dabord, libelleDabord);
+        if (!explication) return <div key={i} className={className}>{contenu}</div>;
+        return (
+            <InfoBulle key={i} className={className} contenu={explication}>
+                {contenu}
+            </InfoBulle>
+        );
     };
 
     const effacerDerniereAction = () => {
@@ -474,6 +517,17 @@ export function CombatArene({
     return (
         <div className="arene-wrapper">
 
+            {/* Leçon en attente : elle bloque l'arène tant que le joueur ne l'a pas acquittée, pour
+                qu'elle soit lue avant d'être appliquée. Le journal en garde une copie consultable. */}
+            {leconEnAttente && (
+                <LeconTutoEcran
+                    lecon={leconEnAttente}
+                    numero={tourActuel}
+                    total={Object.keys(leconsTuto ?? {}).length}
+                    onContinuer={() => setLeconVue(tourActuel)}
+                />
+            )}
+
             {attenteVieDeChat && (
                 <div className="vie-chat-ecran" role="dialog" aria-modal="true">
                     <div className="vie-chat-carte">
@@ -574,10 +628,12 @@ export function CombatArene({
                     </div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageJ, joueur)}</span>
                     <div className="actions-box">
-                        {[0, 1, 2, 3, 4].map(i => (
-                            <div key={i} {...marqueurCreneau(i, creneauxFroid.gelesJoueur, creneauxFroid.joueurDabord, "Résolue avant l'ennemi.")}>
-                                {actionsJoueur[i] ? symbolePour(actionsJoueur[i], joueur) : ''}
-                            </div>
+                        {[0, 1, 2, 3, 4].map(i => rendreCreneau(
+                            i,
+                            actionsJoueur[i] ? symbolePour(actionsJoueur[i], joueur) : '',
+                            creneauxFroid.gelesJoueur,
+                            creneauxFroid.joueurDabord,
+                            "Résolue avant l'ennemi.",
                         ))}
                     </div>
                 </div>
@@ -594,10 +650,12 @@ export function CombatArene({
                     <div className="stats-base">{symbolePour('A', monstre)} {calculerAttaqueAffichee(monstre, [], joueur)} | {symbolePour('P', monstre)} {calculerPreciseAffichee(monstre, joueur)} | 🛡️ {monstre.baseD}</div>
                     <span className="combo">Combo : {formatterCombo(comboAffichageM, monstre)}</span>
                     <div className="actions-box">
-                        {[0, 1, 2, 3, 4].map(i => (
-                            <div key={i} {...marqueurCreneau(i, creneauxFroid.gelesMonstre, creneauxFroid.monstreDabord, 'Résolue avant vous.')}>
-                                {actionsMonstre[i] ? (indicesVisiblesMonstre.includes(i) ? symbolePour(actionsMonstre[i], monstre) : '❓') : ''}
-                            </div>
+                        {[0, 1, 2, 3, 4].map(i => rendreCreneau(
+                            i,
+                            actionsMonstre[i] ? (indicesVisiblesMonstre.includes(i) ? symbolePour(actionsMonstre[i], monstre) : '❓') : '',
+                            creneauxFroid.gelesMonstre,
+                            creneauxFroid.monstreDabord,
+                            'Résolue avant vous.',
                         ))}
                     </div>
                 </div>

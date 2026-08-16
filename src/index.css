@@ -38,7 +38,8 @@ h1 { color: #89b4fa; margin: 10px 0 5px 0; font-size: 1.8rem; }
    classique coupe le haut du contenu sans qu'on puisse y remonter dès que ça dépasse la hauteur
    de l'écran, ex: beaucoup de Pactes débloqués). */
 #ecran-hub, #ecran-fin, #ecran-choix-boss, #ecran-repos, #ecran-sortie-tour, #ecran-etage-pair, #ecran-tuto-conclusion,
-#ecran-hardcore-intro, #ecran-extraction, #ecran-classement, #ecran-classement-saisie {
+#ecran-hardcore-intro, #ecran-extraction, #ecran-classement, #ecran-classement-saisie,
+#ecran-pacte-obtenu {
     align-items: center;
     justify-content: center;
 }
@@ -221,6 +222,16 @@ div.log-tour { margin-top: 10px; border-top: 1px solid #45475a; padding-top: 10p
    lecture, pas un évènement — elle accompagne chaque ligne de résultat sans la disputer. Même teinte
    que la stat 💨 de l'arène, pour qu'on relie les deux. */
 .log-esquive { color: #9a8f6d; font-size: 0.88em; }
+
+/* Bilan chiffré de fin de tour : il clôt le tour, d'où le bloc à part et le filet de séparation. */
+.log-bilan {
+    display: block;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed #45475a;
+    color: #89b4fa;
+    font-weight: bold;
+}
 
 /* Coup Critique de la Bénédiction "Griffe Acérée" : une simple couleur se noyait dans une ligne
    d'action déjà dense, d'où une pastille pleine qui pulse brièvement à son apparition.

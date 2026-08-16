@@ -14,10 +14,13 @@ interface Props {
     spriteInvite?: DefinitionAnimation;
     libelleBouton: string;
     onContinuer: () => void;
+    // Action de repli, rendue APRÈS le bouton principal et visuellement en retrait. Dans les
+    // children, elle passerait avant lui et se lirait comme le choix par défaut.
+    actionSecondaire?: ReactNode;
     children: ReactNode;
 }
 
-export function ScenetteChat({ identifiant, titre, spriteInvite, libelleBouton, onContinuer, children }: Props) {
+export function ScenetteChat({ identifiant, titre, spriteInvite, libelleBouton, onContinuer, actionSecondaire, children }: Props) {
     return (
         <div id={identifiant} className="ecran scenette-ecran">
             <div className="scenette-entete">
@@ -39,6 +42,7 @@ export function ScenetteChat({ identifiant, titre, spriteInvite, libelleBouton, 
             {children}
 
             <button className="btn-menu btn-jouer" onClick={onContinuer}>{libelleBouton}</button>
+            {actionSecondaire}
         </div>
     );
 }

@@ -49,6 +49,8 @@ const CLES_JEU = [
     // appareil, `attente` porte celle retenue par la dernière mort et pas encore montrée.
     'tdp_lecons_mort_vues',
     'tdp_lecon_mort_attente',
+    // Pacte tout juste arraché, en attente de son écran de félicitations.
+    'tdp_pacte_obtenu',
     'tdp_benediction_active',
     'tdp_vie_chat_dispo',
     'tdp_monstres_tues',

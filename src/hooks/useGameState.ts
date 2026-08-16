@@ -101,6 +101,7 @@ export function useGameState() {
     const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
     const [leconsMortVues, setLeconsMortVues] = useLocalStorage<LeconMort[]>('tdp_lecons_mort_vues', []);
     const [leconMortEnAttente, setLeconMortEnAttente] = useLocalStorage<LeconMort | null>('tdp_lecon_mort_attente', null);
+    const [pacteObtenu, setPacteObtenu] = useLocalStorage<string | null>('tdp_pacte_obtenu', null);
     const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
     const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
@@ -242,7 +243,7 @@ export function useGameState() {
             tutoIntroFait, monstreTuto, aPacteChat, monstresTues, competences, xpTotal, bestiaire,
             aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
             aBenedictionChat, benedictionActive, vieChatDispo, pactesVictorieux,
-            runsTerminees, forgeronPresente, leconComboFaite, leconsMortVues, leconMortEnAttente,
+            runsTerminees, forgeronPresente, leconComboFaite, leconsMortVues, leconMortEnAttente, pacteObtenu,
             modeHardcore, aVaincuLaTour,
         ],
     );
@@ -572,7 +573,17 @@ export function useGameState() {
     // Entrée dans la Tour : une fois la Bénédiction du Chat obtenue, on passe systématiquement par
     // la Roue de la Chance. Le tirage doit être connu AVANT de construire le héros (il modifie ses
     // stats), d'où ce passage en deux temps — la Roue rend la main à gererLancerRun.
-    const gererDemarrerAscension = () => {
+    // Entrée dans la Tour, en trois filtres successifs : le rappel d'Inventaire (partir sans Pacte
+    // alors qu'on en possède est l'erreur la plus coûteuse du jeu), puis la Roue de la Chance, puis
+    // le lancement réel. `forcer` court-circuite le premier quand le joueur a choisi de passer outre.
+    // ⚠️ `forcer === true` et non `!forcer` : cette fonction est branchée directement sur un
+    // `onClick`, qui lui passe son évènement en 1er argument — toujours truthy, ce qui suffirait à
+    // court-circuiter le rappel sans que rien ne le signale.
+    const gererDemarrerAscension = (forcer?: unknown) => {
+        if (forcer !== true && pactesEquipes.length === 0 && pactesDebloques.length > 0) {
+            setEcran('ecran-rappel-inventaire');
+            return;
+        }
         if (!benedictionDisponible) {
             gererLancerRun(null);
             return;
@@ -765,7 +776,15 @@ export function useGameState() {
         }
 
         setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ VOUS AVEZ ARRACHÉ LE ${nomFinal.toUpperCase()} !</span>`]);
-        programmerTransition(gererPassageEtageSuivant);
+        // Écran de félicitations plutôt qu'une transition automatique : c'est la récompense d'un
+        // combat que le joueur a choisi de livrer, elle mérite un temps d'arrêt.
+        setPacteObtenu(nomFinal);
+        setEcran('ecran-pacte-obtenu');
+    };
+
+    const gererPacteObtenuVu = () => {
+        setPacteObtenu(null);
+        gererPassageEtageSuivant();
     };
 
     const gererFinDeGardien = (aLvl1Equipe: boolean, aLvl2Equipe: boolean, aLvl1Possede: boolean, aLvl2Possede: boolean) => {
@@ -902,6 +921,8 @@ export function useGameState() {
         synergiesDecouvertes,
         aNouveauteTuto,
         aNouveauPacte,
+        // Aucune run encore achevée : le joueur découvre encore les règles.
+        estPremiereRun: runsTerminees === 0,
         pactesNonVus,
         aPointsCompetenceDispo,
 
@@ -919,6 +940,8 @@ export function useGameState() {
         gererQuitterFin,
         gererLeconMortVue,
         leconMortEnAttente,
+        pacteObtenu,
+        gererPacteObtenuVu,
         gererRecevoirBenediction,
         gererForgeronPresente,
         gererLeconComboFaite,

@@ -37,6 +37,17 @@ fn mention_esquive(chance: i32, reussie: bool) -> String {
     format!(" <span class=\"log-esquive\">({})</span>", detail)
 }
 
+// Variation de PV d'un camp sur le tour, formulée du point de vue du lecteur. Un Gardien qui se
+// régénère plus qu'il n'encaisse doit se lire comme un GAIN, pas comme une perte négative.
+fn variation_pv(depart: i32, arrivee: i32) -> String {
+    let delta = arrivee - depart;
+    match delta {
+        0 => "aucun dégât".to_string(),
+        d if d < 0 => format!("-{} PV", -d),
+        d => format!("+{} PV", d),
+    }
+}
+
 fn aucun_degat() -> ResultatDegats {
     ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0 }
 }
@@ -47,6 +58,14 @@ fn monter_garde(entite: &mut Entite, action: &ActionType, valeur: i32, mult_esqu
     if *action == ActionType::D { entite.armure += valeur; }
     if *action == ActionType::E { entite.niv_esquive = std::cmp::min(3, entite.niv_esquive + mult_esquive); }
     else { entite.niv_esquive = entite.niv_esquive.saturating_sub(1); }
+}
+
+// Action gelée (Étage du Froid) : elle n'a pas lieu, donc aucune garde ne se monte — mais la jauge
+// d'esquive redescend quand même, exactement comme après n'importe quelle action qui n'est pas une
+// Esquive. Sans ça, se faire geler PROTÉGERAIT son palier d'esquive au lieu de le coûter : trois
+// Esquives puis un gel laissaient le joueur à 100% alors qu'il devrait être retombé à 75%.
+fn subir_gel(entite: &mut Entite) {
+    entite.niv_esquive = entite.niv_esquive.saturating_sub(1);
 }
 
 // Idem, plus le +2 Armure par Attaque de la Synergie Guerrier — indissociable de la garde du joueur.
@@ -236,6 +255,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         return Err(JsValue::from_str("Chaque combattant doit avoir exactement 5 actions programmées."));
     }
 
+    // PV de départ, avant la moindre résolution : ils servent au bilan chiffré de fin de tour.
+    let pv_joueur_debut_tour = joueur.pv;
+    let pv_monstre_debut_tour = monstre.pv;
+
     let mut etapes = Vec::new();
     let mut combo_j_type: Option<ActionType> = None; let mut combo_j_count = 0;
     let mut combo_m_type: Option<ActionType> = None; let mut combo_m_count = 0;
@@ -390,6 +413,8 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         // n'était qu'un ordre d'affichage — on tuait son adversaire et on encaissait quand même son
         // attaque. (En simultané, au contraire, le double KO est le comportement voulu.)
         if creneaux_monstre_dabord.contains(&i) {
+            if gele_m { subir_gel(&mut monstre); }
+            if gele_j { subir_gel(&mut joueur); }
             if !gele_m {
                 monter_garde(&mut monstre, act_m, val_m, 1);
                 d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur);
@@ -401,6 +426,8 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
                 encaisser(&mut monstre, &d_monstre);
             }
         } else if creneaux_joueur_dabord.contains(&i) {
+            if gele_j { subir_gel(&mut joueur); }
+            if gele_m { subir_gel(&mut monstre); }
             if !gele_j {
                 monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier);
                 d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre);
@@ -412,8 +439,8 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
                 encaisser(&mut joueur, &d_joueur);
             }
         } else {
-            if !gele_j { monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier); }
-            if !gele_m { monter_garde(&mut monstre, act_m, val_m, 1); }
+            if gele_j { subir_gel(&mut joueur); } else { monter_garde_joueur(&mut joueur, act_j, val_j, mult_esquive_j, guerrier); }
+            if gele_m { subir_gel(&mut monstre); } else { monter_garde(&mut monstre, act_m, val_m, 1); }
             if !gele_m { d_joueur = calculer_et_appliquer_etats(&monstre, &mut joueur, act_m, val_m, froid_pour_monstre, &mut poison_sur_joueur); }
             if !gele_j { d_monstre = calculer_et_appliquer_etats(&joueur, &mut monstre, act_j, val_j, froid_pour_joueur, &mut poison_sur_monstre); }
             encaisser(&mut joueur, &d_joueur);
@@ -576,6 +603,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     }
 
     let mut logs_fin_tour = Vec::new();
+    // Photographiés AVANT les tics de fin de tour pour que le bilan les inclue : c'est justement là
+    // que tombent la brûlure, le poison et les assauts d'armure, les pertes les plus faciles à rater.
+    let pv_joueur_depart = pv_joueur_debut_tour;
+    let pv_monstre_depart = pv_monstre_debut_tour;
 
     // Les doses posées ce tour-ci s'AJOUTENT au poison déjà installé : 10 au tour 1 puis 10 au
     // tour 2 font 20, et ainsi de suite. Rien ne le fait jamais redescendre.
@@ -649,6 +680,16 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         }
         joueur.armure = 0; monstre.armure = 0; joueur.niv_esquive = 0; monstre.niv_esquive = 0;
     }
+
+    // Bilan chiffré du tour. Un tour se lit sur une dizaine de lignes éparpillées (cinq actions,
+    // des tics, des assauts d'armure) : sans ce total, savoir qui a pris le dessus demande de tout
+    // additionner de tête.
+    logs_fin_tour.push(format!(
+        "<span class=\"log-bilan\">📊 Bilan du tour — Vous : {} · {} : {}</span>",
+        variation_pv(pv_joueur_depart, joueur.pv),
+        monstre.nom,
+        variation_pv(pv_monstre_depart, monstre.pv),
+    ));
 
     let resultat = ResultatTour {
         joueur, monstre, actions_monstre, etapes, logs_fin_tour,

@@ -118,7 +118,9 @@ Formule : `valeur = base + (répétitions − 1) × bonus`, puis application du 
   enchaîner — le bouton se grise au-delà.
 - **Fluidité II** : votre combo est calculé comme s'il valait 1, quel que soit l'enchaînement réussi.
 - **Action gelée (Froid)** : l'action est annulée. Elle **ne casse pas** le combo, mais **ne le fait
-  pas avancer** non plus : le compteur reprend là où il en était au créneau suivant.
+  pas avancer** non plus : le compteur reprend là où il en était au créneau suivant. En revanche
+  elle **fait redescendre le palier d'esquive** d'un cran, comme n'importe quelle action qui n'est
+  pas une Esquive — se faire geler ne met pas sa garde à l'abri.
 - **Synergie Assassin** : ⚔️ et 🎯 comptent comme une **seule et même action** pour le combo.
 
 ---
