@@ -202,8 +202,10 @@ Une conversion totale dès le Niveau I rendrait ces deux Pactes strictement sup�
 qu'ils remplacent — une brûlure qui s'empile ou un poison qui ignore l'armure, pour le même montant.
 
 **La base de calcul, ce sont les dégâts réels de l'action** : **combos**, multiplicateurs du **Pacte
-du Temps** et critiques compris, jamais une valeur forfaitaire. Une 5ᵉ action doublée par le Temps
-pose donc deux fois plus de brûlure, et un combo x5 pose la dose du combo x5.
+du Temps**, **Pacte de l'Ombre** et critiques compris, jamais une valeur forfaitaire. Une 5ᵉ action
+doublée par le Temps pose donc deux fois plus de brûlure, un combo x5 pose la dose du combo x5, et
+le Pacte de l'Ombre — qui double les dégâts Précis — double aussi la dose de **poison** qu'ils
+deviennent. Porter l'Ombre et le Poison ensemble n'annule ni l'un ni l'autre.
 
 **La dose affichée fait foi.** La conversion est arrondie une seule fois, sur la valeur de base, et
 les multiplicateurs de tour portent ensuite sur cette dose entière. Un héros à 7 de Précise sous

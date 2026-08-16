@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Aperçu des feuilles de sprites</title>
+    <!--
+      Page de DÉVELOPPEMENT uniquement : servie par Vite à /outils/sprites/apercu.html, jamais
+      incluse dans `vite build` (seul index.html est un point d'entrée). Elle rejoue les feuilles
+      de sprites avec la MÊME cadence (90 ms) et la MÊME échelle (x2) que l'arène — vérifier une
+      animation en atteignant le boss concerné en jeu coûte une ascension entière.
+    -->
+    <style>
+        body {
+            margin: 0; padding: 24px; background: #12141c; color: #d7dcea;
+            font-family: system-ui, sans-serif;
+        }
+        h1 { font-size: 1.1em; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+        .rangee { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 28px; }
+        .case { text-align: center; }
+        .case span { display: block; margin-top: 6px; font-size: .8em; opacity: .65; }
+        .cadre {
+            --sprite-echelle: 2;
+            height: calc(84px * var(--sprite-echelle));
+            display: flex; align-items: flex-end; justify-content: center;
+            background: #1b1f2b; border: 1px solid #2b3244; border-radius: 6px;
+        }
+        /* Copie conforme de .sprite-anime (src/App.css) : si le rendu diffère ici, c'est que la
+           définition de l'animation est fausse, pas la page. */
+        .sprite-anime {
+            width: calc(var(--sprite-largeur-frame) * var(--sprite-echelle));
+            height: calc(var(--sprite-hauteur-frame) * var(--sprite-echelle));
+            background-repeat: no-repeat;
+            background-size:
+                calc(var(--sprite-largeur-frame) * var(--sprite-frames) * var(--sprite-echelle))
+                calc(var(--sprite-hauteur-frame) * var(--sprite-echelle));
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body>
+<div id="planches"></div>
+<script type="module">
+    const DUREE_FRAME_MS = 90;
+
+    const PERSONNAGES = {
+        'Le Souffle Immobile (Gardien du Froid)': {
+            dossier: '/sprites/souffle-immobile/',
+            animations: {
+                idle: { fichier: 'idle.png', frames: 8, bouclage: true },
+                attaque: { fichier: 'attack.png', frames: 6, bouclage: false },
+                esquive: { fichier: 'dodge.png', frames: 8, bouclage: false },
+                coup: { fichier: 'hit.png', frames: 4, bouclage: false },
+                mort: { fichier: 'die.png', frames: 12, bouclage: false },
+            },
+        },
+        'Champignon (référence)': {
+            dossier: '/sprites/mushroom/',
+            animations: {
+                idle: { fichier: 'idle.png', frames: 7, bouclage: true },
+                attaque: { fichier: 'attack.png', frames: 10, bouclage: false },
+                coup: { fichier: 'hit.png', frames: 5, bouclage: false },
+                mort: { fichier: 'die.png', frames: 15, bouclage: false },
+            },
+        },
+    };
+
+    // Les animations non bouclées se figent sur leur dernière frame : on les rejoue toutes en
+    // cadence pour pouvoir les comparer sans recharger la page.
+    const CYCLE_MS = 2400;
+
+    for (const [nom, personnage] of Object.entries(PERSONNAGES)) {
+        const titre = document.createElement('h1');
+        titre.textContent = nom;
+        const rangee = document.createElement('div');
+        rangee.className = 'rangee';
+
+        for (const [cle, anim] of Object.entries(personnage.animations)) {
+            const cadre = document.createElement('div');
+            cadre.className = 'cadre';
+            const sprite = document.createElement('div');
+            sprite.className = 'sprite-anime';
+            sprite.style.setProperty('--sprite-largeur-frame', '80px');
+            sprite.style.setProperty('--sprite-hauteur-frame', '64px');
+            sprite.style.setProperty('--sprite-frames', anim.frames);
+            sprite.style.backgroundImage = `url(${personnage.dossier}${anim.fichier})`;
+
+            let frame = 0;
+            const afficher = () => {
+                sprite.style.backgroundPosition =
+                    `calc(${frame} * var(--sprite-largeur-frame) * var(--sprite-echelle) * -1) 0`;
+            };
+            afficher();
+            setInterval(() => {
+                frame = frame + 1 >= anim.frames ? (anim.bouclage ? 0 : anim.frames - 1) : frame + 1;
+                afficher();
+            }, DUREE_FRAME_MS);
+            if (!anim.bouclage) setInterval(() => { frame = 0; afficher(); }, CYCLE_MS);
+
+            cadre.appendChild(sprite);
+            const cellule = document.createElement('div');
+            cellule.className = 'case';
+            cellule.appendChild(cadre);
+            const legende = document.createElement('span');
+            legende.textContent = `${cle} — ${anim.frames} frames`;
+            cellule.appendChild(legende);
+            rangee.appendChild(cellule);
+        }
+        document.body.querySelector('#planches').append(titre, rangee);
+    }
+</script>
+</body>
+</html>

@@ -11,7 +11,7 @@ import { jouer_tour } from 'moteur_wasm';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { chargerEtatCombat, usePersisterCombat } from '../hooks/useCombatResume';
 import { ANIMATIONS, animationPourAction, animationResolution, type NomAnimation } from '../utils/animationsJoueur';
-import { ANIMATIONS_MONSTRE, animationMonstrePourAction, animationResolutionMonstre, type NomAnimationMonstre } from '../utils/animationsMonstre';
+import { animationsPourMonstre, animationMonstrePourAction, animationResolutionMonstre, type NomAnimationMonstre } from '../utils/animationsMonstre';
 import { ANIMATIONS_CHAT } from '../utils/animationsChat';
 import { SpriteAnime } from './SpriteAnime';
 import { StatDetail } from './StatDetail';
@@ -502,7 +502,7 @@ export function CombatArene({
     if (estTutoriel) titreEtage = "🐈 Une rencontre inattendue...";
 
     const titreMonstreFinal = estTutoriel ? monstre.nom : (numeroSalle === totalSalles - 1 ? monstre.nom : `👿 ${monstre.nom}`);
-    const animationsMonstreActives = estTutoriel ? ANIMATIONS_CHAT : ANIMATIONS_MONSTRE;
+    const animationsMonstreActives = estTutoriel ? ANIMATIONS_CHAT : animationsPourMonstre(monstre.nom);
     const badges = genererBadgesPactes(pactesEquipes);
 
     // En hardcore, ce bouton ne quitte pas seulement l'ascension : il efface le profil, exactement

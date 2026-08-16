@@ -76,10 +76,14 @@ export function calculerPreciseAffichee(entite: Entite, cible?: Entite): number 
         valeur = Math.round(valeur * (1 + entite.bonusDegatsAttaquePourcentage / 100));
     }
 
-    // Pacte du Poison : la dose se calcule sur la valeur BRUTE de l'action. Ni la Foudre ni le
-    // doublage de l'Ombre n'y entrent — ils vivent dans `calculer_degats`, dont une action convertie
-    // ressort à zéro (cf. convertir_en_poison).
-    if (entite.multiplicateurPoison) return Math.round(valeur * entite.multiplicateurPoison);
+    // Pacte du Poison : la dose se calcule sur la valeur BRUTE de l'action — la Foudre n'y entre
+    // pas, elle vit dans `calculer_degats` dont une action convertie ressort à zéro. Le doublage de
+    // l'Ombre, lui, est repris explicitement sur la dose (cf. convertir_en_poison) : sans ça,
+    // associer l'Ombre et le Poison désactiverait l'Ombre.
+    if (entite.multiplicateurPoison) {
+        const dose = Math.round(valeur * entite.multiplicateurPoison);
+        return entite.degatsPrecisDoubles ? dose * 2 : dose;
+    }
 
     // Ordre imposé par le moteur : la Foudre amplifie, PUIS l'Ombre double.
     valeur = appliquerFoudre(valeur, entite, cible);

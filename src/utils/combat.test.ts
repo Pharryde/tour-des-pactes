@@ -105,6 +105,23 @@ describe('calculerPreciseAffichee', () => {
         }))).toBe(11);
     });
 
+    // Le doublage de l'Ombre vit dans le calcul de dégâts, dont une action convertie ressort à
+    // zéro : sans reprise explicite sur la dose, associer l'Ombre et le Poison désactivait l'Ombre.
+    it("double aussi la dose de poison avec le Pacte de l'Ombre", () => {
+        // baseP 10, Poison I (50%) -> dose 5, doublée par l'Ombre -> 10.
+        expect(calculerPreciseAffichee(creerHeros({ multiplicateurPoison: 0.5 }))).toBe(5);
+        expect(calculerPreciseAffichee(creerHeros({ multiplicateurPoison: 0.5, degatsPrecisDoubles: true }))).toBe(10);
+        expect(calculerPreciseAffichee(creerHeros({ multiplicateurPoison: 1, degatsPrecisDoubles: true }))).toBe(20);
+    });
+
+    // La Foudre, elle, reste dehors : c'est le calcul de dégâts qui la porte.
+    it("n'applique jamais la Foudre à une dose de poison", () => {
+        const armee = creerHeros({ armure: 5 });
+        expect(calculerPreciseAffichee(creerHeros({
+            multiplicateurPoison: 1, multiplicateurDegatsSiArmure: 2,
+        }), armee)).toBe(10);
+    });
+
     it('applique le % avant le doublage, comme le moteur', () => {
         expect(calculerPreciseAffichee(creerHeros({
             bonusDegatsAttaquePourcentage: 10,

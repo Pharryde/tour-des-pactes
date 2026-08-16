@@ -1,6 +1,7 @@
 // src/utils/animationsMonstre.ts
 import type { ActionType } from '../types';
 import type { DefinitionAnimation } from './animations';
+import { ANIMATIONS_SOUFFLE_IMMOBILE } from './animationsSouffleImmobile';
 
 export type NomAnimationMonstre = 'idle' | 'attaque' | 'fuite' | 'coup' | 'mort';
 
@@ -18,6 +19,20 @@ export const ANIMATIONS_MONSTRE: Record<NomAnimationMonstre, DefinitionAnimation
     coup: { fichier: '/sprites/mushroom/hit.png', frames: 5, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
     mort: { fichier: '/sprites/mushroom/die.png', frames: 15, largeurFrame: 80, hauteurFrame: 64, bouclage: false },
 };
+
+export type TableAnimationsMonstre = Record<NomAnimationMonstre, DefinitionAnimation>;
+
+// Créatures dotées de leur propre feuille de sprites. La clé est un FRAGMENT de nom : un boss
+// porte un préfixe de forme devant le sien (« 👑 BOSS: », « 👑FORME EVOLUEE: »...), et les trois
+// formes doivent partager la même apparence. Le Gardien Absolu emprunte le nom de la forme qu'il
+// revêt (cf. appliquerFormeMegaBoss) : il hérite donc du sprite avec, ce qui est voulu.
+const SPRITES_DEDIES: [string, TableAnimationsMonstre][] = [
+    ['Le Souffle Immobile', ANIMATIONS_SOUFFLE_IMMOBILE],
+];
+
+export function animationsPourMonstre(nom: string): TableAnimationsMonstre {
+    return SPRITES_DEDIES.find(([fragment]) => nom.includes(fragment))?.[1] ?? ANIMATIONS_MONSTRE;
+}
 
 // Beat 1 : l'action que le monstre a lui-même tirée pour ce tick.
 export function animationMonstrePourAction(action: ActionType): NomAnimationMonstre {

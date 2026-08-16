@@ -69,10 +69,11 @@ export function detailPrecise(entite: Entite, competences: Competences, cible?: 
     if (entite.synergieActive === 'Assassin' && entite.bonusDegatsAttaquePourcentage) {
         lignes.push(`Synergie Assassin (Pacte de la Puissance Brute) : x${(1 + entite.bonusDegatsAttaquePourcentage / 100).toFixed(2).replace(/\.?0+$/, '')}`);
     }
-    // Une Précise convertie en poison ignore et la Foudre et le doublage de l'Ombre : sa dose se
-    // calcule sur la valeur brute (cf. convertir_en_poison).
+    // Une Précise convertie en poison ignore la Foudre (elle vit dans le calcul de dégâts, dont
+    // l'action convertie ressort à zéro) mais garde bien le doublage de l'Ombre.
     if (entite.multiplicateurPoison) {
         lignes.push(`Pacte du Poison (converti en Poison) : ${pourcentage(entite.multiplicateurPoison)}`);
+        if (entite.degatsPrecisDoubles) lignes.push(`Pacte de l'Ombre (Dégâts Précis) : x2`);
         lignes.push(`= ${calculerPreciseAffichee(entite, cible)} de poison`);
         return lignes;
     }
