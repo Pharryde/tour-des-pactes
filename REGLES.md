@@ -239,6 +239,11 @@ les multiplicateurs de tour portent ensuite sur cette dose entière. Un héros �
 Pacte du Poison I lit `🧪 4` : sa 5ᵉ action doublée par le Temps en pose **8**, pas 7. Ce que
 l'écran annonce et ce que l'ennemi encaisse ne peuvent pas diverger.
 
+⚠️ **Le doublage du Pacte de l'Ombre entre AVANT ce prélèvement**, puisqu'il fait partie des dégâts
+réels de l'action et non des circonstances du tour. Avec l'Ombre et le Poison I, 5 de Précise donnent
+donc 10 puis **5** de poison — et non round(2,5) × 2 = 6, qui doublait le demi-point d'arrondi en même
+temps que la dose et faisait gagner **2** de poison par point de Précise.
+
 La **Foudre**, elle, reste à part : elle vit dans le calcul de dégâts direct, dont une action
 convertie ressort à zéro. Une brûlure n'en profite **qu'avec la Synergie Élémentaire**.
 

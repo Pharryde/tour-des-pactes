@@ -81,8 +81,10 @@ export function detailPrecise(entite: Entite, competences: Competences, cible?: 
     // Une Précise convertie en poison ignore la Foudre (elle vit dans le calcul de dégâts, dont
     // l'action convertie ressort à zéro) mais garde bien le doublage de l'Ombre.
     if (entite.multiplicateurPoison) {
-        lignes.push(`Pacte du Poison (converti en Poison) : ${pourcentage(entite.multiplicateurPoison)}`);
+        // Ordre du moteur : l'Ombre double les dégâts de l'action, PUIS la conversion en prélève sa
+        // part. L'inverse ferait lire un intermédiaire à virgule (5 × 50% = 2,5) qui n'existe pas.
         if (entite.degatsPrecisDoubles) lignes.push(`Pacte de l'Ombre (Dégâts Précis) : x2`);
+        lignes.push(`Pacte du Poison (converti en Poison) : ${pourcentage(entite.multiplicateurPoison)}`);
         lignes.push(...ligneResistance(cible?.partPoisonSubi, 'poison'));
         lignes.push(`= ${calculerPreciseAffichee(entite, cible)} de poison`);
         return lignes;

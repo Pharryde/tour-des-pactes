@@ -118,6 +118,11 @@ fn appliquer_resistance(dose: i32, part: Option<f32>) -> (i32, i32) {
 // Temps, critique) : c'est la seule façon que la dose annoncée au joueur reste la dose de référence.
 // Avec 7 de Précise et un Pacte du Poison I, on affiche « 🧪 4 » — une 5e action doublée doit alors
 // en poser 8, pas 7 (soit round(7*0.5)*2 et non round(7*2*0.5)).
+//
+// ⚠️ Le doublage du Pacte de l'Ombre entre en revanche AVANT la conversion : il fait partie des
+// dégâts réels de l'action, pas des circonstances du tour. Appliqué après, il doublait aussi le
+// demi-point d'arrondi — 4 de Précise donnaient 4 de poison (round(2.0)*2) mais 5 en donnaient 6
+// (round(2.5)*2), soit +2 pour +1 de statistique.
 fn convertir_valeur(valeur: i32, action: &ActionType, entite: &Entite) -> i32 {
     let multiplicateur = match action {
         ActionType::A => entite.multiplicateur_brulure,
@@ -125,7 +130,13 @@ fn convertir_valeur(valeur: i32, action: &ActionType, entite: &Entite) -> i32 {
         _ => None,
     };
     match multiplicateur {
-        Some(m) => (valeur as f32 * m).round() as i32,
+        // ⚠️ Le doublage n'est repris QUE dans cette branche : sans conversion, la valeur repart
+        // intacte vers `calculer_degats`, qui applique l'Ombre lui-même — le doubler ici aussi
+        // reviendrait à l'appliquer deux fois.
+        Some(m) => {
+            let valeur = if *action == ActionType::P && entite.degats_precis_doubles { valeur * 2 } else { valeur };
+            (valeur as f32 * m).round() as i32
+        }
         None => valeur,
     }
 }
@@ -168,11 +179,9 @@ fn convertir_en_poison(attaquant: &Entite, cible: &Entite, action: &ActionType, 
     if attaquant.multiplicateur_poison.is_none() { return degats; }
     if *action != ActionType::P || degats.esquive { return degats; }
 
-    // Pacte de l'Ombre : il double les dégâts de la Précise, donc aussi la dose de poison qu'elle
-    // devient. Son doublage vit dans `calculer_degats`, dont une action convertie ressort à zéro :
-    // sans cette reprise, associer l'Ombre et le Poison désactivait purement et simplement l'Ombre.
-    // La dose étant déjà entière (arrondie par `convertir_valeur`), ce ×2 reste exact.
-    let dose = if attaquant.degats_precis_doubles { dose * 2 } else { dose };
+    // ⚠️ Le doublage du Pacte de l'Ombre n'est PAS repris ici : il est déjà entré dans la dose, en
+    // amont de l'arrondi (voir convertir_valeur). L'appliquer sur la dose finie doublait le
+    // demi-point d'arrondi avec elle.
     // Synergie Élémentaire : une dose injectée sur un créneau où le Froid est intervenu compte double.
     let dose = if sur_creneau_froid && attaquant.synergie_active == Some(Synergie::Elementaire) { dose * 2 } else { dose };
 

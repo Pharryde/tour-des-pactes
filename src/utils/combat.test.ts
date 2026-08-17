@@ -114,6 +114,17 @@ describe('calculerPreciseAffichee', () => {
         expect(calculerPreciseAffichee(creerHeros({ multiplicateurPoison: 1, degatsPrecisDoubles: true }))).toBe(20);
     });
 
+    // ⚠️ Le doublage passe AVANT le pourcentage, sinon il double aussi le demi-point d'arrondi : une
+    // Précise impaire posait alors deux fois plus de poison par point de statistique gagné. Cas réel
+    // rencontré en jeu : +1 de Précise en Zone de Repos faisait passer la dose de 4 à 6.
+    it("n'amplifie jamais l'arrondi de la dose de poison", () => {
+        const avecOmbre = (baseP: number) =>
+            calculerPreciseAffichee(creerHeros({ baseP, multiplicateurPoison: 0.5, degatsPrecisDoubles: true }));
+        expect(avecOmbre(4)).toBe(4);
+        expect(avecOmbre(5)).toBe(5);
+        expect(avecOmbre(7)).toBe(7);
+    });
+
     // La Foudre, elle, reste dehors : c'est le calcul de dégâts qui la porte.
     it("n'applique jamais la Foudre à une dose de poison", () => {
         const armee = creerHeros({ armure: 5 });
