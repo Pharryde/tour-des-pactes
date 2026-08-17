@@ -68,26 +68,53 @@ function ordonnerEtages(etages: StructureEtage[], estPremierePartie: boolean): S
     return [...debutants.slice(0, 2), ...melangerAleatoirement([...debutants.slice(2), ...autres])];
 }
 
+// Puissance effective d'un étage : le palier de progression (commun à tous les étages de ce rang)
+// plus la résonance du Pacte équipé, qui ne concerne que l'étage correspondant.
+function appliquerPuissanceEtage(etage: StructureEtage, pactesEquipes: string[], palier: number): StructureEtage {
+    let mult = 1;
+    if (pactesEquipes.includes(etage.idPacte + " II")) mult = 1.2;
+    else if (pactesEquipes.includes(etage.idPacte)) mult = 1.1;
+
+    if (mult === 1 && palier <= 0) return etage;
+
+    return {
+        ...etage,
+        monstres: etage.monstres.map(m => buffProgressionEtage(buffEntite(m, mult), palier, 10)),
+        bossNormal: buffProgressionEtage(etage.bossNormal, palier, 20),
+        bossHeroique: buffProgressionEtage(etage.bossHeroique, palier, 20),
+        bossHeroiqueLvl2: buffProgressionEtage(etage.bossHeroiqueLvl2, palier, 20),
+    };
+}
+
 export function melangerEtages(etages: StructureEtage[], pactesEquipes: string[], estPremierePartie: boolean = false): StructureEtage[] {
     return ordonnerEtages(etages, estPremierePartie)
-        .map((etage, index) => {
-            const numeroEtage = index + 1;
-            const palierProgression = Math.floor(numeroEtage / 2);
+        .map((etage, index) => appliquerPuissanceEtage(etage, pactesEquipes, Math.floor((index + 1) / 2)));
+}
 
-            let mult = 1;
-            if (pactesEquipes.includes(etage.idPacte + " II")) mult = 1.2;
-            else if (pactesEquipes.includes(etage.idPacte)) mult = 1.1;
+/**
+ * Palier atteint au bout de la Tour normale : c'est de là que repart le mode infini. Dérivé de la
+ * taille de la Tour plutôt que codé en dur, pour suivre automatiquement l'ajout d'un étage.
+ */
+export function palierFinDeTour(tailleTour: number): number {
+    return Math.floor(tailleTour / 2);
+}
 
-            if (mult === 1 && palierProgression === 0) return etage;
-
-            return {
-                ...etage,
-                monstres: etage.monstres.map(m => buffProgressionEtage(buffEntite(m, mult), palierProgression, 10)),
-                bossNormal: buffProgressionEtage(etage.bossNormal, palierProgression, 20),
-                bossHeroique: buffProgressionEtage(etage.bossHeroique, palierProgression, 20),
-                bossHeroiqueLvl2: buffProgressionEtage(etage.bossHeroiqueLvl2, palierProgression, 20),
-            };
-        });
+/**
+ * Un cycle du mode infini : les étages de la Tour re-mélangés, dont le palier de puissance monte
+ * de 1 à CHAQUE étage au lieu d'un sur deux — c'est la règle que le joueur accepte en s'enfonçant
+ * au-delà du Gardien Absolu. Le palier ne redescend jamais : il repart de celui atteint au bout du
+ * segment précédent, si bien que deux cycles enchaînés continuent de grimper sans rupture.
+ *
+ * L'ordre de la Tour est retiré à chaque cycle (jamais `ordonnerEtages`) : la règle d'onboarding
+ * des deux premiers étages n'a aucun sens pour un joueur qui vient de terrasser le Gardien Absolu.
+ */
+export function genererCycleInfini(
+    etages: StructureEtage[],
+    pactesEquipes: string[],
+    palierDeDepart: number,
+): StructureEtage[] {
+    return melangerAleatoirement(etages)
+        .map((etage, index) => appliquerPuissanceEtage(etage, pactesEquipes, palierDeDepart + index + 1));
 }
 
 export function genererMessageBuff(etage: StructureEtage, pactesEquipes: string[]): string {

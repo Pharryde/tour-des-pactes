@@ -6,9 +6,17 @@ interface FinProps {
     logsMort?: string[];
     stats?: StatsRun | null;
     modeHardcore?: boolean;
+    // Mode infini : proposé au lieu du simple retour au Menu quand un Gardien Absolu vient de
+    // tomber. La run est alors encore en vol, c'est ce qui rend le choix possible.
+    offreInfini?: boolean;
+    cyclesInfini?: number;
+    onContinuerInfini?: () => void;
 }
 
-export function Fin({ victoire, onRetourHub, logsMort = [], stats = null, modeHardcore = false }: FinProps) {
+export function Fin({
+    victoire, onRetourHub, logsMort = [], stats = null, modeHardcore = false,
+    offreInfini = false, cyclesInfini = 0, onContinuerInfini,
+}: FinProps) {
     // L'extraction est portée par les stats de la run et non par `victoire` : c'est une troisième
     // issue, ni mort ni victoire totale. Une sauvegarde antérieure au mode hardcore n'a pas ce
     // champ, d'où le repli sur l'ancien booléen.
@@ -110,7 +118,27 @@ export function Fin({ victoire, onRetourHub, logsMort = [], stats = null, modeHa
                 </div>
             )}
 
-            <button className="btn-menu btn-jouer" onClick={onRetourHub}>Retourner au Menu</button>
+            {offreInfini && onContinuerInfini ? (
+                <>
+                    <p className="infini-invite">
+                        La sortie est là, ouverte. Mais la Tour, elle, ne s'arrête pas au douzième
+                        étage — et vous seul pouvez décider jusqu'où elle va.
+                        {cyclesInfini > 0 && <> Vous en avez déjà traversé <b>{cyclesInfini}</b> profondeur{cyclesInfini > 1 ? 's' : ''}.</>}
+                    </p>
+                    {/* Rentrer d'abord : le joueur vient de gagner, mettre son butin à l'abri est le
+                        choix par défaut. Le second bouton assume le risque, comme la porte hardcore. */}
+                    <div className="menu-vertical">
+                        <button className="btn-menu btn-jouer" onClick={onRetourHub}>🏠 Retourner au Menu</button>
+                        <button className="btn-menu btn-danger" onClick={onContinuerInfini}>♾️ Parcourir l'infinité de la Tour</button>
+                    </div>
+                    <p className="infini-avertissement">
+                        Au-delà, chaque étage renforce les monstres d'un palier — contre un sur deux
+                        jusqu'ici. Votre victoire, elle, est déjà acquise : plus rien ne peut vous la reprendre.
+                    </p>
+                </>
+            ) : (
+                <button className="btn-menu btn-jouer" onClick={onRetourHub}>Retourner au Menu</button>
+            )}
         </div>
     );
 }

@@ -5,7 +5,7 @@ import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, C
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
 import { cleProfil } from '../utils/hardcore';
 import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
-import { melangerEtages, genererMessageBuff, melangerAleatoirement } from '../utils/etages';
+import { melangerEtages, genererCycleInfini, genererMessageBuff, melangerAleatoirement, palierFinDeTour } from '../utils/etages';
 import { construireMegaBoss } from '../utils/megaboss';
 import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
 import { detecterLeconMort, leconAAfficher, type CirconstancesMort } from '../utils/leconsMort';
@@ -70,6 +70,14 @@ export function useGameState() {
     const [enCombatMegaBoss, setEnCombatMegaBoss] = useLocalStorage<boolean>('tdp_combat_megaboss', false);
     const [monstreMegaBoss, setMonstreMegaBoss] = useLocalStorage<Entite | null>('tdp_monstre_megaboss', null);
     const [reposVisites, setReposVisites] = useLocalStorage<number>('tdp_repos_visites', 0);
+    // --- MODE INFINI ---
+    // Nombre de cycles de 12 étages acceptés dans CETTE run, au-delà du premier Gardien Absolu.
+    // 0 = Tour normale. C'est un état de run : remis à zéro à chaque lancement.
+    const [cyclesInfini, setCyclesInfini] = useLocalStorage<number>('tdp_cycles_infini', 0);
+    // L'offre de s'enfoncer est ouverte : un Gardien Absolu vient de tomber et la run est encore
+    // en vol. Drapeau explicite plutôt que déduit de `victoireTotale` — ce dernier reste vrai
+    // jusqu'à la mort suivante, il autoriserait donc à « reprendre » une run déjà effacée.
+    const [offreInfiniDispo, setOffreInfiniDispo] = useLocalStorage<boolean>('tdp_offre_infini', false);
     const [choixReposActifs, setChoixReposActifs] = useLocalStorage<ChoixRepos[] | null>('tdp_choix_repos_actifs', null);
     const [synergiesDecouvertes, setSynergiesDecouvertes] = useLocalStorage<Synergie[]>('tdp_synergies_decouvertes', []);
     const [tutoIntroFait, setTutoIntroFait] = useLocalStorage<boolean>('tdp_tuto_intro_fait', false);
@@ -249,7 +257,7 @@ export function useGameState() {
             aConnuBuff, connaissancesVues, pactesVus, premierePartieFaite, etageRecord, statsDerniereRun,
             aBenedictionChat, benedictionActive, vieChatDispo, pactesVictorieux,
             runsTerminees, forgeronPresente, leconComboFaite, leconsMortVues, leconMortEnAttente, pacteObtenu,
-            modeHardcore, aVaincuLaTour,
+            modeHardcore, aVaincuLaTour, cyclesInfini, offreInfiniDispo,
         ],
     );
 
@@ -257,6 +265,7 @@ export function useGameState() {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
         setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
         setEnCombatMegaBoss(false); setMonstreMegaBoss(null);
+        setCyclesInfini(0); setOffreInfiniDispo(false);
         // La bénédiction ne vaut que pour la run écoulée : la Roue est retournée à chaque entrée.
         setBenedictionActive(null); setVieChatDispo(false);
         effacerEtatCombat();
@@ -406,6 +415,11 @@ export function useGameState() {
     // `runsTerminees` a été incrémentée par capturerStatsFinRun avant l'affichage de l'écran de fin :
     // au moment de ce clic, elle vaut donc bien le nombre de runs achevées, celle-ci comprise.
     const gererQuitterFin = () => {
+        // Décliner l'infini est le moment où la run s'arrête vraiment : la victoire contre le
+        // Gardien Absolu la laisse volontairement en vol pour que l'offre reste jouable (voir
+        // gererFinMegaBoss). Idempotent — les autres issues (mort, extraction) ont déjà nettoyé.
+        effacerRun();
+
         // En hardcore, les trois scènes scénarisées sont sautées : elles cadencent la DÉCOUVERTE
         // du mode normal (Bénédiction, Forgeron, Combo), et les deux premières y sont de toute
         // façon acquises d'emblée (cf. forgeronDisponible / benedictionDisponible).
@@ -535,6 +549,8 @@ export function useGameState() {
         setDegatsEsquivesRun(0);
         setReposVisites(0);
         setChoixReposActifs(null);
+        setCyclesInfini(0);
+        setOffreInfiniDispo(false);
         setReposProposesRun(COMPTEURS_REPOS_VIDES);
         setReposPrisRun(COMPTEURS_REPOS_VIDES);
         setActionsRun(COMPTEURS_ACTIONS_VIDES);
@@ -671,11 +687,59 @@ export function useGameState() {
         // à l'autre : chaque composition victorieuse s'ajoute au palmarès).
         setPactesVictorieux(prev => [...new Set([...prev, ...pactesEquipes])]);
         capturerStatsFinRun('victoire');
+        // L'écran de félicitations propose de s'enfoncer dans l'infinité de la Tour au lieu de
+        // rentrer. La run n'est donc PAS effacée ici — c'est `gererQuitterFin` qui s'en charge, à
+        // l'instant où le joueur décline. Tout ce qui précède est en revanche définitivement
+        // acquis : mourir plus tard dans l'infini ne retire ni trophées, ni classement, ni XP.
+        setOffreInfiniDispo(true);
         // En hardcore, la victoire passe d'abord par la saisie du nom pour le classement public :
         // c'est le seul exploit du jeu qui se compare entre joueurs, et l'occasion ne se
         // représentera pas (l'écran de fin, lui, reste accessible juste après).
         setEcran(modeHardcore ? 'ecran-classement-saisie' : 'ecran-fin');
-        effacerRun();
+    };
+
+    // « Parcourir l'infinité de la Tour » : un nouveau cycle de 12 étages s'ajoute à la suite, dont
+    // le palier de puissance monte à CHAQUE étage au lieu d'un sur deux, et la run reprend là où
+    // elle en était — mêmes PV, mêmes bonus de Repos, mêmes Pactes.
+    const gererContinuerInfini = () => {
+        const cycle = genererCycleInfini(
+            donneesBaseEtages,
+            pactesEquipes,
+            // Le palier repart de celui atteint au bout du segment précédent : la Tour normale
+            // s'arrête à `palierFinDeTour`, puis chaque cycle en ajoute autant que d'étages.
+            palierFinDeTour(donneesBaseEtages.length) + cyclesInfini * donneesBaseEtages.length,
+        );
+        setListeEtages(prev => [...prev, ...cycle]);
+        setCyclesInfini(c => c + 1);
+        setOffreInfiniDispo(false);
+        setEnCombatMegaBoss(false);
+        setMonstreMegaBoss(null);
+        setVictoireTotale(false);
+
+        // Le segment qui commence est journalisé comme une run à part entière : la victoire vient
+        // d'être enregistrée sous le numéro courant, et réutiliser le même ferait rejeter la
+        // suivante par la clé primaire (user_id, numero_run) — en silence. Les compteurs de
+        // segment repartent donc de zéro avec lui.
+        setRunsLancees(n => n + 1);
+        setMonstresTuesRun(0);
+        setPactesDebloquesRun([]);
+        setDegatsInfligesRun(0);
+        setDegatsBloquesRun(0);
+        setDegatsEsquivesRun(0);
+        setReposProposesRun(COMPTEURS_REPOS_VIDES);
+        setReposPrisRun(COMPTEURS_REPOS_VIDES);
+        setActionsRun(COMPTEURS_ACTIONS_VIDES);
+        setComboJoueurRun(COMBO_VIDE);
+        setComboMonstresRun(COMBO_VIDE);
+
+        setHistoriqueLogs(prev => [
+            ...prev,
+            `<br><b style="color: #cba6f7;">♾️ Vous tournez le dos à la sortie. La Tour se déplie au-delà de son sommet — et cette fois, chaque étage vous dépassera un peu plus.</b>`,
+        ]);
+
+        // Zone de Repos avant de replonger : on sort du combat le plus dur du jeu, souvent à
+        // quelques PV. C'est aussi elle qui fait avancer `indexEtageActuel` (voir gererChoixRepos).
+        ouvrirZoneDeRepos();
     };
 
     const gererClassementSaisi = () => setEcran('ecran-fin');
@@ -729,8 +793,11 @@ export function useGameState() {
 
         // Un étage PAIR marque un nouveau palier de puissance des monstres (voir buffProgressionEtage) :
         // on prévient le joueur via un écran dédié, sans détailler les stats concrètes.
+        // Dans l'infini, chaque étage est un palier : l'avertissement tomberait avant CHAQUE combat
+        // d'étage pour redire une règle que le joueur vient d'accepter explicitement. On le retire.
         const numeroProchainEtage = indexEtageActuel + 2;
-        setEcran(numeroProchainEtage % 2 === 0 ? 'ecran-etage-pair' : 'ecran-combat');
+        const annoncerPalier = cyclesInfini === 0 && numeroProchainEtage % 2 === 0;
+        setEcran(annoncerPalier ? 'ecran-etage-pair' : 'ecran-combat');
     };
 
     // Remplace les deux handlers onCombattreLvl1/onCombattreLvl2 (auparavant dupliqués dans App.tsx).
@@ -938,6 +1005,10 @@ export function useGameState() {
         // Mode hardcore
         modeHardcore,
         aVaincuLaTour,
+
+        // Mode infini
+        cyclesInfini,
+        offreInfiniDispo,
         runsHc,
         runsHcTotales,
         monstresHc,
@@ -984,6 +1055,7 @@ export function useGameState() {
         gererChoixRepos,
         declencherCombatPacte,
         gererDeclenchementMegaBoss,
+        gererContinuerInfini,
         gererFinTutoriel,
         gererConclusionTuto,
         gererAbandonTuto,

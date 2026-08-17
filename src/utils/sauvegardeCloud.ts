@@ -76,6 +76,8 @@ const CLES_JEU = [
     'tdp_stats_derniere_run',
     'tdp_mode_hardcore',
     'tdp_tour_vaincue',
+    'tdp_cycles_infini',
+    'tdp_offre_infini',
 ] as const;
 
 const CLES_SYNCHRONISEES: readonly string[] = [...CLES_JEU, ...CLES_PROFIL_HARDCORE];

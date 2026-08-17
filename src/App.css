@@ -1402,3 +1402,36 @@
     .classement-ligne { grid-template-columns: 36px 1fr auto; gap: 8px; padding: 10px 12px; }
     .classement-score-valeur { font-size: 2.8em; }
 }
+
+/* ======================================================= */
+/* --- MODE INFINI (offre de l'écran de félicitations) --- */
+/* ======================================================= */
+
+/* L'offre s'insère entre les statistiques de la run et les deux boutons : elle doit se lire comme
+   une invitation, pas comme un avertissement — celui-ci vient après, sous les boutons. */
+.infini-invite {
+    max-width: 640px;
+    margin: 24px auto 0;
+    color: #cdd6f4;
+    font-size: 1.05em;
+    line-height: 1.5;
+    text-align: center;
+}
+.infini-avertissement {
+    max-width: 560px;
+    margin: 18px auto 0;
+    padding: 10px 16px;
+    background-color: rgba(203, 166, 247, 0.08);
+    border: 1px solid #cba6f7;
+    border-radius: 8px;
+    box-sizing: border-box;
+    color: #a6adc8;
+    font-size: 0.88em;
+    line-height: 1.45;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .infini-invite { font-size: 0.95em; }
+    .infini-avertissement { padding: 10px 12px; font-size: 0.82em; }
+}

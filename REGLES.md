@@ -30,6 +30,7 @@ répercutée ici.**
 17. [Le Gardien Absolu](#17-le-gardien-absolu)
 18. [Ce qui se perd et ce qui reste](#18-ce-qui-se-perd-et-ce-qui-reste)
 19. [Le Mode Hardcore](#19-le-mode-hardcore)
+20. [Le Mode Infini](#20-le-mode-infini)
 
 ---
 
@@ -585,7 +586,8 @@ entité**, à affronter avant la victoire totale.
   que le hasard lui donne la bonne apparence — et le poison, qui ne décroît jamais nulle part
   ailleurs, est le plus exposé.
 
-Le vaincre accorde **+10 XP** et la **victoire totale**.
+Le vaincre accorde **+10 XP** et la **victoire totale**. L'écran de félicitations propose alors de
+rentrer… ou de s'enfoncer dans le [Mode Infini](#20-le-mode-infini).
 
 ---
 
@@ -664,3 +666,59 @@ Le mode ne s'adresse qu'à un vainqueur de la Tour, donc les paliers d'apprentis
 - la **Roue de la Chance** est tirée dès la première ascension ;
 - les trois **scènes scénarisées du Chat** (Bénédiction, Forgeron, leçon de Combo) ne se jouent pas.
   Les leçons de mort, elles, restent.
+
+---
+
+## 20. Le Mode Infini
+
+Disponible dans **les deux modes**, normal comme hardcore, et sans rien à débloquer : il s'ouvre à
+chaque fois qu'un Gardien Absolu tombe.
+
+### L'offre
+
+L'écran de félicitations qui suit la victoire totale propose deux sorties :
+
+- **Retourner au Menu** → l'ascension s'arrête là, comme avant.
+- **♾️ Parcourir l'infinité de la Tour** → la Tour se déplie au-delà de son sommet et la run
+  **reprend là où elle en était** : mêmes PV, mêmes bonus de Zone de Repos, mêmes Pactes équipés.
+
+**La victoire est acquise avant le choix.** XP, trophées de Pactes victorieux, déblocage du mode
+hardcore, entrée au classement : tout est déjà enregistré. Mourir dans l'infini ne reprend rien de
+ce qui vient d'être gagné.
+
+Accepter fait passer par une **Zone de Repos** avant le premier étage du nouveau cycle — on sort du
+combat le plus dur du jeu, souvent à quelques points de vie.
+
+### La règle du mode : un palier par étage
+
+Dans la Tour normale, les monstres montent d'un palier tous **deux** étages. Au-delà du premier
+Gardien Absolu, ils montent d'un palier à **chaque** étage — le reste du palier est identique
+(cf. [Paliers de puissance](#10-la-tour--structure-dune-ascension)).
+
+Le palier ne redescend jamais et repart de celui atteint au bout du segment précédent :
+
+| Étage | 12 | 13 | 14 | … | 24 | 25 | … | 36 |
+|---|---|---|---|---|---|---|---|---|
+| Palier | 6 | 7 | 8 | … | 18 | 19 | … | 30 |
+
+L'écran d'avertissement « UNE PRÉSENCE GRANDIT… » ne s'affiche **pas** dans l'infini : chaque étage
+étant un palier, il tomberait avant chaque combat pour redire une règle déjà acceptée.
+
+### La boucle
+
+Chaque cycle compte **12 étages**, les mêmes Gardiens re-mélangés, suivis d'un **nouveau Gardien
+Absolu** — dont les PV valent toujours le nombre total d'étages × 100 (2400 au 24ᵉ étage, 3600 au
+36ᵉ) et qui peut prendre la forme de n'importe lequel des Gardiens traversés. Le vaincre rouvre
+l'offre, indéfiniment.
+
+L'étage record enregistre ces étages : c'est lui qui mesure jusqu'où le joueur est descendu.
+
+### Interactions
+
+- **Hardcore** : la porte de sortie continue d'être offerte à la fin de **chaque** étage de
+  l'infini. C'est là qu'elle prend tout son sens — la puissance des monstres finit toujours par
+  dépasser la vôtre, et la seule question est de savoir quand s'arrêter.
+- **Pactes** : les Gardiens revus laissent passer le joueur qui possède déjà leur Pacte. Ceux qui
+  manquent restent arrachables, dans une forme bien plus dangereuse.
+- **XP** : les récompenses continuent normalement, chaque étage de l'infini rapportant comme un
+  étage ordinaire.
