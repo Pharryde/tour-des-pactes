@@ -94,6 +94,10 @@ joués. Les effets de fin de tour, eux, s'appliquent quand même (voir §8).
 L'écart entre ⚔️ et 🎯 est le cœur du dilemme : l'Attaque frappe fort mais se heurte aux gardes, la
 Précise frappe faiblement mais ne se heurte à rien.
 
+⚠️ **« Ignore l'armure » ne veut pas dire « ignore tout ».** Face à une **Esquive**, la Précise a
+exactement les **mêmes chances d'échouer** qu'une Attaque ordinaire, et une esquive réussie annule le
+coup en entier. L'armure, elle la traverse ; l'esquive, elle la subit comme tout le monde.
+
 ---
 
 ## 4. Le Combo
@@ -160,8 +164,15 @@ entre 0 et 100 %.
 
 - **Grâce Féline** (Bénédiction) ajoute un bonus **plat**, actif **même au palier 0**.
 - **Regard Hypnotique** (Bénédiction) retranche 25 % à l'esquive adverse.
+- **Le Vent Mortel forme évoluée** retranche lui aussi **25 %** : ses trois formes attaquent donc votre
+  esquive de plus en plus fort (rien, puis −25 %, puis la neutralisation).
 - **Neutralisation** (Pacte de l'Ombre II, Le Vent Mortel forme finale) : la chance tombe à **0 %**,
   quels que soient les paliers. Le journal l'indique explicitement.
+
+Le pourcentage affiché à côté du niveau d'esquive (`💨 Nv.2 (50%)`) tient compte de **tout ce qui
+précède**, adversaire compris : face à la forme évoluée du Vent Mortel il descend de lui-même, et face
+à sa forme finale il tombe à 0 %. Sans ça l'écran vous inviterait à jouer une Esquive qui ne peut pas
+réussir.
 
 Une esquive réussie annule **entièrement** le coup — y compris la pose d'une Brûlure ou d'un Poison.
 
@@ -200,6 +211,22 @@ sont le miroir l'un de l'autre.
 
 Une conversion totale dès le Niveau I rendrait ces deux Pactes strictement supérieurs à l'action
 qu'ils remplacent — une brûlure qui s'empile ou un poison qui ignore l'armure, pour le même montant.
+
+**Résistance et immunité.** Les deux Gardiens maîtrisent leur propre élément et n'en subissent pas la
+pleine mesure :
+
+| Cible | Part de la dose réellement encaissée |
+|---|---|
+| Le Brasier Vorace / La Sève Noire, **forme évoluée** | **La moitié** (le reste est absorbé) |
+| Le Brasier Vorace / La Sève Noire, **forme finale** | **Rien** — totalement insensible |
+| Tout le reste | La dose entière |
+
+La réduction s'applique **au moment où la dose est posée**, pas au tic de fin de tour : le compteur
+🔥/🧪 affiche donc dès le premier coup ce que l'ennemi porte vraiment. La statistique 🔥/🧪 de votre
+côté d'écran en tient compte elle aussi, et le journal l'annonce (`+10 de brûlure. (résiste : 10
+absorbés)`, ou `L'ennemi y est insensible : la dose est entièrement absorbée.`) — sans quoi une action
+convertie contre un immunisé n'aurait laissé **aucune trace** dans le tour. Face à eux, l'élément dont
+ils sont les maîtres n'est donc pas la bonne réponse.
 
 **La base de calcul, ce sont les dégâts réels de l'action** : **combos**, multiplicateurs du **Pacte
 du Temps**, **Pacte de l'Ombre** et critiques compris, jamais une valeur forfaitaire. Une 5ᵉ action
@@ -334,7 +361,7 @@ Chaque Gardien existe en trois formes de puissance croissante : **normale**, **�
 | Étage | Gardien | Pouvoir |
 |---|---|---|
 | **Armure** | Le Mur de Fer | Enchaîne les Défenses (25/33/50 %). En forme finale, convertit son armure restante en dégâts de fin de tour (**Pointes d'Acier**). |
-| **Vitesse** | Le Vent Mortel | Paliers d'esquive très élevés, aucune Défense. En forme finale, **neutralise entièrement votre esquive**. |
+| **Vitesse** | Le Vent Mortel | Paliers d'esquive très élevés, aucune Défense. En forme évoluée, **retranche 25 %** à votre esquive ; en forme finale, la **neutralise entièrement**. |
 | **Combo** | L'Harmonie Brisée | Enchaîne ses actions une fois sur deux, avec un multiplicateur de combo **x1,5** puis **x2**. |
 | **Vie** | L'Anomalie | Réserve de PV énorme (160 → 300). **Régénère 10 % de ses PV max** tous les 5 tours (évoluée), tous les 3 tours (finale). |
 | **Ombre** | Le Cauchemar | **Masque ses actions** : seules 3/5, puis 2/5, puis 1/5 de ses actions sont visibles. |
@@ -343,8 +370,8 @@ Chaque Gardien existe en trois formes de puissance croissante : **normale**, **�
 | **Brute** | Le Poing Primordial | Aucune Précise, mais une Attaque écrasante (16 → 22 de base). |
 | **Froid** | Le Souffle Immobile | **Dérègle l'ordre de résolution** : agit avant vous sur 2 créneaux. Sa forme évoluée **gèle** une action ; la finale cumule les deux. |
 | **Foudre** | La Colère du Ciel | **x1,5 / x2 / x3 sur ses dégâts totaux** tant que sa cible porte de l'armure. Se défendre contre lui est un piège. Les stats ⚔️/🎯 et la jauge de combo affichent la valeur **déjà amplifiée** dès que la cible est armée — y compris l'armure que le « Pelage d'Acier » n'a pas encore créditée, puisqu'elle tombera de toute façon. |
-| **Feu** | Le Brasier Vorace | Son **Attaque devient une Brûlure** cumulée, résolue en fin de tour. Aucune Précise. |
-| **Poison** | La Sève Noire | Sa **Précise devient un Poison** qui traverse l'armure, s'accumule de tour en tour et ne décroît jamais. Aucune Attaque. |
+| **Feu** | Le Brasier Vorace | Son **Attaque devient une Brûlure** cumulée, résolue en fin de tour. Aucune Précise. **Résiste au feu** (moitié de la dose) en forme évoluée, **y est insensible** en forme finale. |
+| **Poison** | La Sève Noire | Sa **Précise devient un Poison** qui traverse l'armure, s'accumule de tour en tour et ne décroît jamais. Aucune Attaque. **Résiste au poison** (moitié de la dose) en forme évoluée, **y est insensible** en forme finale. |
 
 ---
 
@@ -496,6 +523,10 @@ de ce qu'il donne par ailleurs : **+10 %** au Niveau I, **+25 %** au Niveau II. 
 10 PV max passe donc à 11, puis à **13**. Deux Pactes porteurs d'un tel bonus ne se cumulent pas :
 on retient le plus fort.
 
+Le choix retenu est **inscrit dans le journal de combat avec son effet réel**, pas avec la valeur
+annoncée sur le bouton : un soin pris à 96/100 PV n'en rend que 4, et le journal le dit. C'est le seul
+endroit où l'on peut, plus tard dans l'ascension, retrouver d'où vient une statistique.
+
 ---
 
 ## 16. XP et Arbre de Compétences
@@ -541,7 +572,13 @@ entité**, à affronter avant la victoire totale.
 - Les effets « tous les X tours » sont forcés à **chaque tour** où la forme est active — la forme
   changeant à chaque tour, un intervalle réel de 3 à 5 tours ne se déclencherait presque jamais.
 - Seuls ses **PV, son armure et son palier d'esquive** en cours restent les siens d'un tour à l'autre.
-  Une brûlure ou un poison qu'il subit **survit à ses changements d'apparence**.
+  Une brûlure ou un poison qu'il subit **survit à ses changements d'apparence**… à une exception près.
+- ⚠️ **Il emprunte aussi l'immunité de sa forme, et elle purge ce qu'il portait déjà.** Le tour où il
+  prend les traits du **Brasier Vorace**, toute la brûlure accumulée sur lui **s'éteint** en fin de
+  tour sans lui coûter un PV ; le tour où il prend ceux de la **Sève Noire**, c'est son poison qui se
+  dissipe. Contre lui, une stratégie qui repose entièrement sur un seul élément se fait effacer dès
+  que le hasard lui donne la bonne apparence — et le poison, qui ne décroît jamais nulle part
+  ailleurs, est le plus exposé.
 
 Le vaincre accorde **+10 XP** et la **victoire totale**.
 

@@ -51,6 +51,10 @@ export function appliquerFormeMegaBoss(monstreActuel: Entite, forme: Entite): En
         paliersEsquive: forme.paliersEsquive,
         actionsVisibles: forme.actionsVisibles,
         bloqueEsquiveOpposant: forme.bloqueEsquiveOpposant,
+        // Inatteignable en pratique — le Gardien Absolu ne prend que des formes de Niveau II, qui
+        // neutralisent l'esquive au lieu de la réduire. Repris quand même : c'est un pouvoir de
+        // forme comme un autre, et l'omettre créerait un trou muet le jour où une forme le porte.
+        reductionEsquiveOpposant: forme.reductionEsquiveOpposant,
         degatsArmureRestanteFinTour: forme.degatsArmureRestanteFinTour,
         regenArmureTour: forme.regenArmureTour,
         chanceCombo: forme.chanceCombo,
@@ -73,6 +77,8 @@ export function appliquerFormeMegaBoss(monstreActuel: Entite, forme: Entite): En
         multiplicateurDegatsSiArmure: forme.multiplicateurDegatsSiArmure,
         multiplicateurBrulure: forme.multiplicateurBrulure,
         multiplicateurPoison: forme.multiplicateurPoison,
+        partBrulureSubie: forme.partBrulureSubie,
+        partPoisonSubi: forme.partPoisonSubi,
         peutTemporiserSiPoisonDepasse: forme.peutTemporiserSiPoisonDepasse,
     };
 }

@@ -78,6 +78,19 @@ describe('appliquerFormeMegaBoss', () => {
         expect(resultat.regenPvChaqueXTours).toBeUndefined();
         expect(resultat.pertePvChaqueXTours).toBeUndefined();
     });
+
+    // Les Gardiens du Feu et du Poison maîtrisent leur élément : sous leurs traits, le Gardien
+    // Absolu doit en hériter, sinon on le noierait sous l'élément dont il vient de prendre la forme.
+    it("emprunte la résistance élémentaire et la réduction d'esquive de la forme", () => {
+        const brasier = appliquerFormeMegaBoss(absolu(), creerEntite({ partBrulureSubie: 0 }));
+        expect(brasier.partBrulureSubie).toBe(0);
+
+        const seve = appliquerFormeMegaBoss(absolu(), creerEntite({ partPoisonSubi: 0.5 }));
+        expect(seve.partPoisonSubi).toBe(0.5);
+
+        const vent = appliquerFormeMegaBoss(absolu(), creerEntite({ reductionEsquiveOpposant: 25 }));
+        expect(vent.reductionEsquiveOpposant).toBe(25);
+    });
 });
 
 describe('construireMegaBoss', () => {

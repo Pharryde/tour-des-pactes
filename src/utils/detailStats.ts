@@ -30,6 +30,14 @@ function ligneFoudre(entite: Entite, cible?: Entite): string[] {
         : [`Pacte de la Foudre : x${entite.multiplicateurDegatsSiArmure} dès que la cible porte de l'Armure`];
 }
 
+// Sans cette ligne, le détail enchaînait « Pacte du Feu : 50% » puis « = 3 de brûlure » à partir
+// d'une base de 10 : la reconstruction ne tombait plus juste, et rien n'expliquait pourquoi.
+function ligneResistance(part: number | undefined, element: 'feu' | 'poison'): string[] {
+    if (part === undefined) return [];
+    if (part === 0) return [`Cible insensible au ${element} : dose absorbée`];
+    return [`Cible résistante au ${element} : ${pourcentage(part)}`];
+}
+
 export function detailAttaque(entite: Entite, competences: Competences, actionsEnAttente: ActionType[], cible?: Entite): string[] {
     const lignes = [`Base : ${BASE_ATTAQUE}`];
     if (competences.atk) lignes.push(`Arbre de compétence (Force Brute) : +${competences.atk}`);
@@ -53,6 +61,7 @@ export function detailAttaque(entite: Entite, competences: Competences, actionsE
 
     if (entite.multiplicateurBrulure) {
         lignes.push(`Pacte du Feu (converti en Brûlure) : ${pourcentage(entite.multiplicateurBrulure)}`);
+        lignes.push(...ligneResistance(cible?.partBrulureSubie, 'feu'));
     }
 
     lignes.push(`= ${calculerAttaqueAffichee(entite, actionsEnAttente, cible)}${entite.multiplicateurBrulure ? ' de brûlure' : ''}`);
@@ -74,6 +83,7 @@ export function detailPrecise(entite: Entite, competences: Competences, cible?: 
     if (entite.multiplicateurPoison) {
         lignes.push(`Pacte du Poison (converti en Poison) : ${pourcentage(entite.multiplicateurPoison)}`);
         if (entite.degatsPrecisDoubles) lignes.push(`Pacte de l'Ombre (Dégâts Précis) : x2`);
+        lignes.push(...ligneResistance(cible?.partPoisonSubi, 'poison'));
         lignes.push(`= ${calculerPreciseAffichee(entite, cible)} de poison`);
         return lignes;
     }

@@ -677,9 +677,31 @@ export function useGameState() {
     const gererChoixRepos = (choix: ChoixRepos) => {
         if (!joueur) return;
         const j = { ...joueur };
-        if (choix === 'soin') { j.pv = Math.min(j.pvMax, j.pv + calculerSoinRepos(j.pvMax, pactesEquipes)); }
-        if (choix === 'pv') { const gain = calculerGainPvMaxRepos(pactesEquipes); j.pvMax += gain; j.pv += gain; }
-        if (choix === 'atk') j.baseA += 2; if (choix === 'pre') j.baseP += 1; if (choix === 'def') j.baseD += 2;
+        // Bilan chiffré de la Zone de Repos. La valeur annoncée sur le bouton n'est pas toujours celle
+        // qu'on obtient (un soin sur un héros presque intact est en partie perdu) : on journalise donc
+        // l'effet RÉEL, mesuré après coup, sinon le récapitulatif répéterait simplement le menu.
+        let effet: string;
+        if (choix === 'soin') {
+            const avant = j.pv;
+            j.pv = Math.min(j.pvMax, j.pv + calculerSoinRepos(j.pvMax, pactesEquipes));
+            const rendu = j.pv - avant;
+            effet = rendu > 0
+                ? `❤️ Repos : soins. <b>+${rendu} PV</b> (${j.pv} / ${j.pvMax}).`
+                : `❤️ Repos : soins. <b>Aucun effet</b>, vous étiez déjà au maximum (${j.pv} / ${j.pvMax}).`;
+        } else if (choix === 'pv') {
+            const gain = calculerGainPvMaxRepos(pactesEquipes);
+            j.pvMax += gain; j.pv += gain;
+            effet = `💖 Repos : renforcement. <b>+${gain} PV Max</b> (${j.pv} / ${j.pvMax}).`;
+        } else if (choix === 'atk') {
+            j.baseA += 2;
+            effet = `⚔️ Repos : arme aiguisée. <b>Attaque ${j.baseA - 2} → ${j.baseA}</b>.`;
+        } else if (choix === 'pre') {
+            j.baseP += 1;
+            effet = `🎯 Repos : mire ajustée. <b>Précise ${j.baseP - 1} → ${j.baseP}</b>.`;
+        } else {
+            j.baseD += 2;
+            effet = `🛡️ Repos : armure renforcée. <b>Défense ${j.baseD - 2} → ${j.baseD}</b>.`;
+        }
 
         setReposPrisRun(c => incrementerCompteurs(c, [choix]));
 
@@ -690,6 +712,7 @@ export function useGameState() {
 
         setHistoriqueLogs(prev => [
             ...prev,
+            `<span class="log-soin">${effet}</span>`,
             `<br><span class="log-tour">🚪 DIRECTION L'ÉTAGE SUIVANT...</span>`,
             ...(messageBuff ? [messageBuff] : []),
             `<br><b>⚔️ Combat : ${prochainEtage.monstres[0].nom} approche !</b>`

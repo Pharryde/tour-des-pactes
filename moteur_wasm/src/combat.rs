@@ -24,6 +24,10 @@ pub struct ResultatDegats {
     // conversion en brûlure/poison). Le journal affiche ça et non la valeur brute du combo : sur
     // l'Étage de la Foudre, la seconde ment d'un facteur 1,5 à 3.
     pub valeur_appliquee: i32,
+    // Part de la dose que la résistance de la cible a retirée. Indispensable au journal : sans elle,
+    // une cible IMMUNISÉE produit une dose nulle, donc aucune ligne — le coup passerait pour un
+    // silence inexpliqué au lieu d'une immunité.
+    pub dose_resistee: i32,
 }
 
 // `fusion_ap` : Synergie Assassin ("Danse des Lames") — Attaque et Précise comptent comme la même
@@ -151,7 +155,7 @@ pub fn appliquer_foudre(val_atk: i32, attaquant: &Entite, defenseur: &Entite) ->
 // L'attaquant est passé en entier (plutôt que ses drapeaux un par un) : c'est lui qui porte à la
 // fois le doublage de la Précise, la neutralisation de l'esquive et la réduction d'esquive adverse.
 pub fn calculer_degats(action_atk: &ActionType, val_atk: i32, attaquant: &Entite, defenseur: &Entite) -> ResultatDegats {
-    let neutre = ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0 };
+    let neutre = ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0, dose_resistee: 0 };
     if *action_atk != ActionType::A && *action_atk != ActionType::P {
         return neutre;
     }

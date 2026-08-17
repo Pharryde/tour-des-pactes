@@ -57,6 +57,8 @@ fn creer_base(nom: &str, pv: i32, base_a: i32, base_p: i32, base_d: i32, paliers
         multiplicateur_degats_si_armure: None,
         multiplicateur_brulure: None,
         multiplicateur_poison: None,
+        part_brulure_subie: None,
+        part_poison_subi: None,
         peut_temporiser_si_poison_depasse: None,
         brulure_active: None,
         poison_actif: None,
@@ -95,6 +97,10 @@ pub fn get_etage_esquive() -> StructureEtage {
     let mut boss_h2 = creer_base(&nom_boss_finale("Le Vent Mortel"), 90, 12, 6, 0, vec![10, 70, 95, 100], kit_sans_defense());
     boss_h2.bloque_esquive_opposant = true;
 
+    // Marche intermédiaire vers la neutralisation totale de la forme finale : -25% d'esquive.
+    let mut boss_h = creer_base(&nom_boss_evolue("Le Vent Mortel"), 90, 12, 6, 0, vec![10, 70, 95, 100], kit_sans_defense());
+    boss_h.reduction_esquive_opposant = Some(25);
+
     StructureEtage {
         id_pacte: "Pacte de l'Esquive".to_string(),
         nom: "Étage de la Vitesse".to_string(),
@@ -104,7 +110,7 @@ pub fn get_etage_esquive() -> StructureEtage {
             creer_base("Maître de l'Illusion", 45, 10, 8, 5, vec![0, 55, 80, 100], kit_sans_defense()),
         ],
         boss_normal: creer_base(&nom_boss("Le Vent Mortel"), 70, 15, 8, 0, vec![0, 60, 90, 100], kit_sans_defense()),
-        boss_heroique: creer_base(&nom_boss_evolue("Le Vent Mortel"), 90, 12, 6, 0, vec![10, 70, 95, 100], kit_sans_defense()),
+        boss_heroique: boss_h,
         boss_heroique_lvl2: boss_h2,
     }
 }
@@ -321,9 +327,11 @@ pub fn get_etage_feu() -> StructureEtage {
 
     let mut boss_h = creer_base(&nom_boss_evolue("Le Brasier Vorace"), 115, 13, 6, 12, esquive_std(), kit_sans_precise());
     boss_h.multiplicateur_brulure = Some(1.0);
+    boss_h.part_brulure_subie = Some(0.5);
 
     let mut boss_h2 = creer_base(&nom_boss_finale("Le Brasier Vorace"), 145, 14, 6, 14, esquive_std(), kit_sans_precise());
     boss_h2.multiplicateur_brulure = Some(1.0);
+    boss_h2.part_brulure_subie = Some(0.0);
 
     StructureEtage {
         id_pacte: "Pacte du Feu".to_string(),
@@ -352,9 +360,11 @@ pub fn get_etage_poison() -> StructureEtage {
 
     let mut boss_h = creer_base(&nom_boss_evolue("La Sève Noire"), 115, 12, 6, 12, esquive_std(), kit_sans_attaque());
     boss_h.multiplicateur_poison = Some(1.0);
+    boss_h.part_poison_subi = Some(0.5);
 
     let mut boss_h2 = creer_base(&nom_boss_finale("La Sève Noire"), 145, 13, 6, 14, esquive_std(), kit_sans_attaque());
     boss_h2.multiplicateur_poison = Some(1.0);
+    boss_h2.part_poison_subi = Some(0.0);
 
     StructureEtage {
         id_pacte: "Pacte du Poison".to_string(),

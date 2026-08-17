@@ -156,10 +156,19 @@ describe('calculerPaliersEsquiveAffiches', () => {
         expect(calculerPaliersEsquiveAffiches(entite)).toEqual([5, 55, 80, 100]);
     });
 
-    // Bénédiction "Regard Hypnotique" : la réduction vient de l'ADVERSAIRE, jamais de l'entité
-    // affichée, d'où le second paramètre.
+    // Bénédiction "Regard Hypnotique" / Vent Mortel forme évoluée : la réduction vient de
+    // l'ADVERSAIRE, jamais de l'entité affichée, d'où le second paramètre.
     it("retranche la réduction d'esquive imposée par l'adversaire", () => {
         expect(calculerPaliersEsquiveAffiches(creerHeros(), 25)).toEqual([0, 25, 50, 75]);
+        expect(calculerPaliersEsquiveAffiches(creerHeros(), creerHeros({ reductionEsquiveOpposant: 25 })))
+            .toEqual([0, 25, 50, 75]);
+    });
+
+    // Vent Mortel forme finale / Pacte de l'Ombre II : l'esquive tombe à zéro, quels que soient les
+    // paliers. L'afficher encore à 100% serait le pire mensonge — il pousse à jouer Esquive.
+    it("annule tous les paliers face à un adversaire qui neutralise l'esquive", () => {
+        expect(calculerPaliersEsquiveAffiches(creerHeros(), creerHeros({ bloqueEsquiveOpposant: true })))
+            .toEqual([0, 0, 0, 0]);
     });
 
     it('borne le résultat entre 0 et 100 après décalage', () => {

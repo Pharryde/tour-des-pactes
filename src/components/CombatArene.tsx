@@ -17,7 +17,7 @@ import { SpriteAnime } from './SpriteAnime';
 import { StatDetail } from './StatDetail';
 import { InfoBulle } from './InfoBulle';
 import { LeconTutoEcran } from './LeconTutoEcran';
-import type { LeconTuto } from '../utils/tutoCombat';
+import { TOTAL_LECONS_TUTO, rangPremiereLeconDuTour, type LeconTuto } from '../utils/tutoCombat';
 
 interface CombatAreneProps {
     joueurInitial: Entite;
@@ -56,7 +56,7 @@ interface CombatAreneProps {
     dialogueTuto?: Record<number, string[]>;
     // Contenu structuré des mêmes leçons, présenté en plein écran AVANT chaque tour scripté : dans
     // le journal, l'explication se noie entre les lignes de résolution.
-    leconsTuto?: Record<number, LeconTuto>;
+    leconsTuto?: Record<number, LeconTuto[]>;
     onFinTutoriel?: (joueurRestant: Entite) => void;
 }
 
@@ -117,6 +117,9 @@ export function CombatArene({
     // Dernière leçon du tutoriel acquittée par le joueur. Elle s'affiche tant qu'elle est en retard
     // sur le tour courant — le tour 1 compris, dès l'arrivée sur l'écran.
     const [leconVue, setLeconVue] = useState(0);
+    // Position dans les leçons du tour courant : un tour peut en porter plusieurs (le tour 1 explique
+    // les commandes avant l'Attaque), et elles s'acquittent une par une.
+    const [leconIndex, setLeconIndex] = useState(0);
 
     const [comboAffichageJ, setComboAffichageJ] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
     const [comboAffichageM, setComboAffichageM] = useState<{type: ActionType|null, count: number}>({type: null, count: 0});
@@ -169,9 +172,16 @@ export function CombatArene({
     }
 
     // Leçon à montrer maintenant : celle du tour courant, tant qu'elle n'a pas été acquittée.
+    const leconsDuTour = leconsTuto?.[tourActuel] ?? [];
     const leconEnAttente = estTutoriel && !combatEnCours && leconVue < tourActuel
-        ? leconsTuto?.[tourActuel]
+        ? leconsDuTour[leconIndex]
         : undefined;
+
+    // Dernière leçon du tour : on la marque acquittée en entier, sinon on avance d'un cran.
+    const acquitterLecon = () => {
+        if (leconIndex + 1 < leconsDuTour.length) setLeconIndex(leconIndex + 1);
+        else { setLeconVue(tourActuel); setLeconIndex(0); }
+    };
 
     const formatterCombo = (comboObj: {type: ActionType|null, count: number}, entite: Entite) => {
         if(comboObj.count <= 1 || comboObj.type === 'E' || comboObj.type === null) return "Aucun";
@@ -522,9 +532,9 @@ export function CombatArene({
             {leconEnAttente && (
                 <LeconTutoEcran
                     lecon={leconEnAttente}
-                    numero={tourActuel}
-                    total={Object.keys(leconsTuto ?? {}).length}
-                    onContinuer={() => setLeconVue(tourActuel)}
+                    numero={rangPremiereLeconDuTour(tourActuel) + leconIndex + 1}
+                    total={TOTAL_LECONS_TUTO}
+                    onContinuer={acquitterLecon}
                 />
             )}
 
@@ -616,7 +626,7 @@ export function CombatArene({
                     </div>
                     <h2>{joueur.nom}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur, monstre.reductionEsquiveOpposant)[Math.min(joueur.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {joueur.pv} / {joueur.pvMax}</span> | <span className="armure">🛡️ {joueur.armure}</span> | <span className="esquive">💨 Nv.{joueur.nivEsquive} ({calculerPaliersEsquiveAffiches(joueur, monstre)[Math.min(joueur.nivEsquive, 3)]}%)</span>
                         <EtatsDifferes entite={joueur} />
                     </div>
                     <div className="stats-base">
@@ -644,7 +654,7 @@ export function CombatArene({
                     </div>
                     <h2>{titreMonstreFinal}</h2>
                     <div className="stats">
-                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre, joueur.reductionEsquiveOpposant)[Math.min(monstre.nivEsquive, 3)]}%)</span>
+                        <span className="pv">❤️ {monstre.pv} / {monstre.pvMax}</span> | <span className="armure">🛡️ {monstre.armure}</span> | <span className="esquive">💨 Nv.{monstre.nivEsquive} ({calculerPaliersEsquiveAffiches(monstre, joueur)[Math.min(monstre.nivEsquive, 3)]}%)</span>
                         <EtatsDifferes entite={monstre} />
                     </div>
                     <div className="stats-base">{symbolePour('A', monstre)} {calculerAttaqueAffichee(monstre, [], joueur)} | {symbolePour('P', monstre)} {calculerPreciseAffichee(monstre, joueur)} | 🛡️ {monstre.baseD}</div>

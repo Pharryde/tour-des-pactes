@@ -80,54 +80,75 @@ export interface LeconTuto {
 // dans le journal de combat (pour qu'on puisse y revenir pendant le tour). Il n'y a volontairement
 // aucune entrée au-delà du dernier tour scripté : dépasser ACTIONS_CHAT_TUTO est le signal de fin,
 // géré par CombatArene (la révélation finale se fait sur TutoConclusion.tsx).
-export const LECONS_TUTO: Record<number, LeconTuto> = {
-    1: {
+export const LECONS_TUTO: Record<number, LeconTuto[]> = {
+    1: [{
+        // Les commandes d'abord, et sur un écran à elles : elles ne concernent aucune règle de combat
+        // mais conditionnent tout le reste du tutoriel — quelqu'un qui subit une résolution trop
+        // rapide pour être lue n'apprendra aucune des leçons qui suivent.
+        titre: '⚙️ Le rythme du combat',
+        repliques: [
+            `"Avant de gravir cette Tour, petit être, laisse-moi t'enseigner les bases, une par une. Mais d'abord, deux commandes en haut de l'écran — elles ne frappent personne, et pourtant tout dépend d'elles."`,
+            `"Le <b>Mode</b> décide qui déroule le tour. En <b>Auto</b>, tes cinq actions s'enchaînent toutes seules ; en <b>Manuel</b>, tu valides chaque action l'une après l'autre et rien n'avance sans toi. Prends le Manuel quand tu veux comprendre ce qui se passe, l'Auto quand tu le sais déjà."`,
+            `"La <b>Vitesse (⚡)</b>, elle, choisit à quelle allure ça défile : <b>x1</b>, <b>x2</b> ou <b>x4</b>, en tournant à chaque clic. Elle ne change aucun dégât — seulement ton confort. Les deux réglages te suivront d'un combat à l'autre : ajuste-les dès maintenant, et n'hésite pas à y revenir en cours de route."`,
+        ],
+    }, {
         titre: "⚔️ L'Attaque",
         repliques: [
-            `"Avant de gravir cette Tour, petit être, laisse-moi t'enseigner les bases, une par une. Tiens, en haut de l'écran : la <b>Vitesse (⚡)</b> accélère la résolution des tours, et le <b>Mode</b> te laisse choisir entre dérouler chaque action automatiquement, ou pas à pas (Manuel) pour ne rien manquer — n'hésite pas à ajuster ça selon ton aise."`,
             `"Commençons par l'<b>Attaque (⚔️)</b> : une frappe brute qui vient cogner en priorité contre l'Armure de ta cible. Je verrouille tes autres actions pour ce tour — utilise l'Attaque, cinq fois, pour bien sentir comment elle fonctionne."`,
         ],
-    },
-    2: {
+    }],
+    2: [{
         titre: '🎯 La Précise',
         repliques: [
             `"Bien joué ! Passons à la <b>Précise (🎯)</b> : contrairement à l'Attaque, elle <b>ignore totalement l'armure</b> adverse et va droit aux PV. En échange, elle frappe moins fort. Seule la Précise est disponible ce tour-ci."`,
+            `"Ne te méprends pas pour autant : traverser l'armure ne veut pas dire traverser tout le reste. Face à une <b>Esquive</b>, la Précise a <b>exactement les mêmes chances d'échouer</b> qu'une Attaque ordinaire — et une esquive réussie annule le coup en entier. L'armure, elle l'ignore ; l'esquive, elle la subit comme tout le monde."`,
         ],
-    },
-    3: {
+    }],
+    3: [{
         titre: '🛡️ La Défense',
         repliques: [
             `"Voyons maintenant la <b>Défense (🛡️)</b> : elle te construit une <b>Armure</b> qui absorbe les coups à ta place."`,
             `"Retiens bien ceci, c'est le cœur de la mécanique : <b>l'Armure s'accumule, et elle tient pendant TOUT le tour.</b> Si tu te défends trois fois de suite, tu ne te protèges pas trois fois séparément — tu empiles une seule et même réserve, qui grossit à chaque Défense et encaisse tout ce qui arrive jusqu'à la fin du tour. Une Défense au 1er créneau te protège donc encore au 5e."`,
             `"Mais elle <b>retombe à zéro à la fin du tour</b>. Rien ne se reporte sur le suivant : il faut la reconstruire à chaque fois. Regarde comme mes attaques peinent à te blesser pendant que tu te protèges. Seule la Défense est disponible ce tour-ci."`,
         ],
-    },
-    4: {
+    }],
+    4: [{
         titre: "💨 L'Esquive",
         repliques: [
             `"À ton tour d'apprendre l'<b>Esquive (💨)</b> : chaque fois que tu l'utilises, ta jauge monte d'un palier, augmentant tes chances d'annuler <b>complètement</b> une attaque adverse."`,
             `"Il y a <b>trois paliers, et le troisième est le maximum</b> : au-delà, l'enchaîner encore ne te rapporte plus rien. Attention aussi : dès que tu fais autre chose, elle redescend aussitôt — un guerrier avisé sait quand esquiver, et quand frapper. Seule l'Esquive est disponible ce tour-ci."`,
         ],
-    },
-    5: {
+    }],
+    5: [{
         titre: '🔥 Le Combo',
         repliques: [
             `"Une dernière leçon avant que je ne te révèle quelque chose d'important. Enchaîner plusieurs fois <b>LA MÊME action</b> dans un même tour amplifie sa puissance à chaque répétition — c'est un <b>Combo</b>."`,
             `"Je te rends l'Attaque : martèle-la cinq fois d'affilée, et observe sa valeur grimper dans le journal de combat."`,
         ],
-    },
+    }],
 };
 
 // Rendu « journal de combat » des mêmes leçons : elles restent consultables pendant le tour, une
 // fois l'écran acquitté. Dérivé de LECONS_TUTO pour qu'il n'y ait jamais deux textes à maintenir.
 export const DIALOGUE_CHAT_TUTO: Record<number, string[]> = Object.fromEntries(
-    Object.entries(LECONS_TUTO).map(([tour, lecon]) => [
+    Object.entries(LECONS_TUTO).map(([tour, lecons]) => [
         tour,
         [
             ...(tour === '1'
                 ? [`<br><b style="color: #f9e2af;">🐈 Un chat mystérieux vous barre la route, un sourire énigmatique aux lèvres...</b>`]
                 : []),
-            ...lecon.repliques.map(texte => `<span class="log-dialogue">${texte}</span>`),
+            ...lecons.flatMap(lecon => lecon.repliques.map(texte => `<span class="log-dialogue">${texte}</span>`)),
         ],
     ]),
 );
+
+// Nombre total de leçons du tutoriel, et rang de la première leçon d'un tour donné : un tour peut
+// désormais en porter plusieurs, mais la numérotation affichée doit rester continue d'un bout à
+// l'autre ("Leçon 3 / 6"), sinon elle repartirait à 1 à chaque tour.
+export const TOTAL_LECONS_TUTO = Object.values(LECONS_TUTO).reduce((n, lecons) => n + lecons.length, 0);
+
+export function rangPremiereLeconDuTour(tour: number): number {
+    return Object.entries(LECONS_TUTO)
+        .filter(([t]) => Number(t) < tour)
+        .reduce((n, [, lecons]) => n + lecons.length, 0);
+}

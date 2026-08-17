@@ -36,6 +36,13 @@ function appliquerFoudre(valeur: number, entite: Entite, cible?: Entite): number
     return Math.round(valeur * entite.multiplicateurDegatsSiArmure);
 }
 
+// Part de la dose que la cible encaisse réellement. Miroir de `appliquer_resistance()` côté moteur :
+// sans lui, la stat annoncerait la dose pleine contre un Gardien qui n'en subit que la moitié — ou
+// rien du tout.
+function appliquerResistance(dose: number, part?: number): number {
+    return part === undefined ? dose : Math.round(dose * part);
+}
+
 // Valeur d'Attaque affichée dans les stats : contrairement aux pactes à bonus plat (ex: Pacte de
 // la Vie qui augmente directement pvMax), le Pacte de la Puissance Brute n'agit qu'au moment du
 // calcul de dégâts côté moteur Rust — sans ceci, le joueur ne verrait jamais son ⚔️ bouger à
@@ -59,7 +66,7 @@ export function calculerAttaqueAffichee(entite: Entite, actionsEnAttente: Action
     // ⚠️ La Foudre n'entre dans la brûlure QUE via la Synergie Élémentaire (cf. convertir_en_brulure).
     if (entite.multiplicateurBrulure) {
         const valeur = entite.synergieActive === 'Elementaire' ? appliquerFoudre(base, entite, cible) : base;
-        return Math.round(valeur * entite.multiplicateurBrulure);
+        return appliquerResistance(Math.round(valeur * entite.multiplicateurBrulure), cible?.partBrulureSubie);
     }
 
     return appliquerFoudre(base, entite, cible);
@@ -82,7 +89,7 @@ export function calculerPreciseAffichee(entite: Entite, cible?: Entite): number 
     // associer l'Ombre et le Poison désactiverait l'Ombre.
     if (entite.multiplicateurPoison) {
         const dose = Math.round(valeur * entite.multiplicateurPoison);
-        return entite.degatsPrecisDoubles ? dose * 2 : dose;
+        return appliquerResistance(entite.degatsPrecisDoubles ? dose * 2 : dose, cible?.partPoisonSubi);
     }
 
     // Ordre imposé par le moteur : la Foudre amplifie, PUIS l'Ombre double.
@@ -97,7 +104,15 @@ export function calculerPreciseAffichee(entite: Entite, cible?: Entite): number 
 // visible dès le palier 0) ou de la réduction imposée par l'adversaire ("Regard Hypnotique").
 // Sans ceci l'affichage du % d'esquive resterait figé sur les paliers de base, comme pour ⚔️
 // avant calculerAttaqueAffichee.
-export function calculerPaliersEsquiveAffiches(entite: Entite, reductionAdverse = 0): number[] {
+// `adversaire` : celui qui frappera. C'est lui qui porte la réduction d'esquive (« Regard
+// Hypnotique », Vent Mortel forme évoluée) ET sa neutralisation totale (forme finale, Pacte de
+// l'Ombre II). ⚠️ Sans la neutralisation, l'écran annonçait encore 100% d'esquive face à un
+// adversaire qui la réduit à zéro — le pire mensonge possible, puisqu'il pousse à jouer Esquive.
+export function calculerPaliersEsquiveAffiches(entite: Entite, adversaire?: Entite | number): number[] {
+    // Tolère l'ancien appel par nombre : la réduction seule, sans notion de neutralisation.
+    const reductionAdverse = typeof adversaire === 'number' ? adversaire : (adversaire?.reductionEsquiveOpposant ?? 0);
+    if (typeof adversaire === 'object' && adversaire.bloqueEsquiveOpposant) return [0, 0, 0, 0];
+
     const base = entite.paliersEsquive;
     const mult = entite.comboMultiplicateur ?? 1;
     const effectifs = [base[0] ?? 0, 0, 0, 0];

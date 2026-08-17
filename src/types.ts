@@ -87,6 +87,10 @@ export interface Entite {
     // poison). La valeur du DoT vaut donc les dégâts réels de l'action, combos compris.
     multiplicateurBrulure?: number;
     multiplicateurPoison?: number;
+    // Part d'une dose de brûlure / de poison réellement encaissée : absent = tout, 0.5 = résistant,
+    // 0 = immunisé. Les Gardiens du Feu et du Poison maîtrisent leur propre élément.
+    partBrulureSubie?: number;
+    partPoisonSubi?: number;
     // Seuil de poison déjà injecté au-delà duquel la créature peut passer un tour entier sans action
     // offensive. Absent partout sauf sur l'Étage du Poison.
     peutTemporiserSiPoisonDepasse?: number;

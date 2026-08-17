@@ -101,6 +101,14 @@ pub struct Entite {
     // serait un tour offert au joueur.
     #[serde(default)] pub peut_temporiser_si_poison_depasse: Option<i32>,
 
+    // Part d'une dose de brûlure / de poison que cette entité encaisse RÉELLEMENT quand on la lui
+    // pose : `None` = tout (cas général), `0.5` = résistante, `0.0` = immunisée. Les Gardiens
+    // maîtrisent leur propre élément — le Brasier Vorace ne se laisse pas brûler par ce qu'il est.
+    // ⚠️ La réduction s'applique à la POSE, pas au tic : c'est ce qui permet au compteur 🔥/🧪
+    // affiché sur la cible d'annoncer exactement ce qu'elle prendra.
+    #[serde(default)] pub part_brulure_subie: Option<f32>,
+    #[serde(default)] pub part_poison_subi: Option<f32>,
+
     // États SUBIS par cette entité. Ils doivent voyager avec elle d'un tour à l'autre (le moteur est
     // sans mémoire entre deux appels), d'où leur place sur l'entité plutôt que dans une variable
     // locale à jouer_tour.

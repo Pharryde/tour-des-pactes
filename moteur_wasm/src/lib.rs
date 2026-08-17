@@ -48,8 +48,17 @@ fn variation_pv(depart: i32, arrivee: i32) -> String {
     }
 }
 
+// Mention de la résistance de la cible sur une dose posée. Muette quand rien n'est absorbé.
+// ⚠️ Le cas "tout absorbé" DOIT produire une ligne : une cible immunisée pose une dose nulle, donc
+// aucune des branches de dégâts ne se déclenche — le coup passerait pour un silence inexpliqué.
+fn mention_resistance(posee: i32, resistee: i32, sujet_immunise: &str) -> String {
+    if resistee <= 0 { return String::new(); }
+    if posee <= 0 { return format!(" <br><span class=\"log-tour\">🛡️ {} : la dose est entièrement absorbée.</span>", sujet_immunise); }
+    format!(" <span class=\"log-tour\">(résiste : {} absorbés)</span>", resistee)
+}
+
 fn aucun_degat() -> ResultatDegats {
-    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0 }
+    ResultatDegats { dmg_arm: 0, dmg_pv: 0, esquive: false, degats_evites: 0, chance_esquive: 0, brulure_posee: 0, poison_pose: 0, foudre_appliquee: false, valeur_appliquee: 0, dose_resistee: 0 }
 }
 
 // Monte la garde d'une entité d'après l'action qu'elle vient de jouer : armure gagnée par une
@@ -87,7 +96,21 @@ fn encaisser(cible: &mut Entite, degats: &ResultatDegats) {
 fn calculer_et_appliquer_etats(attaquant: &Entite, cible: &mut Entite, action: &ActionType, valeur: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32) -> ResultatDegats {
     let degats = calculer_degats(action, valeur, attaquant, cible);
     let degats = convertir_en_brulure(attaquant, cible, action, valeur, degats);
-    convertir_en_poison(attaquant, action, valeur, sur_creneau_froid, poison_du_tour, degats)
+    convertir_en_poison(attaquant, cible, action, valeur, sur_creneau_froid, poison_du_tour, degats)
+}
+
+// Part d'une dose que la cible encaisse réellement : tout par défaut, la moitié si elle résiste,
+// rien si elle y est immunisée (voir `part_brulure_subie` / `part_poison_subi`). Renvoie la dose
+// retenue et la part absorbée, cette dernière servant au journal — une immunité produit une dose
+// nulle, donc aucune ligne si on ne la signale pas.
+fn appliquer_resistance(dose: i32, part: Option<f32>) -> (i32, i32) {
+    match part {
+        Some(p) => {
+            let retenue = (dose as f32 * p).round() as i32;
+            (retenue, dose - retenue)
+        }
+        None => (dose, 0),
+    }
 }
 
 // Part de l'action convertie en brûlure (Attaque) ou en poison (Précise), arrondie ICI et pas plus
@@ -123,10 +146,15 @@ fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionT
         appliquer_foudre(dose, attaquant, cible)
     } else { dose };
 
-    cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + amplifiee);
+    // Le Gardien du Feu maîtrise sa propre flamme : sa forme évoluée n'en encaisse que la moitié,
+    // sa forme finale rien du tout.
+    let (retenue, absorbee) = appliquer_resistance(amplifiee, cible.part_brulure_subie);
+
+    if retenue > 0 { cible.brulure_active = Some(cible.brulure_active.unwrap_or(0) + retenue); }
     ResultatDegats {
-        brulure_posee: amplifiee,
-        valeur_appliquee: amplifiee,
+        brulure_posee: retenue,
+        valeur_appliquee: retenue,
+        dose_resistee: absorbee,
         chance_esquive: degats.chance_esquive,
         foudre_appliquee: amplifiee != dose,
         ..aucun_degat()
@@ -136,7 +164,7 @@ fn convertir_en_brulure(attaquant: &Entite, cible: &mut Entite, action: &ActionT
 // Étage du Poison : miroir exact sur la PRÉCISE. Les doses s'additionnent sans jamais décroître —
 // dans le tour comme d'un tour à l'autre. C'est ce qui fait du poison une course contre la montre :
 // laisser traîner un combat coûte de plus en plus cher à chaque tour.
-fn convertir_en_poison(attaquant: &Entite, action: &ActionType, dose: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
+fn convertir_en_poison(attaquant: &Entite, cible: &Entite, action: &ActionType, dose: i32, sur_creneau_froid: bool, poison_du_tour: &mut i32, degats: ResultatDegats) -> ResultatDegats {
     if attaquant.multiplicateur_poison.is_none() { return degats; }
     if *action != ActionType::P || degats.esquive { return degats; }
 
@@ -148,15 +176,46 @@ fn convertir_en_poison(attaquant: &Entite, action: &ActionType, dose: i32, sur_c
     // Synergie Élémentaire : une dose injectée sur un créneau où le Froid est intervenu compte double.
     let dose = if sur_creneau_froid && attaquant.synergie_active == Some(Synergie::Elementaire) { dose * 2 } else { dose };
 
-    *poison_du_tour += dose;
-    ResultatDegats { poison_pose: dose, valeur_appliquee: dose, chance_esquive: degats.chance_esquive, ..aucun_degat() }
+    // La Sève Noire connaît son propre venin : sa forme évoluée n'en subit que la moitié, sa forme
+    // finale rien du tout.
+    let (retenue, absorbee) = appliquer_resistance(dose, cible.part_poison_subi);
+
+    *poison_du_tour += retenue;
+    ResultatDegats { poison_pose: retenue, valeur_appliquee: retenue, dose_resistee: absorbee, chance_esquive: degats.chance_esquive, ..aucun_degat() }
 }
 
 // Tics de fin de tour. La brûlure se fait absorber par l'armure restante puis est divisée par deux
 // (elle s'éteint d'elle-même si on survit à l'assaut) ; le poison, lui, traverse l'armure, ne décroît
 // jamais et s'alourdit à chaque tour où une dose est posée — il ne pardonne que la vitesse.
-fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str) -> Vec<String> {
+//
+// ⚠️ Une cible INSENSIBLE à l'élément (part = 0) ne se contente pas de ne plus rien encaisser : elle
+// dissipe la réserve déjà accumulée. C'est ce qui donne son sens au changement de forme du Gardien
+// Absolu — passer en Brasier Vorace éteint le brasier qu'on avait allumé sur lui, passer en Sève
+// Noire purge son poison. Sans ça, l'immunité n'aurait servi qu'à repousser l'échéance d'un tour.
+fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str, est_joueur: bool) -> Vec<String> {
     let mut logs = Vec::new();
+
+    if entite.part_brulure_subie == Some(0.0) {
+        if entite.brulure_active.unwrap_or(0) > 0 {
+            logs.push(format!("<span class=\"log-tour\">🔥 {}</span>", if est_joueur {
+                "Vous absorbez entièrement votre brûlure : elle s'éteint."
+            } else {
+                "L'ennemi absorbe entièrement sa brûlure : elle s'éteint."
+            }));
+        }
+        entite.brulure_active = None;
+    }
+
+    if entite.part_poison_subi == Some(0.0) {
+        if entite.poison_actif.unwrap_or(0) > 0 {
+            logs.push(format!("<span class=\"log-tour\">🧪 {}</span>", if est_joueur {
+                "Vous absorbez entièrement votre poison : il se dissipe."
+            } else {
+                "L'ennemi absorbe entièrement son poison : il se dissipe."
+            }));
+        }
+        entite.poison_actif = None;
+    }
 
     if let Some(brulure) = entite.brulure_active {
         if brulure > 0 {
@@ -566,10 +625,13 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         // Les PV/armure ont déjà été retirés plus haut par `encaisser`, dans l'ordre de résolution
         // du créneau : ici on ne fait plus que rédiger le journal.
         else if d_joueur.brulure_posee > 0 {
-            log_action.push_str(&format!(" <br>🔥 Vous prenez feu : +{} de brûlure.{}", d_joueur.brulure_posee, mention_esquive(d_joueur.chance_esquive, false)));
+            log_action.push_str(&format!(" <br>🔥 Vous prenez feu : +{} de brûlure.{}{}", d_joueur.brulure_posee, mention_resistance(d_joueur.brulure_posee, d_joueur.dose_resistee, ""), mention_esquive(d_joueur.chance_esquive, false)));
         }
         else if d_joueur.poison_pose > 0 {
-            log_action.push_str(&format!(" <br>🧪 Vous êtes empoisonné : +{} de poison.{}", d_joueur.poison_pose, mention_esquive(d_joueur.chance_esquive, false)));
+            log_action.push_str(&format!(" <br>🧪 Vous êtes empoisonné : +{} de poison.{}{}", d_joueur.poison_pose, mention_resistance(d_joueur.poison_pose, d_joueur.dose_resistee, ""), mention_esquive(d_joueur.chance_esquive, false)));
+        }
+        else if d_joueur.dose_resistee > 0 {
+            log_action.push_str(&mention_resistance(0, d_joueur.dose_resistee, "Vous y êtes insensible"));
         }
         else if d_joueur.dmg_arm > 0 || d_joueur.dmg_pv > 0 {
             log_action.push_str(&format!(" <br>💥 Vous perdez {} PV.{}", d_joueur.dmg_pv, mention_esquive(d_joueur.chance_esquive, false)));
@@ -579,10 +641,13 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             log_action.push_str(&format!(" <br>💨 L'ennemi esquive !{}", mention_esquive(d_monstre.chance_esquive, true)));
         }
         else if d_monstre.brulure_posee > 0 {
-            log_action.push_str(&format!(" <br>🔥 L'ennemi s'embrase : +{} de brûlure.{}", d_monstre.brulure_posee, mention_esquive(d_monstre.chance_esquive, false)));
+            log_action.push_str(&format!(" <br>🔥 L'ennemi s'embrase : +{} de brûlure.{}{}", d_monstre.brulure_posee, mention_resistance(d_monstre.brulure_posee, d_monstre.dose_resistee, ""), mention_esquive(d_monstre.chance_esquive, false)));
         }
         else if d_monstre.poison_pose > 0 {
-            log_action.push_str(&format!(" <br>🧪 L'ennemi s'empoisonne : +{} de poison.{}", d_monstre.poison_pose, mention_esquive(d_monstre.chance_esquive, false)));
+            log_action.push_str(&format!(" <br>🧪 L'ennemi s'empoisonne : +{} de poison.{}{}", d_monstre.poison_pose, mention_resistance(d_monstre.poison_pose, d_monstre.dose_resistee, ""), mention_esquive(d_monstre.chance_esquive, false)));
+        }
+        else if d_monstre.dose_resistee > 0 {
+            log_action.push_str(&mention_resistance(0, d_monstre.dose_resistee, "L'ennemi y est insensible"));
         }
         else if d_monstre.dmg_arm > 0 || d_monstre.dmg_pv > 0 {
             log_action.push_str(&format!(" <br>💥 L'ennemi perd {} PV.{}", d_monstre.dmg_pv, mention_esquive(d_monstre.chance_esquive, false)));
@@ -625,8 +690,8 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     // ⚠️ Brûlure et poison se résolvent HORS de la garde « les deux sont vivants » : tuer son
     // adversaire n'annule pas ce qu'on a déjà dans les veines. Le reste des effets de fin de tour
     // (assauts d'armure, régénérations) n'a lui plus de sens si le combat est terminé.
-    logs_fin_tour.extend(tics_de_fin_de_tour(&mut joueur, "vous perdez"));
-    logs_fin_tour.extend(tics_de_fin_de_tour(&mut monstre, "l'ennemi perd"));
+    logs_fin_tour.extend(tics_de_fin_de_tour(&mut joueur, "vous perdez", true));
+    logs_fin_tour.extend(tics_de_fin_de_tour(&mut monstre, "l'ennemi perd", false));
 
     if joueur.pv > 0 && monstre.pv > 0 {
         // Assauts d'armure de fin de tour ("Pointes d'Acier" / Pacte de l'Armure II).
