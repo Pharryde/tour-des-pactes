@@ -5,13 +5,16 @@ interface ClassementSaisieProps {
     nbRuns: number;
     runsTotales: number;
     monstresTues: number;
+    // Le nom devient l'identité publique du joueur, réutilisée par les classements d'étage : il
+    // doit donc être mémorisé même s'il n'est saisi qu'ici.
+    onNomChoisi: (nom: string) => void;
     onTermine: () => void;
 }
 
 // Affiché une seule fois, juste après la victoire hardcore et AVANT l'écran de fin. C'est le seul
 // endroit du jeu où le joueur saisit du texte libre, et le seul dont le résultat sera lu par
 // d'autres joueurs.
-export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onTermine }: ClassementSaisieProps) {
+export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onNomChoisi, onTermine }: ClassementSaisieProps) {
     const [nom, setNom] = useState('');
     const [envoiEnCours, setEnvoiEnCours] = useState(false);
     const [echec, setEchec] = useState(false);
@@ -30,10 +33,11 @@ export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onTermine 
         setEnvoiEnCours(true);
         // C'est la forme définitive qui part en base : un espace final resterait sinon dans le
         // classement, et la contrainte `nom = btrim(nom)` le rejetterait.
-        const envoye = await soumettreScore({ nom: nettoyerNomJoueur(nom), nbRuns, runsTotales, monstresTues });
+        const propre = nettoyerNomJoueur(nom);
+        const envoye = await soumettreScore({ nom: propre, nbRuns, runsTotales, monstresTues });
         // En cas d'échec réseau on ne bloque pas le joueur dans cet écran : il vient de gagner,
         // il doit pouvoir avancer. On le lui dit, et le bouton devient « Continuer ».
-        if (envoye) onTermine(); else { setEchec(true); setEnvoiEnCours(false); }
+        if (envoye) { onNomChoisi(propre); onTermine(); } else { setEchec(true); setEnvoiEnCours(false); }
     };
 
     return (

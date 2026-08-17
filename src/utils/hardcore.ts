@@ -25,6 +25,22 @@ export const CLES_PROFIL = [
     'tdp_xp_total',
     'tdp_competences',
     'tdp_etage_record',
+    // --- Compteurs des succès (voir utils/succes.ts) ---
+    // Dédoublés parce que les succès existent en version normale ET hardcore : un compteur partagé
+    // les débloquerait des deux côtés en même temps, ce qui viderait la moitié du tableau de son
+    // sens. `tdp_monstres_tues` était partagé jusqu'ici — il devient donc propre à chaque profil.
+    'tdp_monstres_tues',
+    // Distinct de `tdp_runs_terminees`, qui reste partagé (il cadence les apparitions du Chat) et
+    // compterait donc les runs de l'autre mode.
+    'tdp_runs_achevees',
+    // Gardiens vaincus, par forme et en identifiants DISTINCTS : `tdp_bestiaire` ne compte que des
+    // occurrences, il ne peut pas dire « 12 Gardiens différents ».
+    'tdp_boss_lvl0',
+    'tdp_boss_lvl1',
+    'tdp_boss_lvl2',
+    // Synergies effectivement ACTIVÉES dans ce mode. La découverte, elle, reste partagée : le
+    // joueur ne « désapprend » pas un secret en changeant de profil.
+    'tdp_synergies_activees',
 ] as const;
 
 export type CleProfil = typeof CLES_PROFIL[number];

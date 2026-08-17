@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
 import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat, LeconMort, IssueAscension } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
-import { cleProfil } from '../utils/hardcore';
+import { cleProfil, type CleProfil } from '../utils/hardcore';
+import {
+    compterPactes, publierSucces, succesDebloques, themeMerite, type ProgressionSucces,
+} from '../utils/succes';
 import { BENEDICTIONS_REGISTRY, appliquerBenedictionSurJoueur, appliquerBonusXp, tirerBenediction } from '../utils/benedictions';
 import { melangerEtages, genererCycleInfini, genererMessageBuff, melangerAleatoirement, palierFinDeTour } from '../utils/etages';
 import { construireMegaBoss } from '../utils/megaboss';
@@ -18,6 +21,7 @@ import {
     fusionnerCombo, incrementerCompteurs, journaliserRun,
     type CompteursActions, type CompteursRepos, type StatCombo, type StatsTour,
 } from '../utils/telemetrieRuns';
+import { publierRecordEtage } from '../utils/classement';
 import { DELAI_TRANSITION_MS, calculerDelai } from '../utils/rythme';
 import { effacerEtatCombat } from './useCombatResume';
 import { useLocalStorage } from './useLocalStorage';
@@ -110,6 +114,11 @@ export function useGameState() {
     // la run victorieuse — cette dernière traversant forcément les 48 salles de la Tour, elle
     // donnerait à peu près le même chiffre à tout le monde.
     const [monstresHc, setMonstresHc] = useLocalStorage<number>('tdp_hc_monstres', 0);
+    // Identité publique du joueur, PARTAGÉE par les deux profils et par les trois classements —
+    // sans elle, le même joueur apparaîtrait sous deux pseudos selon la liste consultée. Gardée en
+    // local pour savoir, sans aller au réseau, si ses records ont le droit d'être publiés : un
+    // joueur qui n'a jamais choisi de nom n'a pas demandé à figurer dans une liste publique.
+    const [nomJoueur, setNomJoueur] = useLocalStorage<string>('tdp_nom_joueur', '');
     const [forgeronPresente, setForgeronPresente] = useLocalStorage<boolean>('tdp_forgeron_presente', false);
     const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
     const [leconsMortVues, setLeconsMortVues] = useLocalStorage<LeconMort[]>('tdp_lecons_mort_vues', []);
@@ -118,7 +127,16 @@ export function useGameState() {
     const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
     const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
-    const [monstresTues, setMonstresTues] = useLocalStorage<number>('tdp_monstres_tues', 0);
+    const [monstresTues, setMonstresTues] = useLocalStorage<number>(cleProfil('tdp_monstres_tues', modeHardcore), 0);
+    // --- Compteurs des succès (voir utils/succes.ts), tous propres au profil actif ---
+    const [runsAchevees, setRunsAchevees] = useLocalStorage<number>(cleProfil('tdp_runs_achevees', modeHardcore), 0);
+    const [bossLvl0, setBossLvl0] = useLocalStorage<string[]>(cleProfil('tdp_boss_lvl0', modeHardcore), []);
+    const [bossLvl1, setBossLvl1] = useLocalStorage<string[]>(cleProfil('tdp_boss_lvl1', modeHardcore), []);
+    const [bossLvl2, setBossLvl2] = useLocalStorage<string[]>(cleProfil('tdp_boss_lvl2', modeHardcore), []);
+    const [synergiesActivees, setSynergiesActivees] = useLocalStorage<Synergie[]>(cleProfil('tdp_synergies_activees', modeHardcore), []);
+    // Boss terrassés par leur PROPRE mécanique (brûlure, poison, assaut d'armure). Partagé entre
+    // les profils : c'est un fait d'armes, pas une progression — d'où son absence de CLES_PROFIL.
+    const [succesTheme, setSuccesTheme] = useLocalStorage<string[]>('tdp_succes_theme', []);
     const [competences, setCompetences] = useLocalStorage<Competences>(cleProfil('tdp_competences', modeHardcore), { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
     const [xpTotal, setXpTotal] = useLocalStorage<number>(cleProfil('tdp_xp_total', modeHardcore), 0);
     const [bestiaire, setBestiaire] = useLocalStorage<Bestiaire>('tdp_bestiaire', { normal: 0, boss: 0, evolue: 0, final: 0 });
@@ -261,6 +279,63 @@ export function useGameState() {
         ],
     );
 
+    // --- SUCCÈS (voir utils/succes.ts) ---
+    // Le profil ACTIF vient de l'état React ; le profil DORMANT est relu directement dans
+    // localStorage, `useLocalStorage` n'ouvrant que la clé du mode courant. Les succès doivent
+    // pourtant refléter les deux versants à tout moment, y compris celui auquel on ne joue pas.
+    const lireDormant = <T,>(cle: CleProfil, defaut: T): T =>
+        lireValeurPersistante(cleProfil(cle, !modeHardcore), defaut);
+
+    const moitieActive = {
+        monstresTues,
+        etageRecord,
+        runs: runsAchevees,
+        pactesLvl1: compterPactes(pactesDebloques).lvl1,
+        pactesLvl2: compterPactes(pactesDebloques).lvl2,
+        synergies: synergiesActivees.length,
+        bossLvl0: bossLvl0.length,
+        bossLvl1: bossLvl1.length,
+        bossLvl2: bossLvl2.length,
+    };
+    const pactesDormants = lireDormant<string[]>('tdp_pactes_debloques', []);
+    const moitieDormante = {
+        monstresTues: lireDormant('tdp_monstres_tues', 0),
+        etageRecord: lireDormant('tdp_etage_record', 0),
+        runs: lireDormant('tdp_runs_achevees', 0),
+        pactesLvl1: compterPactes(pactesDormants).lvl1,
+        pactesLvl2: compterPactes(pactesDormants).lvl2,
+        synergies: lireDormant<Synergie[]>('tdp_synergies_activees', []).length,
+        bossLvl0: lireDormant<string[]>('tdp_boss_lvl0', []).length,
+        bossLvl1: lireDormant<string[]>('tdp_boss_lvl1', []).length,
+        bossLvl2: lireDormant<string[]>('tdp_boss_lvl2', []).length,
+    };
+    const [moitieNormale, moitieHc] = modeHardcore
+        ? [moitieDormante, moitieActive]
+        : [moitieActive, moitieDormante];
+
+    const progressionSucces: ProgressionSucces = {
+        ...moitieNormale,
+        monstresTuesHc: moitieHc.monstresTues,
+        etageRecordHc: moitieHc.etageRecord,
+        runsHc: moitieHc.runs,
+        pactesLvl1Hc: moitieHc.pactesLvl1,
+        pactesLvl2Hc: moitieHc.pactesLvl2,
+        synergiesHc: moitieHc.synergies,
+        bossLvl0Hc: moitieHc.bossLvl0,
+        bossLvl1Hc: moitieHc.bossLvl1,
+        bossLvl2Hc: moitieHc.bossLvl2,
+        themes: succesTheme,
+    };
+
+    const succesObtenus = succesDebloques(progressionSucces);
+    // Signature plutôt que le tableau : ce dernier est reconstruit à chaque rendu, il déclencherait
+    // un envoi par frappe de clavier. La liste étant issue d'un ordre stable (le registre), la
+    // comparaison de chaînes suffit à détecter un vrai changement.
+    const signatureSucces = succesObtenus.join(',');
+    useEffect(() => {
+        if (signatureSucces) void publierSucces(signatureSucces.split(','));
+    }, [signatureSucces]);
+
     const effacerRun = () => {
         setListeEtages([]); setJoueur(null); setHistoriqueLogs([]);
         setIndexEtageActuel(0); setIndexSalle(0); setEnCombatPacte(false);
@@ -310,10 +385,19 @@ export function useGameState() {
         // hors hardcore, lui, ne passe pas par ici. C'est donc le bon endroit pour compter les
         // runs qui cadencent les apparitions du Chat, et pour journaliser la run côté cloud.
         setRunsTerminees(n => n + 1);
+        // Compteur propre au profil : `runsTerminees` est partagé (il cadence les apparitions du
+        // Chat) et mélangerait donc les ascensions des deux modes.
+        setRunsAchevees(n => n + 1);
 
         const etageAtteint = indexEtageActuel + 1;
         const estNouveauRecord = etageAtteint > etageRecord;
-        if (estNouveauRecord) setEtageRecord(etageAtteint);
+        if (estNouveauRecord) {
+            setEtageRecord(etageAtteint);
+            // Publié sous le mode courant : les deux profils sont des progressions séparées, les
+            // mélanger comparerait un héros accumulé à un héros reparti de zéro. Jamais attendu,
+            // et sans effet si le joueur n'a pas choisi de nom.
+            if (nomJoueur) void publierRecordEtage(nomJoueur, modeHardcore, etageAtteint);
+        }
 
         setStatsDerniereRun({
             issue,
@@ -566,6 +650,9 @@ export function useGameState() {
 
         let messagesSynergie: string[] = [];
         if (synergieActive) {
+            // Activation dans CE profil, distincte de la découverte (partagée, elle : un secret
+            // compris ne s'oublie pas en changeant de mode). C'est elle que comptent les succès.
+            setSynergiesActivees(prev => (prev.includes(synergieActive) ? prev : [...prev, synergieActive]));
             const def = SYNERGIES_REGISTRY[synergieActive];
             if (!synergiesDecouvertes.includes(synergieActive)) {
                 setSynergiesDecouvertes(prev => [...prev, synergieActive]);
@@ -825,7 +912,7 @@ export function useGameState() {
         setComboMonstresRun(prev => fusionnerCombo(prev, stats.comboMonstre));
     };
 
-    const gererRecompenseCombat = () => {
+    const gererRecompenseCombat = (causesMortMonstre: string[] = []) => {
         const recompense = calculerRecompenseCombat(listeEtages[indexEtageActuel], indexSalle, enCombatPacte, typeCombatPacte, pactesEquipes);
         const gainXp = appliquerBonusXp(recompense.gainXp, benedictionActive);
 
@@ -833,6 +920,24 @@ export function useGameState() {
         setMonstresTuesRun(prev => prev + 1);
         if (modeHardcore) setMonstresHc(prev => prev + 1);
         setBestiaire(prev => ({ ...prev, [recompense.typeMonstre]: prev[recompense.typeMonstre] + 1 }));
+
+        // Gardiens vaincus, mémorisés par IDENTIFIANT D'ÉTAGE et non comptés : les succès portent
+        // sur des Gardiens différents (« 12 » = tous), donc douze victoires sur le même ne valent
+        // qu'une entrée. `bestiaire` ne sait compter que des occurrences, d'où ces trois listes.
+        const idEtage = listeEtages[indexEtageActuel]?.idPacte;
+        if (idEtage) {
+            const ajouter = (prev: string[]) => (prev.includes(idEtage) ? prev : [...prev, idEtage]);
+            if (recompense.typeMonstre === 'boss') setBossLvl0(ajouter);
+            if (recompense.typeMonstre === 'evolue') setBossLvl1(ajouter);
+            if (recompense.typeMonstre === 'final') setBossLvl2(ajouter);
+
+            // Succès à thème : le Gardien doit tomber sous SA propre mécanique. Réservé aux boss —
+            // terrasser un monstre ordinaire par la brûlure ne prouve rien sur le Gardien du Feu.
+            if (recompense.typeMonstre !== 'normal') {
+                const theme = themeMerite(idEtage, causesMortMonstre);
+                if (theme) setSuccesTheme(prev => (prev.includes(theme) ? prev : [...prev, theme]));
+            }
+        }
         setXpTotal(prev => prev + gainXp);
         setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${gainXp} point(s) d'XP ${benedictionActive === 'apprentissage' ? '(Leçon du Maître : XP doublée) ' : ''}!</div>`]);
     };
@@ -929,14 +1034,14 @@ export function useGameState() {
         }
     };
 
-    const handleFinDeCombat = (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false, circonstances?: CirconstancesMort) => {
+    const handleFinDeCombat = (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false, circonstances?: CirconstancesMort, causesMortMonstre?: string[]) => {
         if (enCombatMegaBoss) {
             gererFinMegaBoss(victoire, joueurRestant);
             return;
         }
 
         if (victoire || doubleKO) {
-            gererRecompenseCombat();
+            gererRecompenseCombat(causesMortMonstre ?? []);
         }
 
         if (!victoire) {
@@ -1012,6 +1117,9 @@ export function useGameState() {
         runsHc,
         runsHcTotales,
         monstresHc,
+        nomJoueur, setNomJoueur,
+        progressionSucces,
+        succesObtenus,
         gererClassementSaisi,
 
         // Progression méta (hors-run)

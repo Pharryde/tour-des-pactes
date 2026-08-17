@@ -1435,3 +1435,96 @@
     .infini-invite { font-size: 0.95em; }
     .infini-avertissement { padding: 10px 12px; font-size: 0.82em; }
 }
+
+/* --- Onglets et position personnelle du classement --- */
+.classement-onglets {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 6px 0 4px;
+}
+
+.classement-onglet {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #45475a;
+    background-color: #1e1e2e;
+    color: #a6adc8;
+    font-family: inherit;
+    font-size: 0.95em;
+    cursor: pointer;
+}
+
+.classement-onglet--actif { border-color: #f9e2af; color: #f9e2af; background-color: #313244; }
+
+.classement-intro { margin: 4px 0 10px; }
+
+/* Séparée du tableau par un filet : cette ligne n'est pas la suite du classement, c'est un rappel
+   de sa propre position, qui peut se trouver très loin dans la liste. */
+.classement-ma-place {
+    width: min(560px, 92vw);
+    margin: 0 0 20px;
+    padding-top: 14px;
+    border-top: 1px dashed #45475a;
+}
+
+.classement-ligne--moi { border-color: #89b4fa; background-color: #232338; }
+.classement-absent { margin: 0; font-size: 0.95em; }
+.classement-identite { color: #a6adc8; font-size: 0.9em; margin: 0 0 10px; }
+
+@media (max-width: 768px) {
+    .classement-onglet { padding: 7px 10px; font-size: 0.85em; }
+}
+
+/* ===================== SUCCÈS ===================== */
+.succes-bloc { width: min(920px, 94vw); margin-bottom: 24px; }
+.succes-total { margin: 0 0 16px; font-weight: bold; color: #f9e2af; }
+.succes-groupe { margin-bottom: 22px; }
+.succes-groupe-titre { font-size: 1.1em; color: #cdd6f4; margin: 0 0 10px; text-align: left; }
+
+/* `auto-fill` plutôt qu'un nombre fixe de colonnes : la liste compte 60 cartes, elle doit se
+   densifier sur grand écran et retomber sur une colonne au téléphone sans media query. */
+.succes-grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+}
+
+.succes-carte {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #313244;
+    background-color: #181825;
+    text-align: left;
+    opacity: 0.55;
+}
+/* Le succès obtenu sort du lot par la couleur ET l'opacité : sur 60 cartes, une seule des deux
+   différences ne se repère pas au premier coup d'œil. */
+.succes-carte--obtenu { opacity: 1; border-color: #f9e2af; background-color: #1e1e2e; }
+
+.succes-carte-tete { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.succes-icone { font-size: 1.1em; }
+.succes-titre { font-weight: bold; font-size: 0.95em; overflow-wrap: anywhere; }
+.succes-description { margin: 0; font-size: 0.82em; color: #a6adc8; }
+
+.succes-jauge {
+    position: relative;
+    height: 16px;
+    margin-top: 8px;
+    border-radius: 8px;
+    background-color: #11111b;
+    overflow: hidden;
+}
+.succes-jauge-remplie { height: 100%; background-color: #45475a; }
+.succes-jauge-texte {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72em;
+    color: #cdd6f4;
+}
+
+.succes-rarete { margin: 8px 0 0; font-size: 0.8em; color: #f9e2af; }

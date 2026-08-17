@@ -1,69 +1,210 @@
 import { useEffect, useState } from 'react';
-import { lireClassement, type EntreeClassement } from '../utils/classement';
+import { SuccesListe } from './SuccesListe';
+import type { ProgressionSucces } from '../utils/succes';
+import {
+    CATEGORIES, LONGUEUR_MAX_NOM, enregistrerNom, lireClassement, lireMonEntree, lireMonRang,
+    nettoyerNomJoueur, nettoyerSaisieNom, nomJoueurValide, valeurCategorie,
+    type Categorie, type EntreeClassement,
+} from '../utils/classement';
 
 interface ClassementProps {
+    progressionSucces: ProgressionSucces;
+    succesObtenus: string[];
+    nomJoueur: string;
+    onNomChange: (nom: string) => void;
     onRetour: () => void;
 }
 
 const MEDAILLES = ['🥇', '🥈', '🥉'];
+const ONGLETS: Categorie[] = ['hardcore', 'etageNormal', 'etageHardcore'];
+// Les succès partagent la page du classement, comme un onglet de plus.
+type Onglet = Categorie | 'succes';
+const LIBELLES_ONGLET: Record<Categorie, string> = {
+    hardcore: '☠️ Hardcore',
+    etageNormal: '🛡️ Étages',
+    etageHardcore: '☠️ Étages HC',
+};
 
-export function Classement({ onRetour }: ClassementProps) {
-    // `null` = pas encore répondu, `[]` = répondu et vide : les deux méritent un message différent,
-    // d'où l'état de chargement séparé plutôt qu'un simple tableau vide.
-    const [entrees, setEntrees] = useState<EntreeClassement[] | null>(null);
-    const [chargement, setChargement] = useState(true);
+// Un même joueur peut figurer dans plusieurs catégories avec des chiffres différents : le libellé
+// doit donc suivre la catégorie affichée, pas la ligne.
+function libelleValeur(categorie: Categorie, valeur: number): string {
+    if (categorie === 'hardcore') return `${valeur} ${valeur > 1 ? 'ascensions' : 'ascension'}`;
+    return `Étage ${valeur}`;
+}
+
+export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomChange, onRetour }: ClassementProps) {
+    const [onglet, setOnglet] = useState<Onglet>('hardcore');
+    // Les requêtes de classement ne concernent que les onglets de catégorie : sur l'onglet des
+    // succès on garde la dernière catégorie consultée pour ne pas relancer de lecture inutile.
+    const [categorie, setCategorie] = useState<Categorie>('hardcore');
+    // Un seul état pour tout le résultat, ESTAMPILLÉ de la catégorie qu'il décrit : c'est lui qui
+    // fait office d'indicateur de chargement (`resultat.categorie !== categorie`). Un booléen
+    // séparé imposerait un `setState` synchrone dans l'effet, que la règle ESLint du projet
+    // interdit — et qui afficherait de toute façon brièvement les données de l'onglet précédent.
+    const [resultat, setResultat] = useState<{
+        categorie: Categorie;
+        liste: EntreeClassement[] | null;   // null = échec réseau, [] = personne
+        mienne: EntreeClassement | null;
+        rang: number | null;
+    } | null>(null);
+
+    const [editionNom, setEditionNom] = useState(false);
+    const [brouillonNom, setBrouillonNom] = useState(nomJoueur);
+    const [envoiNom, setEnvoiNom] = useState(false);
+    const [rechargements, setRechargements] = useState(0);
 
     useEffect(() => {
         let annule = false;
-        lireClassement().then(resultat => {
+        const charger = async () => {
+            const [liste, mienne] = await Promise.all([lireClassement(categorie), lireMonEntree()]);
             if (annule) return;
-            setEntrees(resultat);
-            setChargement(false);
-        });
+            // Le rang n'a de sens que si le joueur a une valeur dans CETTE catégorie.
+            const maValeur = mienne ? valeurCategorie(mienne, categorie) : null;
+            const rang = maValeur !== null ? await lireMonRang(categorie, maValeur) : null;
+            if (!annule) setResultat({ categorie, liste, mienne, rang });
+        };
+        charger();
         return () => { annule = true; };
-    }, []);
+    }, [categorie, rechargements]);
+
+    const validerNom = async () => {
+        const propre = nettoyerNomJoueur(brouillonNom);
+        if (!nomJoueurValide(propre) || envoiNom) return;
+        setEnvoiNom(true);
+        const ok = await enregistrerNom(propre);
+        setEnvoiNom(false);
+        if (!ok) return;
+        onNomChange(propre);
+        setEditionNom(false);
+        // Le nom vient de changer partout : on relit pour que la liste et sa propre ligne suivent.
+        setRechargements(n => n + 1);
+    };
+
+    const surSucces = onglet === 'succes';
+    const chargement = resultat?.categorie !== categorie;
+    const entrees = chargement ? null : resultat!.liste;
+    const monEntree = chargement ? null : resultat!.mienne;
+    const monRang = chargement ? null : resultat!.rang;
+    const maValeur = monEntree ? valeurCategorie(monEntree, categorie) : null;
+    // Inutile de répéter sa propre ligne si elle est déjà visible dans le top affiché.
+    const dejaVisible = monRang !== null && monRang <= (entrees?.length ?? 0);
 
     return (
         <div id="ecran-classement" className="ecran">
             <h1 className="titre-geant c-or">🏆 LES SURVIVANTS</h1>
-            <p className="texte-description">
-                Ceux qui ont terrassé la Tour en mode hardcore : le nombre d'ascensions qu'il leur a
-                fallu depuis leur dernier effacement, et les monstres tombés en chemin.
-            </p>
 
-            {chargement && <p className="texte-description">Consultation des archives…</p>}
+            <div className="classement-onglets">
+                {ONGLETS.map(c => (
+                    <button
+                        key={c}
+                        className={`classement-onglet${c === onglet ? ' classement-onglet--actif' : ''}`}
+                        onClick={() => { setOnglet(c); setCategorie(c); }}
+                    >
+                        {LIBELLES_ONGLET[c]}
+                    </button>
+                ))}
+                <button
+                    className={`classement-onglet${onglet === 'succes' ? ' classement-onglet--actif' : ''}`}
+                    onClick={() => setOnglet('succes')}
+                >
+                    🏅 Succès
+                </button>
+            </div>
 
-            {!chargement && entrees === null && (
-                <p className="texte-description c-rose">
-                    Le classement est injoignable pour le moment.
-                </p>
+            {!surSucces && <p className="texte-description classement-intro">{CATEGORIES[categorie].titre}</p>}
+            {surSucces && <SuccesListe progression={progressionSucces} obtenus={succesObtenus} />}
+
+            {!surSucces && chargement && <p className="texte-description">Consultation des archives…</p>}
+
+            {!surSucces && !chargement && entrees === null && (
+                <p className="texte-description c-rose">Le classement est injoignable pour le moment.</p>
             )}
 
-            {!chargement && entrees?.length === 0 && (
-                <p className="texte-description">
-                    Personne n'en est encore revenu. La première ligne vous attend.
-                </p>
+            {!surSucces && !chargement && entrees?.length === 0 && (
+                <p className="texte-description">Personne n'en est encore revenu. La première ligne vous attend.</p>
             )}
 
-            {!chargement && entrees && entrees.length > 0 && (
+            {!surSucces && !chargement && entrees && entrees.length > 0 && (
                 <div className="classement-tableau">
-                    {entrees.map((entree, index) => (
-                        <div key={`${entree.nom}-${entree.obtenu_le}`} className="classement-ligne">
-                            <span className="classement-rang">{MEDAILLES[index] ?? `${index + 1}.`}</span>
-                            <span className="classement-nom">{entree.nom}</span>
-                            <span className="classement-stats">
-                                <span className="classement-runs">
-                                    {entree.nb_runs} {entree.nb_runs > 1 ? 'ascensions' : 'ascension'}
+                    {entrees.map((entree, index) => {
+                        const valeur = valeurCategorie(entree, categorie);
+                        return (
+                            <div
+                                key={`${entree.nom}-${index}`}
+                                className={`classement-ligne${entree.nom === nomJoueur ? ' classement-ligne--moi' : ''}`}
+                            >
+                                <span className="classement-rang">{MEDAILLES[index] ?? `${index + 1}.`}</span>
+                                <span className="classement-nom">{entree.nom}</span>
+                                <span className="classement-stats">
+                                    <span className="classement-runs">{valeur !== null ? libelleValeur(categorie, valeur) : '—'}</span>
+                                    {categorie === 'hardcore' && entree.monstres_tues !== null && (
+                                        <span className="classement-monstres">👿 {entree.monstres_tues}</span>
+                                    )}
                                 </span>
-                                <span className="classement-monstres">👿 {entree.monstres_tues}</span>
-                            </span>
-                        </div>
-                    ))}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
+            {/* Sa propre position, même très loin dans la liste : sans ça un joueur classé 40e ne
+                verrait son score nulle part. Masquée s'il est déjà visible dans le top affiché. */}
+            {!surSucces && !chargement && entrees !== null && !dejaVisible && (
+                <div className="classement-ma-place">
+                    {maValeur !== null ? (
+                        <div className="classement-ligne classement-ligne--moi">
+                            <span className="classement-rang">{monRang !== null ? `${monRang}.` : '—'}</span>
+                            <span className="classement-nom">{monEntree?.nom ?? 'Vous'}</span>
+                            <span className="classement-stats">
+                                <span className="classement-runs">{libelleValeur(categorie, maValeur)}</span>
+                                {categorie === 'hardcore' && monEntree?.monstres_tues != null && (
+                                    <span className="classement-monstres">👿 {monEntree.monstres_tues}</span>
+                                )}
+                            </span>
+                        </div>
+                    ) : (
+                        <p className="texte-description classement-absent">
+                            {nomJoueur
+                                ? "Vous n'avez encore rien inscrit dans cette catégorie."
+                                : "Choisissez un nom pour que vos records y soient inscrits."}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {editionNom ? (
+                <div className="classement-champ">
+                    <input
+                        type="text"
+                        className="classement-input"
+                        value={brouillonNom}
+                        onChange={e => setBrouillonNom(nettoyerSaisieNom(e.target.value))}
+                        maxLength={LONGUEUR_MAX_NOM}
+                        placeholder="Anonyme des profondeurs"
+                        autoFocus
+                    />
+                    <span className="classement-compteur">{brouillonNom.length}/{LONGUEUR_MAX_NOM}</span>
+                </div>
+            ) : (
+                nomJoueur && <p className="classement-identite">Vous jouez sous le nom de <b>{nomJoueur}</b>.</p>
+            )}
+
             <div className="menu-vertical">
-                <button className="btn-menu" onClick={onRetour}>Retour au Hub</button>
+                {editionNom ? (
+                    <>
+                        <button className="btn-menu btn-jouer" onClick={validerNom} disabled={!nomJoueurValide(brouillonNom) || envoiNom}>
+                            {envoiNom ? 'Enregistrement…' : '✔️ Valider ce nom'}
+                        </button>
+                        <button className="btn-menu" onClick={() => { setEditionNom(false); setBrouillonNom(nomJoueur); }}>Annuler</button>
+                    </>
+                ) : (
+                    <>
+                        <button className="btn-menu" onClick={() => setEditionNom(true)}>
+                            {nomJoueur ? '✏️ Changer mon nom' : '🏷️ Choisir mon nom'}
+                        </button>
+                        <button className="btn-menu" onClick={onRetour}>Retour au Hub</button>
+                    </>
+                )}
             </div>
         </div>
     );

@@ -32,7 +32,7 @@ interface CombatAreneProps {
     logsGlobaux: string[];
     ajouterLogGlobal: (log: string) => void;
     ajouterStatsTour: (stats: StatsTour) => void;
-    onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean, circonstances?: CirconstancesMort) => void;
+    onFinDeCombat: (victoire: boolean, joueurRestant: Entite, doubleKO?: boolean, circonstances?: CirconstancesMort, causesMortMonstre?: string[]) => void;
     onAbandon: () => void;
     // En hardcore, abandonner efface le profil au même titre qu'une mort : la confirmation doit le
     // dire, sinon un bouton jusque-là sans conséquence devient un piège.
@@ -466,6 +466,17 @@ export function CombatArene({
             sestSoigne: sestSoigneRef.current,
         };
 
+        // Cause de la mort du MONSTRE, déduite de l'état comme ci-dessus : encore vivant à la
+        // dernière action puis mort à l'arrivée = c'est un effet de fin de tour qui l'a emporté.
+        // Plusieurs peuvent être vrais à la fois (brûlure ET poison) ; on les remonte tous et c'est
+        // l'étage qui tranchera lequel compte (voir themeMerite).
+        const causesMortMonstre: string[] = [];
+        if (derniereAction !== undefined && derniereAction.monstrePv > 0 && resultat.monstre.pv <= 0) {
+            if ((derniereAction.monstreBrulure ?? 0) > 0) causesMortMonstre.push('feu');
+            if ((derniereAction.monstrePoison ?? 0) > 0) causesMortMonstre.push('poison');
+            if (joueur.degatsArmureRestanteFinTour === true) causesMortMonstre.push('armure');
+        }
+
         // Le PNJ du tutoriel ne peut jamais tuer ni être tué : il n'existe que pour dérouler son
         // script sur un nombre de tours fixe, indépendamment des PV.
         if (!estTutoriel && resultat.joueur.pv <= 0 && resultat.monstre.pv <= 0) {
@@ -473,7 +484,7 @@ export function CombatArene({
             setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 DOUBLE KO ! Vous avez emporté ${resultat.monstre.nom} avec vous !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
-            onFinDeCombat(false, resultat.joueur, true, circonstances);
+            onFinDeCombat(false, resultat.joueur, true, circonstances, causesMortMonstre);
         } else if (!estTutoriel && resultat.joueur.pv <= 0) {
             setSpriteJoueur('mort');
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1000 / vitesseRef.current));
@@ -483,7 +494,7 @@ export function CombatArene({
             setSpriteMonstre('mort');
             ajouterLogGlobal(`<br><span class="log-mort">🩸 ${resultat.monstre.nom} est mort !</span>`);
             if (modeResolutionRef.current === 'auto') await new Promise(r => setTimeout(r, 1500 / vitesseRef.current));
-            onFinDeCombat(true, resultat.joueur, false);
+            onFinDeCombat(true, resultat.joueur, false, undefined, causesMortMonstre);
         } else {
             setSpriteJoueur('idle');
             setSpriteMonstre('idle');

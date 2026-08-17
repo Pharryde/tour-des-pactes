@@ -44,6 +44,16 @@ const CLES_JEU = [
     'tdp_hc_runs',
     'tdp_hc_runs_totales',
     'tdp_hc_monstres',
+    'tdp_nom_joueur',
+    // Compteurs des succès. Seule la forme NORMALE est listée : les jumeaux hardcore viennent de
+    // CLES_PROFIL_HARDCORE, dérivé de CLES_PROFIL (voir utils/hardcore.ts).
+    'tdp_runs_achevees',
+    'tdp_boss_lvl0',
+    'tdp_boss_lvl1',
+    'tdp_boss_lvl2',
+    'tdp_synergies_activees',
+    // Partagé entre les profils, donc listé tel quel : un fait d'armes, pas une progression.
+    'tdp_succes_theme',
     'tdp_forgeron_presente',
     'tdp_lecon_combo_faite',
     // Leçons de mort du Chat : `vues` évite de re-servir une leçon déjà donnée sur un nouvel
