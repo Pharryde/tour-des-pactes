@@ -43,6 +43,7 @@ const CLES_JEU = [
     'tdp_runs_lancees',
     'tdp_hc_runs',
     'tdp_hc_runs_totales',
+    'tdp_hc_monstres',
     'tdp_forgeron_presente',
     'tdp_lecon_combo_faite',
     // Leçons de mort du Chat : `vues` évite de re-servir une leçon déjà donnée sur un nouvel

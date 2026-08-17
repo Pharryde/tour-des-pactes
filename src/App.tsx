@@ -38,7 +38,7 @@ function App() {
       enCombatMegaBoss, monstreMegaBoss, choixReposActifs, monstreTuto,
       pactesDebloques, pactesEquipes, pactesVictorieux, aPacteChat,
       aBenedictionChat, benedictionActive, vieChatDispo, forgeronDisponible,
-      modeHardcore, aVaincuLaTour, runsHc, runsHcTotales, gererClassementSaisi,
+      modeHardcore, aVaincuLaTour, runsHc, runsHcTotales, monstresHc, gererClassementSaisi,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, pactesNonVus, aPointsCompetenceDispo, estPremiereRun,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie,
@@ -144,7 +144,7 @@ function App() {
           {ecran === 'ecran-repos' && joueur && <Repos joueur={joueur} soin={calculerSoinRepos(joueur.pvMax, pactesEquipes)} gainPv={calculerGainPvMaxRepos(pactesEquipes)} choixActifs={choixReposActifs} onChoix={gererChoixRepos} />}
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} modeHardcore={modeHardcore} onQuitterLaTour={gererQuitterLaTour} />}
           {ecran === 'ecran-hardcore-intro' && <HardcoreIntro onEntrer={gererEntrerHardcore} onRetour={() => setEcran('ecran-hub')} />}
-          {ecran === 'ecran-classement-saisie' && <ClassementSaisie nbRuns={runsHc} runsTotales={runsHcTotales} onTermine={gererClassementSaisi} />}
+          {ecran === 'ecran-classement-saisie' && <ClassementSaisie nbRuns={runsHc} runsTotales={runsHcTotales} monstresTues={monstresHc} onTermine={gererClassementSaisi} />}
           {ecran === 'ecran-classement' && <Classement onRetour={() => setEcran('ecran-hub')} />}
           {ecran === 'ecran-extraction' && (
               <ChoixExtraction

@@ -1339,8 +1339,22 @@
 .classement-rang { font-size: 1.3em; text-align: center; }
 /* Un nom saisi par un joueur peut être long et sans espace : sans cette coupure il déborderait
    de sa carte au lieu de passer à la ligne. */
-.classement-nom { font-weight: bold; overflow-wrap: anywhere; }
+/* `text-align: left` explicite : l'écran est centré, et le nom hériterait sinon de ce centrage —
+   les noms flotteraient au milieu de leur colonne et la liste deviendrait pénible à parcourir. */
+.classement-nom { font-weight: bold; overflow-wrap: anywhere; text-align: left; }
+
+/* Les deux chiffres sont empilés et alignés à droite : côte à côte, ils se collent au nom sur les
+   écrans étroits, et c'est le nombre d'ascensions — le critère de classement — qui doit rester en
+   premier au regard. */
+.classement-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
 .classement-runs { color: #a6adc8; white-space: nowrap; }
+.classement-monstres { color: #6c7086; white-space: nowrap; font-size: 0.85em; }
 
 .classement-score {
     display: flex;
@@ -1350,8 +1364,13 @@
     margin: 10px 0 24px;
 }
 
+/* `wrap` plutôt que deux colonnes fixes : sur un téléphone étroit, les deux blocs passent l'un
+   sous l'autre au lieu d'écraser les chiffres. */
+.classement-score-paire { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px 40px; }
+.classement-score-bloc { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .classement-score-valeur { font-size: 3.5em; font-weight: bold; color: #f9e2af; line-height: 1; }
 .classement-score-label { color: #a6adc8; }
+.classement-score-periode { color: #6c7086; font-size: 0.9em; margin-top: 6px; }
 
 .classement-champ {
     display: flex;

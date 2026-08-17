@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { LONGUEUR_MAX_NOM, nettoyerNomJoueur, nomJoueurValide, soumettreScore } from '../utils/classement';
+import { LONGUEUR_MAX_NOM, nettoyerNomJoueur, nettoyerSaisieNom, nomJoueurValide, soumettreScore } from '../utils/classement';
 
 interface ClassementSaisieProps {
     nbRuns: number;
     runsTotales: number;
+    monstresTues: number;
     onTermine: () => void;
 }
 
 // Affiché une seule fois, juste après la victoire hardcore et AVANT l'écran de fin. C'est le seul
 // endroit du jeu où le joueur saisit du texte libre, et le seul dont le résultat sera lu par
 // d'autres joueurs.
-export function ClassementSaisie({ nbRuns, runsTotales, onTermine }: ClassementSaisieProps) {
+export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onTermine }: ClassementSaisieProps) {
     const [nom, setNom] = useState('');
     const [envoiEnCours, setEnvoiEnCours] = useState(false);
     const [echec, setEchec] = useState(false);
@@ -18,14 +19,18 @@ export function ClassementSaisie({ nbRuns, runsTotales, onTermine }: ClassementS
     // Nettoyé à la frappe plutôt qu'à la validation : le joueur voit tout de suite ce qui sera
     // publié, au lieu de découvrir après coup que son émoticône a disparu.
     const changerNom = (saisie: string) => {
-        setNom(nettoyerNomJoueur(saisie));
+        // Version « frappe » : elle ne rogne pas la fin, sans quoi l'espace serait retiré à
+        // l'instant où il est tapé et un nom en deux mots serait impossible à saisir.
+        setNom(nettoyerSaisieNom(saisie));
         setEchec(false);
     };
 
     const valider = async () => {
         if (!nomJoueurValide(nom) || envoiEnCours) return;
         setEnvoiEnCours(true);
-        const envoye = await soumettreScore(nom, nbRuns, runsTotales);
+        // C'est la forme définitive qui part en base : un espace final resterait sinon dans le
+        // classement, et la contrainte `nom = btrim(nom)` le rejetterait.
+        const envoye = await soumettreScore({ nom: nettoyerNomJoueur(nom), nbRuns, runsTotales, monstresTues });
         // En cas d'échec réseau on ne bloque pas le joueur dans cet écran : il vient de gagner,
         // il doit pouvoir avancer. On le lui dit, et le bouton devient « Continuer ».
         if (envoye) onTermine(); else { setEchec(true); setEnvoiEnCours(false); }
@@ -40,10 +45,17 @@ export function ClassementSaisie({ nbRuns, runsTotales, onTermine }: ClassementS
             </p>
 
             <div className="classement-score">
-                <span className="classement-score-valeur">{nbRuns}</span>
-                <span className="classement-score-label">
-                    {nbRuns > 1 ? 'ascensions' : 'ascension'} depuis votre dernier effacement
-                </span>
+                <div className="classement-score-paire">
+                    <div className="classement-score-bloc">
+                        <span className="classement-score-valeur">{nbRuns}</span>
+                        <span className="classement-score-label">{nbRuns > 1 ? 'ascensions' : 'ascension'}</span>
+                    </div>
+                    <div className="classement-score-bloc">
+                        <span className="classement-score-valeur">{monstresTues}</span>
+                        <span className="classement-score-label">{monstresTues > 1 ? 'monstres terrassés' : 'monstre terrassé'}</span>
+                    </div>
+                </div>
+                <span className="classement-score-periode">depuis votre dernier effacement</span>
             </div>
 
             <label className="classement-champ">

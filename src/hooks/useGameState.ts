@@ -97,6 +97,11 @@ export function useGameState() {
     // il n'entre pas dans le classement mais permet de le relire autrement plus tard.
     const [runsHc, setRunsHc] = useLocalStorage<number>('tdp_hc_runs', 0);
     const [runsHcTotales, setRunsHcTotales] = useLocalStorage<number>('tdp_hc_runs_totales', 0);
+    // Monstres terrassés sur la même période que `runsHc` (donc remis à zéro avec lui). Ni
+    // `monstresTues`, partagé avec le mode normal, ni `tdp_monstres_tues_run`, qui ne couvre que
+    // la run victorieuse — cette dernière traversant forcément les 48 salles de la Tour, elle
+    // donnerait à peu près le même chiffre à tout le monde.
+    const [monstresHc, setMonstresHc] = useLocalStorage<number>('tdp_hc_monstres', 0);
     const [forgeronPresente, setForgeronPresente] = useLocalStorage<boolean>('tdp_forgeron_presente', false);
     const [leconComboFaite, setLeconComboFaite] = useLocalStorage<boolean>('tdp_lecon_combo_faite', false);
     const [leconsMortVues, setLeconsMortVues] = useLocalStorage<LeconMort[]>('tdp_lecons_mort_vues', []);
@@ -358,6 +363,7 @@ export function useGameState() {
         // Le score du classement repart avec le reste : c'est ce qui lui donne son sens (« fini en
         // N runs en partant de rien »). `tdp_hc_runs_totales`, lui, n'est jamais remis à zéro.
         setRunsHc(0);
+        setMonstresHc(0);
     };
 
     const gererAbandon = () => {
@@ -758,6 +764,7 @@ export function useGameState() {
 
         setMonstresTues(prev => prev + 1);
         setMonstresTuesRun(prev => prev + 1);
+        if (modeHardcore) setMonstresHc(prev => prev + 1);
         setBestiaire(prev => ({ ...prev, [recompense.typeMonstre]: prev[recompense.typeMonstre] + 1 }));
         setXpTotal(prev => prev + gainXp);
         setHistoriqueLogs(prev => [...prev, `<div class="log-soin">🌟 Vous gagnez ${gainXp} point(s) d'XP ${benedictionActive === 'apprentissage' ? '(Leçon du Maître : XP doublée) ' : ''}!</div>`]);
@@ -933,6 +940,7 @@ export function useGameState() {
         aVaincuLaTour,
         runsHc,
         runsHcTotales,
+        monstresHc,
         gererClassementSaisi,
 
         // Progression méta (hors-run)

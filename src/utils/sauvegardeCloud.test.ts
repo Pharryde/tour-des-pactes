@@ -53,9 +53,14 @@ describe('synchronisation cloud', () => {
 
     // Les clés de profil sont dédoublées par `cleProfil` : les inscrire en dur sous leur forme
     // hardcore ferait doublon avec CLES_PROFIL_HARDCORE, ajouté séparément.
+    //
+    // Les seules exceptions légitimes sont les compteurs du classement : ils n'ont PAS de jumeau en
+    // mode normal (rien ne les mesure là-bas), donc ils ne peuvent pas venir de CLES_PROFIL et
+    // doivent figurer en dur. Toute autre clé `tdp_hc_` ici est une erreur — le signe qu'on a
+    // recopié à la main un miroir que `cleProfil` produit déjà.
     it("n'inscrit aucune clé hardcore en dur dans CLES_JEU", () => {
         const bloc = sourceSauvegardeCloud.match(/const CLES_JEU = \[([\s\S]*?)\] as const;/)!;
         const enDur = extraireLitteraux(bloc[1]).filter(cle => cle.startsWith('tdp_hc_'));
-        expect(enDur).toEqual(['tdp_hc_runs', 'tdp_hc_runs_totales']);
+        expect(enDur).toEqual(['tdp_hc_runs', 'tdp_hc_runs_totales', 'tdp_hc_monstres']);
     });
 });
