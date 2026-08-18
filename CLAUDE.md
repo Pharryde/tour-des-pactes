@@ -90,7 +90,9 @@ Pas de state manager externe, pas de router — état 100% dans un hook custom, 
 - `supabase/analyses.sql` — requêtes d'analyse à coller dans le SQL Editor. **Pas une migration** : jamais exécutée automatiquement, ne modifie rien
 - `src/types.ts` — types partagés, DOIT rester en miroir de `entite.rs` (camelCase TS ↔ snake_case Rust via `serde(rename_all = "camelCase")`)
 - `public/sprites/<personnage>/` — feuilles de sprites pixel art (une par animation)
-- `public/images/` — illustrations de cinématique de boss (une par pacte)
+- `public/images/` — illustrations de cinématique de boss. ⚠️ **Choisies par une chaîne de repli** (`imagesCinematique` dans `utils/etages.ts`, parcourue par `ImageCinematique.tsx` via `onError` — le navigateur ne sait pas dire si un fichier existe sans essayer de le charger). L'ensemble est donc ADDITIF : déposer un fichier suffit à l'activer, ne pas le déposer ne casse rien. Ordre : `boss_<etage>_lvl<N>.png` → `boss_lvl<N>.png` → `boss_<etage>.png` → `boss_default.png`, **sauf au niveau 0 où les rangs 2 et 3 s'inversent** — les illustrations d'étage SONT celles de la forme normale, et une image de niveau 0 commune les retirerait toutes du jeu d'un coup. Le Gardien Absolu n'appartenant à aucun étage a son propre `imagesGardienAbsolu()` (`boss_absolu.png`) : lui donner l'illustration du dernier étage traversé annoncerait un Gardien qu'on ne va pas affronter. `etagesImages.test.ts` fige cet ordre.
+- ⚠️ **Ne pas ajouter de sous-titre de forme sur la cinématique** : le nom du Gardien porte déjà son préfixe côté moteur (« FORME FINALE: … »), un rappel le redirait deux lignes plus bas. Et ne pas non plus retirer ce préfixe du nom — `animationsMonstre.ts` reconnaît les créatures à des FRAGMENTS de nom.
+- Le Gardien Absolu passe désormais par `ecran-cinematique` comme les autres (`gererDeclenchementMegaBoss`) : le combat le plus important de la Tour était le seul à basculer dans l'arène sans mise en scène.
 
 **Pas de pages classiques (Accueil/Tarifs/Contact)** — jeu à écran unique. Navigation = type `Ecran` (union de string literals dans `types.ts`) + rendu conditionnel dans `App.tsx`.
 

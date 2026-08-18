@@ -332,6 +332,23 @@
 }
 .cinematique-image { width: 100%; height: 100%; object-fit: cover; }
 .cinematique-erreur-image { color: #6c7086; padding: 0 15px; }
+
+/* Aperçu de la forme qu'on s'apprête à réveiller, sur l'écran de choix. Plus petit que la
+   cinématique : ici l'image accompagne une décision, elle ne la met pas en scène. */
+.choix-boss-image-frame {
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 16 / 9;
+    background-color: #181825;
+    border: 2px solid #45475a;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 6px 0 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.choix-boss-image { width: 100%; height: 100%; object-fit: cover; }
 .btn-cinematique {
     padding: 15px 40px;
     font-size: 1.2em;
@@ -346,6 +363,7 @@
 @media (max-width: 768px) {
     .cinematique-image-frame { height: 220px; margin-bottom: 25px; }
     .cinematique-titre { font-size: 1.4rem; margin-bottom: 20px; }
+    .choix-boss-image-frame { max-width: 100%; margin-bottom: 20px; }
     .btn-cinematique { width: 100%; max-width: 320px; padding: 12px 25px; font-size: 1.05em; }
 }
 

@@ -1,30 +1,21 @@
+import { ImageCinematique } from './ImageCinematique';
+
 interface Props {
     titre: string;
-    imageSrc: string;
+    // Illustrations candidates, de la plus spécifique à la plus générale (voir imagesCinematique).
+    images: string[];
     onContinuer: () => void;
 }
 
-export function CinematiqueBoss({ titre, imageSrc, onContinuer }: Props) {
+export function CinematiqueBoss({ titre, images, onContinuer }: Props) {
     return (
         <div className="ecran cinematique-ecran">
+            {/* Le nom du Gardien porte DÉJÀ sa forme, préfixée par le moteur (« FORME FINALE: … ») :
+                un sous-titre « Forme Finale » ne ferait que la redire deux lignes plus bas. */}
             <h1 className="cinematique-titre">{titre}</h1>
 
             <div className="cinematique-image-frame">
-                <img
-                    src={imageSrc}
-                    alt={titre}
-                    className="cinematique-image"
-                    onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const parent = e.currentTarget.parentElement;
-                        if (parent && !parent.querySelector('.cinematique-erreur-image')) {
-                            const span = document.createElement('span');
-                            span.className = 'cinematique-erreur-image';
-                            span.innerHTML = `(Image introuvable : Placez <b>${imageSrc.split('/').pop()}</b> dans le dossier public/images/)`;
-                            parent.appendChild(span);
-                        }
-                    }}
-                />
+                <ImageCinematique candidates={images} alt={titre} className="cinematique-image" />
             </div>
 
             <button

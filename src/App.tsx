@@ -1,4 +1,4 @@
-import { getImageCinematique } from './utils/etages';
+import { imagesCinematique, imagesGardienAbsolu, type NiveauBoss } from './utils/etages';
 import { calculerSoinRepos, calculerGainPvMaxRepos } from './utils/pactes';
 import { useGameState } from './hooks/useGameState';
 import { LIMITE_COMBO_PREMIERE_RUN } from './utils/combat';
@@ -71,17 +71,24 @@ function App() {
   const aLvl1Equipe = pactesEquipes.includes(nomPacteCourant);
   const aLvl2Equipe = pactesEquipes.includes(nomPacteCourant + " II");
 
+  // Forme du Gardien effectivement mise en scène, pour choisir l'illustration de la cinématique.
+  let niveauBoss: NiveauBoss = 0;
+
   if (enCombatMegaBoss) {
       monstreActuel = monstreMegaBoss;
   }
   else if (etageActuel) {
       if (enCombatPacte) {
+          niveauBoss = typeCombatPacte === 'lvl2' ? 2 : 1;
           monstreActuel = typeCombatPacte === 'lvl2' ? etageActuel.bossHeroiqueLvl2 : etageActuel.bossHeroique;
       }
       else if (indexSalle < etageActuel.monstres.length) {
           monstreActuel = etageActuel.monstres[indexSalle];
       }
       else {
+          // Un Pacte équipé fait résonner le Gardien : il se présente d'emblée dans sa forme
+          // supérieure, sans passer par l'écran de choix.
+          niveauBoss = aLvl2Equipe ? 2 : aLvl1Equipe ? 1 : 0;
           if (aLvl2Equipe) monstreActuel = etageActuel.bossHeroiqueLvl2;
           else if (aLvl1Equipe) monstreActuel = etageActuel.bossHeroique;
           else monstreActuel = etageActuel.bossNormal;
@@ -197,6 +204,7 @@ function App() {
             <ChoixBoss
                 aLvl1Equipe={aLvl1Equipe}
                 estDernierEtage={indexEtageActuel >= listeEtages.length - 1}
+                images={imagesCinematique(nomPacteCourant, aLvl1Equipe ? 2 : 1)}
                 onFuir={gererPassageEtageSuivant}
                 onCombattreLvl1={() => declencherCombatPacte('lvl1')}
                 onCombattreLvl2={() => declencherCombatPacte('lvl2')}
@@ -206,7 +214,7 @@ function App() {
           {ecran === 'ecran-cinematique' && monstreActuel && (
               <CinematiqueBoss
                   titre={monstreActuel.nom}
-                  imageSrc={getImageCinematique(nomPacteCourant)}
+                  images={enCombatMegaBoss ? imagesGardienAbsolu() : imagesCinematique(nomPacteCourant, niveauBoss)}
                   onContinuer={() => setEcran('ecran-combat')}
               />
           )}

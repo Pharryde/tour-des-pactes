@@ -814,7 +814,9 @@ export function useGameState() {
             `<br><b style="color: #f38ba8;">🌪️ Les Gardiens vaincus convergent en une seule et unique entité !</b>`
         ]);
         setEnCombatMegaBoss(true);
-        setEcran('ecran-combat');
+        // Comme n'importe quel Gardien : le combat le plus important de la Tour était le seul à
+        // basculer dans l'arène sans mise en scène.
+        setEcran('ecran-cinematique');
     };
 
     const gererFinMegaBoss = (victoire: boolean, joueurRestant: Entite) => {

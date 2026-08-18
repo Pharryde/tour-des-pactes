@@ -1,17 +1,56 @@
 // src/utils/etages.ts
 import type { Entite, StructureEtage } from '../types';
 
-export function getImageCinematique(idPacte: string): string {
-    switch (idPacte) {
-        case "Pacte de l'Armure": return "/images/boss_armure.png";
-        case "Pacte de l'Esquive": return "/images/boss_esquive.png";
-        case "Pacte du Combo": return "/images/boss_combo.png";
-        case "Pacte de la Vie": return "/images/boss_vie.png";
-        case "Pacte de l'Ombre": return "/images/boss_ombre.png";
-        case "Pacte du Temps": return "/images/boss_temps.png";
-        case "Pacte de la Fluidité": return "/images/boss_fluidite.png";
-        default: return "/images/boss_default.png";
-    }
+// Forme du Gardien mise en scène : 0 = normale, 1 = évoluée (Niveau I), 2 = finale (Niveau II).
+export type NiveauBoss = 0 | 1 | 2;
+
+// Fragment de nom de fichier par étage. Les cinq derniers étages n'ont pas encore d'illustration
+// propre, mais leur slug est défini d'avance : en déposer une suffira à l'activer, sans toucher au
+// code (voir la chaîne de repli ci-dessous).
+const SLUGS_ETAGES: Record<string, string> = {
+    "Pacte de l'Armure": 'armure',
+    "Pacte de l'Esquive": 'esquive',
+    'Pacte du Combo': 'combo',
+    'Pacte de la Vie': 'vie',
+    "Pacte de l'Ombre": 'ombre',
+    'Pacte du Temps': 'temps',
+    'Pacte de la Fluidité': 'fluidite',
+    'Pacte de la Puissance Brute': 'brute',
+    'Pacte du Froid': 'froid',
+    'Pacte de la Foudre': 'foudre',
+    'Pacte du Feu': 'feu',
+    'Pacte du Poison': 'poison',
+};
+
+/**
+ * Illustrations candidates pour la mise en scène d'un Gardien, de la plus spécifique à la plus
+ * générale. L'affichage descend la liste à chaque image introuvable (voir `ImageCinematique`), ce
+ * qui rend le tout ADDITIF : déposer un fichier suffit à l'utiliser, ne pas le déposer ne casse rien.
+ *
+ *   1. `boss_<etage>_lvl<N>.png` — l'étage ET la forme (le cas le plus soigné, aucun pour l'instant)
+ *   2. `boss_lvl<N>.png`         — la forme seule, commune aux douze étages
+ *   3. `boss_<etage>.png`        — l'étage seul, les illustrations historiques
+ *   4. `boss_default.png`        — le filet de sécurité
+ *
+ * ⚠️ La forme NORMALE inverse les rangs 2 et 3 : les illustrations d'étage existantes SONT l'image
+ * du Gardien tel qu'on le rencontre par défaut. Une image de niveau 0 commune passerait sinon devant
+ * elles et les retirerait toutes du jeu d'un coup.
+ */
+export function imagesCinematique(idPacte: string, niveau: NiveauBoss): string[] {
+    const slug = SLUGS_ETAGES[idPacte];
+    const parEtage = slug ? [`/images/boss_${slug}.png`] : [];
+    const parNiveau = [`/images/boss_lvl${niveau}.png`];
+    return [
+        ...(slug ? [`/images/boss_${slug}_lvl${niveau}.png`] : []),
+        ...(niveau === 0 ? [...parEtage, ...parNiveau] : [...parNiveau, ...parEtage]),
+        '/images/boss_default.png',
+    ];
+}
+
+// Le Gardien Absolu n'appartient à aucun étage : lui donner l'illustration du dernier étage
+// traversé, comme le ferait `imagesCinematique`, annoncerait un Gardien qu'on ne va pas affronter.
+export function imagesGardienAbsolu(): string[] {
+    return ['/images/boss_absolu.png', '/images/boss_default.png'];
 }
 
 function buffEntite(entite: Entite, multiplicateur: number): Entite {
