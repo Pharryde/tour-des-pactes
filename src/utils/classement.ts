@@ -104,7 +104,7 @@ export interface ScoreHardcore {
  *   journal de runs, qui est purement passif, celui-ci est une action délibérée dont l'échec doit
  *   se voir.
  */
-export async function soumettreScore(score: ScoreHardcore): Promise<boolean> {
+export async function soumettreScore(score: ScoreHardcore): Promise<ResultatNom> {
     try {
         // Import différé pour la même raison que dans telemetrieRuns.ts : supabaseClient.ts
         // construit son client au niveau module et lève si l'environnement est incomplet, ce qui
@@ -113,7 +113,7 @@ export async function soumettreScore(score: ScoreHardcore): Promise<boolean> {
         const { APP_VERSION } = await import('./versionApp');
 
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return false;
+        if (!session) return 'echec';
 
         // `user_id` n'est pas transmis : la colonne le tire du JWT (default auth.uid()), et c'est
         // aussi la clé primaire — un joueur ne peut donc occuper qu'une seule ligne.
@@ -127,13 +127,14 @@ export async function soumettreScore(score: ScoreHardcore): Promise<boolean> {
                 version: APP_VERSION,
             });
         if (error) {
+            if (error.code === '23505') return 'deja_pris';
             console.error("Erreur d'envoi du score:", error);
-            return false;
+            return 'echec';
         }
-        return true;
+        return 'ok';
     } catch (error) {
         console.error('Classement indisponible:', error);
-        return false;
+        return 'echec';
     }
 }
 
@@ -255,26 +256,31 @@ export async function publierRecordEtage(nom: string, hardcore: boolean, etage: 
     }
 }
 
+// Un pseudo déjà pris se distingue d'une panne : le joueur doit pouvoir en choisir un autre plutôt
+// que de croire le service indisponible. 23505 = violation d'unicité (index sur lower(nom)).
+export type ResultatNom = 'ok' | 'deja_pris' | 'echec';
+
 /**
  * Enregistre (ou renomme) l'identité publique du joueur, sans toucher à ses records : le
  * déclencheur Postgres conserve les colonnes absentes de l'envoi.
  */
-export async function enregistrerNom(nom: string): Promise<boolean> {
+export async function enregistrerNom(nom: string): Promise<ResultatNom> {
     try {
         const { supabase } = await import('./supabaseClient');
         const { APP_VERSION } = await import('./versionApp');
 
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return false;
+        if (!session) return 'echec';
 
         const { error } = await supabase.from('classement').upsert({ nom, version: APP_VERSION });
         if (error) {
+            if (error.code === '23505') return 'deja_pris';
             console.error("Erreur d'enregistrement du nom:", error);
-            return false;
+            return 'echec';
         }
-        return true;
+        return 'ok';
     } catch (error) {
         console.error('Classement indisponible:', error);
-        return false;
+        return 'echec';
     }
 }

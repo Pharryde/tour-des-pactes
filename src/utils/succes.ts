@@ -34,6 +34,11 @@ export interface ProgressionSucces {
     bossLvl0: number;
     bossLvl1: number;
     bossLvl2: number;
+    degatsEsquives: number;
+    degatsBloques: number;
+    degatsAttaque: number;
+    degatsPrecise: number;
+    soins: number;
 
     monstresTuesHc: number;
     etageRecordHc: number;
@@ -44,6 +49,11 @@ export interface ProgressionSucces {
     bossLvl0Hc: number;
     bossLvl1Hc: number;
     bossLvl2Hc: number;
+    degatsEsquivesHc: number;
+    degatsBloquesHc: number;
+    degatsAttaqueHc: number;
+    degatsPreciseHc: number;
+    soinsHc: number;
 
     // Boss tués par leur propre mécanique (voir THEMES).
     themes: string[];
@@ -66,7 +76,14 @@ interface Serie {
 const SERIES: Serie[] = [
     { cle: 'monstres', libelle: 'Monstres terrassés', champ: 'monstresTues', seuils: [1, 10, 100, 1000], unite: 'monstre(s) tué(s)' },
     { cle: 'etages', libelle: 'Profondeur atteinte', champ: 'etageRecord', seuils: [1, 2, 6, 12], unite: 'étage(s) atteint(s) en une ascension' },
-    { cle: 'runs', libelle: 'Ascensions achevées', champ: 'runs', seuils: [1, 10, 50, 100], unite: 'ascension(s) menée(s) à son terme' },
+    { cle: 'runs', libelle: 'Ascensions achevées', champ: 'runs', seuils: [1, 10], unite: 'ascension(s) menée(s) à son terme' },
+    // Compteurs de combat, cumulés sur toute la vie du profil (les `tdp_*_run` ne couvrent qu'une
+    // ascension). « Encaissé » = absorbé par l'armure, le pendant exact de « esquivé ».
+    { cle: 'esquive', libelle: 'Dégâts esquivés', champ: 'degatsEsquives', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) évité(s) par l\'Esquive' },
+    { cle: 'encaisse', libelle: 'Dégâts encaissés', champ: 'degatsBloques', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) absorbé(s) par l\'armure' },
+    { cle: 'attaque', libelle: 'Dégâts d\'Attaque', champ: 'degatsAttaque', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) infligé(s) à l\'Attaque' },
+    { cle: 'precise', libelle: 'Dégâts de Précise', champ: 'degatsPrecise', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) infligé(s) à la Précise' },
+    { cle: 'soins', libelle: 'Points de vie regagnés', champ: 'soins', seuils: [50, 100, 500, 1000], unite: 'PV récupérés' },
     { cle: 'pactes1', libelle: 'Pactes de Niveau I', champ: 'pactesLvl1', seuils: [1, 3, 6, 12], unite: 'Pacte(s) de Niveau I arraché(s)' },
     { cle: 'pactes2', libelle: 'Pactes de Niveau II', champ: 'pactesLvl2', seuils: [1, 3, 6, 12], unite: 'Pacte(s) de Niveau II arraché(s)' },
     { cle: 'synergies', libelle: 'Synergies révélées', champ: 'synergies', seuils: [1, 2, 3, 5], unite: 'synergie(s) découverte(s)' },

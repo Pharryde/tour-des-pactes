@@ -41,6 +41,13 @@ export const CLES_PROFIL = [
     // Synergies effectivement ACTIVÉES dans ce mode. La découverte, elle, reste partagée : le
     // joueur ne « désapprend » pas un secret en changeant de profil.
     'tdp_synergies_activees',
+    // Cumuls de combat sur toute la vie du profil : les `tdp_*_run` sont remis à zéro à chaque
+    // ascension et ne peuvent donc pas porter des paliers à 10 000.
+    'tdp_degats_esquives_total',
+    'tdp_degats_bloques_total',
+    'tdp_degats_attaque_total',
+    'tdp_degats_precise_total',
+    'tdp_soins_total',
 ] as const;
 
 export type CleProfil = typeof CLES_PROFIL[number];

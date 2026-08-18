@@ -54,6 +54,7 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
     const [editionNom, setEditionNom] = useState(false);
     const [brouillonNom, setBrouillonNom] = useState(nomJoueur);
     const [envoiNom, setEnvoiNom] = useState(false);
+    const [erreurNom, setErreurNom] = useState<'deja_pris' | 'echec' | null>(null);
     const [rechargements, setRechargements] = useState(0);
 
     useEffect(() => {
@@ -74,9 +75,10 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
         const propre = nettoyerNomJoueur(brouillonNom);
         if (!nomJoueurValide(propre) || envoiNom) return;
         setEnvoiNom(true);
-        const ok = await enregistrerNom(propre);
+        const resultat = await enregistrerNom(propre);
         setEnvoiNom(false);
-        if (!ok) return;
+        if (resultat !== 'ok') { setErreurNom(resultat); return; }
+        setErreurNom(null);
         onNomChange(propre);
         setEditionNom(false);
         // Le nom vient de changer partout : on relit pour que la liste et sa propre ligne suivent.
@@ -181,12 +183,18 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
                         type="text"
                         className="classement-input"
                         value={brouillonNom}
-                        onChange={e => setBrouillonNom(nettoyerSaisieNom(e.target.value))}
+                        onChange={e => { setBrouillonNom(nettoyerSaisieNom(e.target.value)); setErreurNom(null); }}
                         maxLength={LONGUEUR_MAX_NOM}
                         placeholder="Anonyme des profondeurs"
                         autoFocus
                     />
                     <span className="classement-compteur">{brouillonNom.length}/{LONGUEUR_MAX_NOM}</span>
+                    {erreurNom === 'deja_pris' && (
+                        <span className="classement-echec">Ce nom est déjà pris. Essayez-en un autre.</span>
+                    )}
+                    {erreurNom === 'echec' && (
+                        <span className="classement-echec">Enregistrement impossible pour le moment.</span>
+                    )}
                 </div>
             ) : (
                 nomJoueur && <p className="classement-identite">Vous jouez sous le nom de <b>{nomJoueur}</b>.</p>

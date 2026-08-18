@@ -52,6 +52,11 @@ const CLES_JEU = [
     'tdp_boss_lvl1',
     'tdp_boss_lvl2',
     'tdp_synergies_activees',
+    'tdp_degats_esquives_total',
+    'tdp_degats_bloques_total',
+    'tdp_degats_attaque_total',
+    'tdp_degats_precise_total',
+    'tdp_soins_total',
     // Partagé entre les profils, donc listé tel quel : un fait d'armes, pas une progression.
     'tdp_succes_theme',
     'tdp_forgeron_presente',

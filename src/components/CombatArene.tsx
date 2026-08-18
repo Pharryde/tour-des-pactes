@@ -329,6 +329,7 @@ export function CombatArene({
 
         let indexDesActionsCombats = 0;
         let degatsInfligesTour = 0; let degatsBloquesTour = 0; let degatsEsquivesTour = 0;
+        let degatsAttaqueTour = 0; let degatsPreciseTour = 0; let soinsTour = 0;
 
         // Télémétrie du tour (voir utils/telemetrieRuns.ts). On profite du suivi de combo déjà fait
         // pour l'affichage : `localComboJ/M` porte exactement le palier atteint à chaque action,
@@ -365,6 +366,11 @@ export function CombatArene({
                 }
                 // Comptée même si le créneau est gelé : le joueur l'a bien programmée.
                 actionsTour = incrementerCompteurs(actionsTour, [actJ]);
+                // Les dégâts de l'étape sont attribués à l'action qui les a portés. Le Feu et le
+                // Poison convertissent l'action en dose : elle ne blesse plus directement, donc
+                // `etape.degatsInfliges` vaut 0 et rien n'est compté ici — c'est voulu.
+                if (actJ === 'A') degatsAttaqueTour += etape.degatsInfliges;
+                if (actJ === 'P') degatsPreciseTour += etape.degatsInfliges;
 
                 indexDesActionsCombats++;
 
@@ -379,6 +385,9 @@ export function CombatArene({
 
             const pvJoueurAvant = currentJoueur.pv;
             const pvMonstreAvant = currentMonstre.pv;
+            // Toute remontée de PV est un soin, d'où qu'elle vienne : additionner les effets un par
+            // un obligerait à connaître la liste exhaustive et à la maintenir.
+            if (etape.joueurPv > pvJoueurAvant) soinsTour += etape.joueurPv - pvJoueurAvant;
             currentJoueur.pv = etape.joueurPv;
             currentJoueur.armure = etape.joueurArmure;
             currentJoueur.nivEsquive = etape.joueurNivEsquive ?? currentJoueur.nivEsquive;
@@ -410,6 +419,11 @@ export function CombatArene({
             degatsInfliges: degatsInfligesTour,
             degatsBloques: degatsBloquesTour,
             degatsEsquives: degatsEsquivesTour,
+            degatsAttaque: degatsAttaqueTour,
+            degatsPrecise: degatsPreciseTour,
+            // Les tics de fin de tour tombent après la dernière étape : un soin qui s'y produit
+            // (Pacte de la Vie II) ne serait pas vu par la boucle ci-dessus.
+            soins: soinsTour + Math.max(0, resultat.joueur.pv - currentJoueur.pv),
             actions: actionsTour,
             comboJoueur: comboTourJ,
             comboMonstre: comboTourM,

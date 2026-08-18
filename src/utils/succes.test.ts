@@ -8,8 +8,10 @@ import {
 const VIDE: ProgressionSucces = {
     monstresTues: 0, etageRecord: 0, runs: 0, pactesLvl1: 0, pactesLvl2: 0,
     synergies: 0, bossLvl0: 0, bossLvl1: 0, bossLvl2: 0,
+    degatsEsquives: 0, degatsBloques: 0, degatsAttaque: 0, degatsPrecise: 0, soins: 0,
     monstresTuesHc: 0, etageRecordHc: 0, runsHc: 0, pactesLvl1Hc: 0, pactesLvl2Hc: 0,
     synergiesHc: 0, bossLvl0Hc: 0, bossLvl1Hc: 0, bossLvl2Hc: 0,
+    degatsEsquivesHc: 0, degatsBloquesHc: 0, degatsAttaqueHc: 0, degatsPreciseHc: 0, soinsHc: 0,
     themes: [],
 };
 
@@ -45,6 +47,14 @@ describe('succesDebloques', () => {
         expect(succesDebloques(VIDE)).toEqual([]);
     });
 
+    // Les paliers 50 et 100 d'ascensions ont été retirés : le succès s'arrête à 10.
+    it("n'expose plus de palier d'ascensions au-delà de 10", () => {
+        const ids = SUCCES_REGISTRY.map(s => s.id);
+        expect(ids).toContain('runs_10');
+        expect(ids).not.toContain('runs_50');
+        expect(ids).not.toContain('runs_100');
+    });
+
     // Un palier atteint débloque aussi tous ceux d'en dessous : les seuils sont cumulatifs, pas
     // exclusifs — un joueur à 100 monstres doit avoir les paliers 1, 10 et 100.
     it('débloque tous les paliers inférieurs atteints', () => {
@@ -77,8 +87,10 @@ describe('succesDebloques', () => {
         const presqueTout: ProgressionSucces = {
             monstresTues: 1000, etageRecord: 12, runs: 100, pactesLvl1: 12, pactesLvl2: 12,
             synergies: 5, bossLvl0: 12, bossLvl1: 12, bossLvl2: 12,
+            degatsEsquives: 10000, degatsBloques: 10000, degatsAttaque: 10000, degatsPrecise: 10000, soins: 1000,
             monstresTuesHc: 1000, etageRecordHc: 12, runsHc: 100, pactesLvl1Hc: 12, pactesLvl2Hc: 12,
             synergiesHc: 5, bossLvl0Hc: 12, bossLvl1Hc: 12, bossLvl2Hc: 12,
+            degatsEsquivesHc: 10000, degatsBloquesHc: 10000, degatsAttaqueHc: 10000, degatsPreciseHc: 10000, soinsHc: 1000,
             themes: ['feu', 'poison'],
         };
         expect(succesDebloques(presqueTout)).not.toContain(ID_FINISSEUR);

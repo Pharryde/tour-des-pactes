@@ -137,6 +137,11 @@ export function useGameState() {
     // Boss terrassés par leur PROPRE mécanique (brûlure, poison, assaut d'armure). Partagé entre
     // les profils : c'est un fait d'armes, pas une progression — d'où son absence de CLES_PROFIL.
     const [succesTheme, setSuccesTheme] = useLocalStorage<string[]>('tdp_succes_theme', []);
+    const [degatsEsquivesTotal, setDegatsEsquivesTotal] = useLocalStorage<number>(cleProfil('tdp_degats_esquives_total', modeHardcore), 0);
+    const [degatsBloquesTotal, setDegatsBloquesTotal] = useLocalStorage<number>(cleProfil('tdp_degats_bloques_total', modeHardcore), 0);
+    const [degatsAttaqueTotal, setDegatsAttaqueTotal] = useLocalStorage<number>(cleProfil('tdp_degats_attaque_total', modeHardcore), 0);
+    const [degatsPreciseTotal, setDegatsPreciseTotal] = useLocalStorage<number>(cleProfil('tdp_degats_precise_total', modeHardcore), 0);
+    const [soinsTotal, setSoinsTotal] = useLocalStorage<number>(cleProfil('tdp_soins_total', modeHardcore), 0);
     const [competences, setCompetences] = useLocalStorage<Competences>(cleProfil('tdp_competences', modeHardcore), { pv: 0, atk: 0, def: 0, pre: 0, esq: 0 });
     const [xpTotal, setXpTotal] = useLocalStorage<number>(cleProfil('tdp_xp_total', modeHardcore), 0);
     const [bestiaire, setBestiaire] = useLocalStorage<Bestiaire>('tdp_bestiaire', { normal: 0, boss: 0, evolue: 0, final: 0 });
@@ -296,6 +301,11 @@ export function useGameState() {
         bossLvl0: bossLvl0.length,
         bossLvl1: bossLvl1.length,
         bossLvl2: bossLvl2.length,
+        degatsEsquives: degatsEsquivesTotal,
+        degatsBloques: degatsBloquesTotal,
+        degatsAttaque: degatsAttaqueTotal,
+        degatsPrecise: degatsPreciseTotal,
+        soins: soinsTotal,
     };
     const pactesDormants = lireDormant<string[]>('tdp_pactes_debloques', []);
     const moitieDormante = {
@@ -308,6 +318,11 @@ export function useGameState() {
         bossLvl0: lireDormant<string[]>('tdp_boss_lvl0', []).length,
         bossLvl1: lireDormant<string[]>('tdp_boss_lvl1', []).length,
         bossLvl2: lireDormant<string[]>('tdp_boss_lvl2', []).length,
+        degatsEsquives: lireDormant('tdp_degats_esquives_total', 0),
+        degatsBloques: lireDormant('tdp_degats_bloques_total', 0),
+        degatsAttaque: lireDormant('tdp_degats_attaque_total', 0),
+        degatsPrecise: lireDormant('tdp_degats_precise_total', 0),
+        soins: lireDormant('tdp_soins_total', 0),
     };
     const [moitieNormale, moitieHc] = modeHardcore
         ? [moitieDormante, moitieActive]
@@ -324,6 +339,11 @@ export function useGameState() {
         bossLvl0Hc: moitieHc.bossLvl0,
         bossLvl1Hc: moitieHc.bossLvl1,
         bossLvl2Hc: moitieHc.bossLvl2,
+        degatsEsquivesHc: moitieHc.degatsEsquives,
+        degatsBloquesHc: moitieHc.degatsBloques,
+        degatsAttaqueHc: moitieHc.degatsAttaque,
+        degatsPreciseHc: moitieHc.degatsPrecise,
+        soinsHc: moitieHc.soins,
         themes: succesTheme,
     };
 
@@ -918,6 +938,11 @@ export function useGameState() {
             A: prev.A + stats.actions.A, P: prev.P + stats.actions.P,
             D: prev.D + stats.actions.D, E: prev.E + stats.actions.E,
         }));
+        setDegatsEsquivesTotal(prev => prev + stats.degatsEsquives);
+        setDegatsBloquesTotal(prev => prev + stats.degatsBloques);
+        setDegatsAttaqueTotal(prev => prev + stats.degatsAttaque);
+        setDegatsPreciseTotal(prev => prev + stats.degatsPrecise);
+        setSoinsTotal(prev => prev + stats.soins);
         setComboJoueurRun(prev => fusionnerCombo(prev, stats.comboJoueur));
         setComboMonstresRun(prev => fusionnerCombo(prev, stats.comboMonstre));
     };

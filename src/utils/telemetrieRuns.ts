@@ -56,6 +56,14 @@ export interface StatsTour {
     degatsInfliges: number;
     degatsBloques: number;
     degatsEsquives: number;
+    // Même total que `degatsInfliges`, mais ventilé par action : les succès distinguent l'Attaque
+    // de la Précise, et le moteur ne rend qu'un montant global par étape.
+    degatsAttaque: number;
+    degatsPrecise: number;
+    // PV regagnés par le joueur pendant le tour, quelle qu'en soit la source (Pacte de la Vie II,
+    // Synergie Tank, Vie de Chat). Lu comme une REMONTÉE de PV plutôt que recalculé depuis chaque
+    // effet : c'est la seule façon de n'en oublier aucun.
+    soins: number;
     actions: CompteursActions;
     comboJoueur: StatCombo;
     comboMonstre: StatCombo;

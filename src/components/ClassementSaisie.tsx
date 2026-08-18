@@ -17,7 +17,9 @@ interface ClassementSaisieProps {
 export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onNomChoisi, onTermine }: ClassementSaisieProps) {
     const [nom, setNom] = useState('');
     const [envoiEnCours, setEnvoiEnCours] = useState(false);
-    const [echec, setEchec] = useState(false);
+    // Trois issues distinctes : le pseudo déjà pris n'est pas une panne, et le joueur doit
+    // comprendre qu'il lui suffit d'en choisir un autre.
+    const [issue, setIssue] = useState<'aucune' | 'deja_pris' | 'echec'>('aucune');
 
     // Nettoyé à la frappe plutôt qu'à la validation : le joueur voit tout de suite ce qui sera
     // publié, au lieu de découvrir après coup que son émoticône a disparu.
@@ -25,7 +27,7 @@ export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onNomChois
         // Version « frappe » : elle ne rogne pas la fin, sans quoi l'espace serait retiré à
         // l'instant où il est tapé et un nom en deux mots serait impossible à saisir.
         setNom(nettoyerSaisieNom(saisie));
-        setEchec(false);
+        setIssue('aucune');
     };
 
     const valider = async () => {
@@ -34,10 +36,12 @@ export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onNomChois
         // C'est la forme définitive qui part en base : un espace final resterait sinon dans le
         // classement, et la contrainte `nom = btrim(nom)` le rejetterait.
         const propre = nettoyerNomJoueur(nom);
-        const envoye = await soumettreScore({ nom: propre, nbRuns, runsTotales, monstresTues });
+        const resultat = await soumettreScore({ nom: propre, nbRuns, runsTotales, monstresTues });
         // En cas d'échec réseau on ne bloque pas le joueur dans cet écran : il vient de gagner,
-        // il doit pouvoir avancer. On le lui dit, et le bouton devient « Continuer ».
-        if (envoye) { onNomChoisi(propre); onTermine(); } else { setEchec(true); setEnvoiEnCours(false); }
+        // il doit pouvoir avancer. Un pseudo déjà pris, en revanche, se corrige sur place.
+        if (resultat === 'ok') { onNomChoisi(propre); onTermine(); return; }
+        setIssue(resultat);
+        setEnvoiEnCours(false);
     };
 
     return (
@@ -80,7 +84,12 @@ export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onNomChois
                 Ce nom sera visible par tous les autres joueurs.
             </p>
 
-            {echec && (
+            {issue === 'deja_pris' && (
+                <p className="classement-echec">
+                    Ce nom est déjà porté par un autre survivant. Choisissez-en un autre.
+                </p>
+            )}
+            {issue === 'echec' && (
                 <p className="classement-echec">
                     Le classement est injoignable. Votre victoire reste acquise, mais elle ne sera
                     pas inscrite.
@@ -96,7 +105,7 @@ export function ClassementSaisie({ nbRuns, runsTotales, monstresTues, onNomChois
                     {envoiEnCours ? 'Inscription…' : '🏆 Inscrire mon nom'}
                 </button>
                 <button className="btn-menu" onClick={onTermine}>
-                    {echec ? 'Continuer' : 'Rester anonyme'}
+                    {issue === 'echec' ? 'Continuer' : 'Rester anonyme'}
                 </button>
             </div>
         </div>
