@@ -291,6 +291,38 @@ describe('tirerCreneauxFroid', () => {
         expect(creneaux.gelesJoueur).toHaveLength(1);
         expect([...creneaux.monstreDabord, ...creneaux.gelesJoueur].every(i => i >= 0 && i < 5)).toBe(true);
     });
+
+    // Geler une action ET lui donner la priorité, c'est gaspiller l'un des deux pouvoirs : une
+    // action gelée est annulée, l'ordre dans lequel elle n'a pas lieu n'intéresse personne. C'est
+    // le Pacte du Froid Niveau II (qui cumule les deux) et le Gardien du Froid qui y perdaient.
+    // Tirage aléatoire : on répète pour ne pas passer à côté par chance.
+    it('ne gèle jamais un créneau déjà pris par le dérèglement', () => {
+        for (let essai = 0; essai < 200; essai++) {
+            const creneaux = tirerCreneauxFroid(
+                creerHeros({ actionsResolutionInversee: 2, actionsGelees: 2 }),
+                creerHeros(),
+            );
+            const priorite = [...creneaux.joueurDabord, ...creneaux.monstreDabord, ...creneaux.annules];
+            const geles = [...creneaux.gelesJoueur, ...creneaux.gelesMonstre];
+
+            expect(geles.some(i => priorite.includes(i))).toBe(false);
+        }
+    });
+
+    // Même exigence quand les deux camps portent le pouvoir : les créneaux NEUTRALISÉS restent des
+    // créneaux froids (la Synergie Élémentaire y double son poison), un gel n'a rien à y faire.
+    it('ne gèle jamais un créneau neutralisé', () => {
+        for (let essai = 0; essai < 200; essai++) {
+            const creneaux = tirerCreneauxFroid(
+                creerHeros({ actionsResolutionInversee: 2, actionsGelees: 1 }),
+                creerHeros({ actionsResolutionInversee: 2, actionsGelees: 1 }),
+            );
+            expect(creneaux.annules).toHaveLength(2);
+            const geles = [...creneaux.gelesJoueur, ...creneaux.gelesMonstre];
+
+            expect(geles.some(i => creneaux.annules.includes(i))).toBe(false);
+        }
+    });
 });
 
 describe('corrigerActionsPourLimiteCombo', () => {

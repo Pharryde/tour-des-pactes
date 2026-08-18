@@ -13,6 +13,9 @@ interface ClassementProps {
     nomJoueur: string;
     onNomChange: (nom: string) => void;
     onRetour: () => void;
+    // Éteint la pastille du Hub. Appelée à l'ouverture de l'onglet 🏅 et non à l'entrée sur l'écran :
+    // marquer les succès comme vus alors que le joueur consulte le classement les lui escamoterait.
+    onSuccesVus: () => void;
 }
 
 const MEDAILLES = ['🥇', '🥈', '🥉'];
@@ -32,7 +35,7 @@ function libelleValeur(categorie: Categorie, valeur: number): string {
     return `Étage ${valeur}`;
 }
 
-export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomChange, onRetour }: ClassementProps) {
+export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomChange, onRetour, onSuccesVus }: ClassementProps) {
     const [onglet, setOnglet] = useState<Onglet>('hardcore');
     // Les requêtes de classement ne concernent que les onglets de catégorie : sur l'onglet des
     // succès on garde la dernière catégorie consultée pour ne pas relancer de lecture inutile.
@@ -105,7 +108,7 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
                 ))}
                 <button
                     className={`classement-onglet${onglet === 'succes' ? ' classement-onglet--actif' : ''}`}
-                    onClick={() => setOnglet('succes')}
+                    onClick={() => { setOnglet('succes'); onSuccesVus(); }}
                 >
                     🏅 Succès
                 </button>

@@ -68,21 +68,60 @@ function ordonnerEtages(etages: StructureEtage[], estPremierePartie: boolean): S
     return [...debutants.slice(0, 2), ...melangerAleatoirement([...debutants.slice(2), ...autres])];
 }
 
+// Part d'élément que les créatures de l'étage encaissent quand la résonance du Pacte est active.
+// Elles maîtrisent le même élément que leur Gardien : les enrager en équipant son Pacte les rend
+// aussi plus dures à brûler ou à empoisonner.
+// ⚠️ **Plafonnée à la moitié, jamais l'immunité** : le 0.0 reste le privilège du Gardien. Une dose
+// entièrement absorbée par du menu fretin rendrait une action du joueur purement inutile pendant
+// trois salles — sur l'Étage du Poison, dont les créatures n'ont même pas l'Attaque, ce serait une
+// impasse. La moitié se sent, l'immunité bloque.
+const PART_ELEMENT_MOBS = 0.5;
+
+// L'étage est reconnu à ce que son Gardien maîtrise, jamais à son `idPacte` : un renommage dans
+// boss_data.rs ferait échouer une comparaison de chaîne EN SILENCE (cf. animationsMonstre.test.ts).
+function resistancesMobs(etage: StructureEtage): Partial<Entite> {
+    return {
+        ...(etage.bossHeroique.partBrulureSubie !== undefined ? { partBrulureSubie: PART_ELEMENT_MOBS } : {}),
+        ...(etage.bossHeroique.partPoisonSubi !== undefined ? { partPoisonSubi: PART_ELEMENT_MOBS } : {}),
+    };
+}
+
 // Puissance effective d'un étage : le palier de progression (commun à tous les étages de ce rang)
 // plus la résonance du Pacte équipé, qui ne concerne que l'étage correspondant.
-function appliquerPuissanceEtage(etage: StructureEtage, pactesEquipes: string[], palier: number): StructureEtage {
+// `forcerNiveauII` (mode infini) traite l'étage comme si le Pacte de Niveau II y était équipé, et
+// n'y laisse subsister que la Forme Finale du Gardien.
+function appliquerPuissanceEtage(
+    etage: StructureEtage,
+    pactesEquipes: string[],
+    palier: number,
+    forcerNiveauII = false,
+): StructureEtage {
     let mult = 1;
-    if (pactesEquipes.includes(etage.idPacte + " II")) mult = 1.2;
+    if (forcerNiveauII || pactesEquipes.includes(etage.idPacte + " II")) mult = 1.2;
     else if (pactesEquipes.includes(etage.idPacte)) mult = 1.1;
 
     if (mult === 1 && palier <= 0) return etage;
 
+    // La résonance ne renforce pas seulement les stats : elle réveille aussi la maîtrise
+    // élémentaire des créatures de l'étage, à l'image de leur Gardien.
+    // ⚠️ Conditionnée à `mult > 1`, jamais au simple fait d'entrer dans cette branche : un étage
+    // sans Pacte équipé y entre quand même dès que son palier dépasse 0, et ses créatures
+    // deviendraient résistantes sans que le joueur ait rien fait pour les enrager.
+    const resistances = mult > 1 ? resistancesMobs(etage) : {};
+    const monstres = etage.monstres.map(m => ({ ...buffProgressionEtage(buffEntite(m, mult), palier, 10), ...resistances }));
+
+    // Dans l'infini, le Gardien ne connaît plus que sa Forme Finale : les trois formes convergent,
+    // si bien que le joueur l'affronte sous ses traits les plus dangereux quoi qu'il équipe.
+    const forme = forcerNiveauII
+        ? buffProgressionEtage(etage.bossHeroiqueLvl2, palier, 20)
+        : null;
+
     return {
         ...etage,
-        monstres: etage.monstres.map(m => buffProgressionEtage(buffEntite(m, mult), palier, 10)),
-        bossNormal: buffProgressionEtage(etage.bossNormal, palier, 20),
-        bossHeroique: buffProgressionEtage(etage.bossHeroique, palier, 20),
-        bossHeroiqueLvl2: buffProgressionEtage(etage.bossHeroiqueLvl2, palier, 20),
+        monstres,
+        bossNormal: forme ?? buffProgressionEtage(etage.bossNormal, palier, 20),
+        bossHeroique: forme ?? buffProgressionEtage(etage.bossHeroique, palier, 20),
+        bossHeroiqueLvl2: forme ?? buffProgressionEtage(etage.bossHeroiqueLvl2, palier, 20),
     };
 }
 
@@ -107,6 +146,11 @@ export function palierFinDeTour(tailleTour: number): number {
  *
  * L'ordre de la Tour est retiré à chaque cycle (jamais `ordonnerEtages`) : la règle d'onboarding
  * des deux premiers étages n'a aucun sens pour un joueur qui vient de terrasser le Gardien Absolu.
+ *
+ * Tous les étages y sont traités comme si leur Pacte de Niveau II était équipé : créatures
+ * renforcées de 20 % et maîtresses de leur élément, Gardien d'emblée dans sa Forme Finale. Il n'y a
+ * donc plus de forme supérieure à réveiller — l'arrachage de Pacte n'existe pas dans l'infini
+ * (voir `gererFinDeGardien`).
  */
 export function genererCycleInfini(
     etages: StructureEtage[],
@@ -114,7 +158,7 @@ export function genererCycleInfini(
     palierDeDepart: number,
 ): StructureEtage[] {
     return melangerAleatoirement(etages)
-        .map((etage, index) => appliquerPuissanceEtage(etage, pactesEquipes, palierDeDepart + index + 1));
+        .map((etage, index) => appliquerPuissanceEtage(etage, pactesEquipes, palierDeDepart + index + 1, true));
 }
 
 export function genererMessageBuff(etage: StructureEtage, pactesEquipes: string[]): string {

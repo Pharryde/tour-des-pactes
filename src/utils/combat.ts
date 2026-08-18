@@ -144,18 +144,17 @@ export interface CreneauxFroid {
 
 export const AUCUN_CRENEAU_FROID: CreneauxFroid = { gelesJoueur: [], gelesMonstre: [], joueurDabord: [], monstreDabord: [], annules: [] };
 
-function tirerCreneaux(nombre: number): number[] {
-    if (nombre <= 0) return [];
-    return melangerIndices().slice(0, Math.min(nombre, 5));
-}
-
-function melangerIndices(): number[] {
-    const indices = [0, 1, 2, 3, 4];
+function melanger(source: number[]): number[] {
+    const indices = [...source];
     for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     return indices;
+}
+
+function melangerIndices(): number[] {
+    return melanger([0, 1, 2, 3, 4]);
 }
 
 // Étage du Froid : quels créneaux du tour sont déréglés (résolus avant l'adversaire) et lesquels
@@ -174,9 +173,19 @@ export function tirerCreneauxFroid(joueur: Entite, monstre: Entite): CreneauxFro
     const dabord = indices.slice(0, Math.min(Math.abs(inversionsJ - inversionsM), 5));
     const annules = indices.slice(dabord.length, Math.min(dabord.length + Math.min(inversionsJ, inversionsM), 5));
 
+    // ⚠️ Les gels se tirent parmi les créneaux QUE LE DÉRÈGLEMENT N'A PAS PRIS. Geler une action et
+    // lui donner la priorité sur le même créneau, c'est gaspiller l'un des deux : une action gelée
+    // est annulée, l'ordre dans lequel elle n'a pas lieu n'intéresse personne. Le Pacte du Froid
+    // Niveau II — qui cumule les deux pouvoirs — perdait ainsi une partie de son effet, et le
+    // Gardien du Froid avec lui.
+    const restants = indices.slice(dabord.length + annules.length);
+    const geler = (nombre: number) => nombre <= 0 ? [] : melanger(restants).slice(0, Math.min(nombre, restants.length));
+
     return {
-        gelesJoueur: tirerCreneaux(monstre.actionsGelees ?? 0),
-        gelesMonstre: tirerCreneaux(joueur.actionsGelees ?? 0),
+        // Les deux camps peuvent en revanche geler le MÊME créneau : les deux actions y tombent,
+        // personne n'y perd rien.
+        gelesJoueur: geler(monstre.actionsGelees ?? 0),
+        gelesMonstre: geler(joueur.actionsGelees ?? 0),
         joueurDabord: inversionsJ > inversionsM ? dabord : [],
         monstreDabord: inversionsM > inversionsJ ? dabord : [],
         annules,

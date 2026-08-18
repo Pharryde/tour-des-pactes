@@ -635,6 +635,10 @@
 }
 .synergie-bouton:hover { background-color: #f9e2af; color: #11111b; }
 .synergie-bouton--active { background-color: #f9e2af; color: #11111b; }
+/* Le raccourci qui DÉFAIT : même forme que les autres, couleur d'avertissement pour qu'on ne le
+   confonde jamais avec un bouton d'équipement au moment de composer sa run. */
+.synergie-bouton--vider { color: #f38ba8; border-color: #f38ba8; }
+.synergie-bouton--vider:hover { background-color: #f38ba8; color: #11111b; }
 .inventaire-section-titre {
     border-bottom: 2px solid #313244;
     padding-bottom: 6px;

@@ -32,7 +32,7 @@ export const SYNERGIES_REGISTRY: Record<Synergie, SynergieDef> = {
     Ninja: {
         nom: 'Ninja',
         titre: "Frappe Insaisissable",
-        description: "Chaque Esquive réussie, la prochaine Attaque Précise du même tour est un Coup Critique (ajout multiplicateur x2).",
+        description: "Chaque coup esquivé renforce le Coup Critique qui attend la prochaine Précise du tour : x2 après une esquive, x3 après deux, x4 après trois, x5 après quatre. La Précise dépense le bonus et la chaîne repart de zéro ; un coup encaissé la rompt aussi.",
         pactesRequis: ["Pacte de l'Esquive", "Pacte de l'Ombre", "Pacte du Combo", "Pacte de la Fluidité"],
     },
     Tank: {

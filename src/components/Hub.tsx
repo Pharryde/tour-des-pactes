@@ -17,11 +17,14 @@ interface HubProps {
     modeHardcore: boolean;
     aVaincuLaTour: boolean;
     onQuitterHardcore: () => void;
+    // Pastille du Classement : des succès ont été débloqués depuis la dernière visite de l'onglet 🏅.
+    aNouveauSucces: boolean;
 }
 
 export function Hub({
     onLancerRun, onChangeEcran, forgeronPresente, aNouveauteTuto, marquerTutoLu,
-    aNouveauPacte, aPointsCompetenceDispo, modeHardcore, aVaincuLaTour, onQuitterHardcore
+    aNouveauPacte, aPointsCompetenceDispo, modeHardcore, aVaincuLaTour, onQuitterHardcore,
+    aNouveauSucces
 }: HubProps) {
     // Cible du bond du Chat Mystérieux (voir ChatHub.tsx), qui mesure ce bouton à l'exécution.
     const refBoutonLancer = useRef<HTMLButtonElement>(null);
@@ -87,7 +90,12 @@ export function Hub({
                 {/* Même seuil que le mode hardcore : le classement ne récompense que lui, l'afficher
                     plus tôt révélerait une fin de jeu que le joueur n'a pas encore atteinte. */}
                 {aVaincuLaTour && (
-                    <button className="btn-menu" onClick={() => onChangeEcran('ecran-classement')}>🏆 Classement</button>
+                    <button className="btn-menu" onClick={() => onChangeEcran('ecran-classement')}>
+                        🏆 Classement
+                        {aNouveauSucces && (
+                            <span title="Nouveau succès débloqué" className="badge-nouveaute" />
+                        )}
+                    </button>
                 )}
             </div>
         </div>

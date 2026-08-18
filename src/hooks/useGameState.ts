@@ -328,6 +328,14 @@ export function useGameState() {
     };
 
     const succesObtenus = succesDebloques(progressionSucces);
+    // Pastille "nouveau succès". ⚠️ On mémorise les IDENTIFIANTS vus, pas leur nombre — contrairement
+    // aux Pactes, la liste n'est pas monotone : `succesDebloques` la recalcule intégralement depuis
+    // la progression, et une mort en hardcore en retire. Un compteur se retrouverait au-dessus du
+    // total et éteindrait la pastille alors que d'autres succès ont été gagnés entre-temps.
+    // Clé partagée : `succesObtenus` couvre déjà les deux profils.
+    const [succesVus, setSuccesVus] = useLocalStorage<string[]>('tdp_succes_vus', []);
+    const aNouveauSucces = succesObtenus.some(id => !succesVus.includes(id));
+    const marquerSuccesVus = () => setSuccesVus(succesObtenus);
     // Signature plutôt que le tableau : ce dernier est reconstruit à chaque rendu, il déclencherait
     // un envoi par frappe de clavier. La liste étant issue d'un ordre stable (le registre), la
     // comparaison de chaînes suffit à détecter un vrai changement.
@@ -581,6 +589,8 @@ export function useGameState() {
     // composerEquipementSynergie, on remplace donc l'équipement entier sans repasser par les
     // contrôles de peutEquiperPacte (qui refuseraient les étapes intermédiaires).
     const gererEquiperSynergie = (pactes: string[]) => setPactesEquipes(pactes);
+
+    const gererDesequiperTout = () => setPactesEquipes([]);
 
     const gererLancerRun = (benediction: BenedictionChat | null) => {
         const bonusEsq = (competences.esq || 0) * 5;
@@ -990,6 +1000,14 @@ export function useGameState() {
     };
 
     const gererFinDeGardien = (aLvl1Equipe: boolean, aLvl2Equipe: boolean, aLvl1Possede: boolean, aLvl2Possede: boolean) => {
+        // Mode infini : aucun Pacte ne s'y arrache. Les Gardiens y apparaissent déjà dans leur
+        // Forme Finale (voir genererCycleInfini), il n'y a donc plus de forme supérieure à
+        // réveiller — l'écran de choix n'aurait rien à proposer.
+        if (cyclesInfini > 0) {
+            setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Le Gardien s'incline. Plus rien à lui arracher : la Tour ne fait plus que vous mettre à l'épreuve.</span>`]);
+            programmerTransition(gererPassageEtageSuivant);
+            return;
+        }
         if (aLvl2Equipe) {
             setHistoriqueLogs(prev => [...prev, `<br><span class="log-tour">✨ Puissance maximale confirmée. Le Gardien s'incline. Progression automatique !</span>`]);
             programmerTransition(gererPassageEtageSuivant);
@@ -1120,6 +1138,8 @@ export function useGameState() {
         nomJoueur, setNomJoueur,
         progressionSucces,
         succesObtenus,
+        aNouveauSucces,
+        marquerSuccesVus,
         gererClassementSaisi,
 
         // Progression méta (hors-run)
@@ -1144,6 +1164,7 @@ export function useGameState() {
         gererAbandon,
         gererBasculerPacte,
         gererEquiperSynergie,
+        gererDesequiperTout,
         gererDemarrerAscension,
         gererLancerRun,
         gererVieDeChatConsommee,

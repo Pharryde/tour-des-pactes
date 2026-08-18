@@ -293,13 +293,16 @@ export function CombatArene({
         setCombatEnCours(true);
         ajouterLogGlobal(`<div class="log-tour">--- TOUR ${tourActuel} ---</div>`);
 
-        // `annules` est purement informatif : le moteur ne connaît que les créneaux réellement
-        // déréglés ou gelés, on ne lui transmet donc que ceux-là.
+        // `annules` n'accorde la priorité à personne, mais reste un créneau FROID : la Synergie
+        // Élémentaire y double sa dose de poison, des deux côtés. Le moteur en a donc besoin —
+        // sans lui, la synergie serait inopérante à l'Étage du Froid, là où les deux camps portent
+        // le même pouvoir et où il s'annule à tous les coups.
         const creneauxMoteur = {
             gelesJoueur: creneauxFroid.gelesJoueur,
             gelesMonstre: creneauxFroid.gelesMonstre,
             joueurDabord: creneauxFroid.joueurDabord,
             monstreDabord: creneauxFroid.monstreDabord,
+            annules: creneauxFroid.annules,
         };
 
         if (creneauxFroid.annules.length > 0) {

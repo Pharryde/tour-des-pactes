@@ -141,8 +141,12 @@ Formule : `valeur = base + (répétitions − 1) × bonus`, puis application du 
 - Porter de l'armure est **dangereux face à la Foudre** : ses dégâts sont multipliés tant que la
   cible en porte, Précise comprise.
 - Un porteur de « Pointes d'Acier » / du **Pacte de l'Armure II** convertit son armure restante en
-  dégâts en fin de tour. Cette armure est alors **dépensée** : elle ne sert plus de bouclier contre
-  l'assaut d'en face. Deux porteurs face à face encaissent donc tout, chacun de son côté.
+  dégâts en fin de tour. Cet assaut est **absorbé par l'armure de la cible**, exactement comme une
+  Attaque ordinaire — c'est ce qui le distingue d'une Précise. L'armure lancée est **dépensée**, et
+  celle qui l'encaisse aussi.
+- **Deux porteurs face à face ne s'infligent que l'ÉCART entre leurs deux armures.** Le plus armé
+  frappe en premier ; son assaut consomme l'armure adverse, si bien que l'autre n'a plus rien à
+  lancer. Avec 150 d'armure contre 132 : le premier inflige **18**, le second **0**.
 
 ---
 
@@ -220,7 +224,14 @@ pleine mesure :
 |---|---|
 | Le Brasier Vorace / La Sève Noire, **forme évoluée** | **La moitié** (le reste est absorbé) |
 | Le Brasier Vorace / La Sève Noire, **forme finale** | **Rien** — totalement insensible |
+| **Créatures de ces deux étages**, Pacte correspondant équipé | **La moitié** |
 | Tout le reste | La dose entière |
+
+**Les créatures partagent la maîtrise de leur Gardien**, mais seulement quand le Pacte de l'étage est
+équipé : l'enrager réveille aussi sa résistance élémentaire. Le niveau du Pacte n'y change rien —
+elles résistent à moitié, **jamais plus**. L'insensibilité totale reste le privilège du Gardien : une
+dose entièrement absorbée par du menu fretin rendrait une action inutile pendant trois salles, et
+l'Étage du Poison — dont les créatures n'ont même pas l'Attaque — deviendrait une impasse.
 
 La réduction s'applique **au moment où la dose est posée**, pas au tic de fin de tour : le compteur
 🔥/🧪 affiche donc dès le premier coup ce que l'ennemi porte vraiment. La statistique 🔥/🧪 de votre
@@ -287,9 +298,9 @@ L'ordre est imposé et **n'est pas cosmétique** : les flammes rongent la plaque
 1. **Les doses de poison du tour** rejoignent le poison en cours (on garde la plus forte).
 2. **Brûlure puis Poison** frappent les deux camps — **même si le combat est déjà terminé**.
 3. Les effets suivants ne s'appliquent que **si les deux camps sont encore en vie** :
-   - **Assauts d'armure** (« Pointes d'Acier » et Pacte de l'Armure II). Les deux se résolvent sur le
-     **même instantané d'armure**, pris avant tout échange : sans cela, le résultat dépendrait de
-     l'ordre du code plutôt que des règles.
+   - **Assauts d'armure** (« Pointes d'Acier » et Pacte de l'Armure II). Le **plus armé des deux
+     frappe en premier**, et chaque assaut est absorbé par l'armure de la cible : le second n'a donc
+     plus rien à lancer. L'ordre est imposé par la règle, jamais par l'ordre du code (voir [§5](#5-larmure)).
    - **Régénération de PV** du Gardien (tous les X tours).
    - **Altération temporelle** (perte de PV imposée au joueur, tous les X tours).
    - **Remise à zéro** de l'armure et du palier d'esquive des deux camps.
@@ -421,7 +432,15 @@ programmation, avec trois repères distincts :
 | Bordure **grise** | Dérèglement **neutralisé** : les deux camps le portaient ici, l'action se résout normalement. |
 
 Le troisième cas est signalé exprès : sans lui, un Pacte du Froid entièrement contré passerait pour
-un Pacte qui ne fonctionne pas.
+un Pacte qui ne fonctionne pas. Il reste par ailleurs un créneau **froid** au sens de la
+[Synergie Élémentaire](#13-les-synergies-cachées), qui y double son poison.
+
+⚠️ **Un créneau ne peut jamais être à la fois gelé et déréglé.** Les gels sont tirés parmi les
+créneaux que le dérèglement n'a pas pris. Geler une action *et* lui donner la priorité gaspillerait
+l'un des deux pouvoirs : une action gelée est annulée, l'ordre dans lequel elle n'a pas lieu
+n'intéresse personne. C'est le **Pacte du Froid Niveau II** — le seul à cumuler les deux — et le
+**Gardien du Froid** qui y perdaient une partie de leur effet. Les deux camps peuvent en revanche
+geler le même créneau : les deux actions y tombent, personne n'y perd rien.
 
 **Le Pacte du Chat** (Niveau 0) est purement décoratif : offert à la fin du tutoriel, il n'a aucun
 effet mécanique.
@@ -438,17 +457,33 @@ Comme il n'y a que 4 emplacements, **une seule synergie peut être active à la 
 | Synergie | Pactes requis | Effet |
 |---|---|---|
 | **Guerrier**<br>*Posture du Seigneur de Guerre* | Vie · Armure · Brute · Temps | Chaque **Attaque** donne **+2 Armure**. Chaque **Défense** donne **+2 dégâts de base** pour le reste du tour. |
-| **Ninja**<br>*Frappe Insaisissable* | Esquive · Ombre · Combo · Fluidité | Une **Esquive réussie** arme un **Coup Critique (x2)** sur la prochaine Précise du même tour. |
+| **Ninja**<br>*Frappe Insaisissable* | Esquive · Ombre · Combo · Fluidité | Chaque **coup esquivé** renforce le **Coup Critique** qui attend la prochaine Précise du tour : **x2** après un, **x3** après deux, **x4** après trois, **x5** après quatre. |
 | **Tank**<br>*Riposte Fluide* | Vie · Armure · Esquive · Fluidité | Une **Esquive réussie** renvoie votre **Armure actuelle** en dégâts (absorbés comme une Attaque) et vous **soigne de 10 %** de cette armure. |
 | **Assassin**<br>*Danse des Lames* | Brute · Temps · Ombre · Combo | **⚔️ et 🎯 fusionnent dans la même jauge de combo** (A-A-P-P-P = Combo x5), et la Précise profite aussi des bonus du Pacte de la Brute. |
-| **Élémentaire**<br>*Communion des Éléments* | Foudre · Feu · Poison · Froid | Vos **Brûlures profitent de la Foudre** (amplifiées si la cible porte de l'Armure), et toute **dose de Poison posée sur un créneau où le Froid est intervenu en votre faveur est doublée**. |
+| **Élémentaire**<br>*Communion des Éléments* | Foudre · Feu · Poison · Froid | Vos **Brûlures profitent de la Foudre** (amplifiées si la cible porte de l'Armure), et toute **dose de Poison posée sur un créneau touché par le Froid est doublée**. |
 
 Le bonus du Guerrier est **temporaire** : il repart de zéro à chaque tour.
 
+La chaîne du Ninja se compte en **coups esquivés consécutifs**. C'est bien le coup **évité** qui
+l'alimente, jamais l'intention : une esquive obtenue grâce au palier résiduel en jouant Attaque ou
+Précise compte tout autant qu'une Esquive programmée. Un créneau où l'on encaisse — ou face auquel
+l'adversaire n'attaque pas — la rompt.
+
+**La Précise paie ce qu'elle dépense** : elle consomme le multiplicateur et remet la chaîne à zéro.
+Si elle esquive dans le même créneau, celui-ci la relance aussitôt à 1. Enchaîner les Précises en
+esquivant à chaque fois donne donc **x2 à chaque coup**, jamais x2 puis x3 puis x4 sans rien payer ;
+atteindre **x5** exige quatre esquives d'affilée **sans tirer**. Le tour ne comptant que 5 créneaux,
+c'est le plafond.
+
 L'Élémentaire réunit les quatre Gardiens élémentaires, qui s'ignorent complètement sans elle : la
 Brûlure quitte le calcul de dégâts avant que la Foudre ne s'y applique, et le Froid ne touche que
-l'ordre de résolution. Un « créneau en votre faveur » est un créneau où vous agissez avant l'ennemi,
-ou dont son action est gelée.
+l'ordre de résolution.
+
+Un **créneau touché par le Froid** est un créneau où vous agissez avant l'ennemi, où son action est
+gelée, **ou dont le dérèglement s'est neutralisé** parce que les deux camps portaient le même
+pouvoir. Ce dernier cas compte pour les deux camps : le Froid y a bien opéré, c'est seulement son
+effet de priorité qui s'est annulé. Sans lui, la synergie serait inopérante à l'Étage du Froid —
+précisément là où le Froid est partout.
 
 **Découverte.** La première fois qu'une synergie s'active, un message la révèle et elle entre dans les
 Archives. Ensuite, un simple rappel s'affiche en début de run. Dès qu'un joueur possède un Pacte de
@@ -704,6 +739,18 @@ Le palier ne redescend jamais et repart de celui atteint au bout du segment pré
 L'écran d'avertissement « UNE PRÉSENCE GRANDIT… » ne s'affiche **pas** dans l'infini : chaque étage
 étant un palier, il tomberait avant chaque combat pour redire une règle déjà acceptée.
 
+### Tous les étages au maximum
+
+Dans l'infini, **chaque étage est traité comme si son Pacte de Niveau II y était équipé**, que le
+joueur le porte ou non :
+
+- les créatures sont renforcées de **20 %** et **maîtrisent leur élément** (les créatures du Feu et
+  du Poison résistent donc de moitié) ;
+- le Gardien apparaît d'emblée dans sa **Forme Finale** — ses trois formes convergent.
+
+**Aucun Pacte ne s'y arrache.** Il n'y a plus de forme supérieure à réveiller, l'écran de choix
+n'aurait rien à proposer : vaincre un Gardien fait simplement passer à l'étage suivant.
+
 ### La boucle
 
 Chaque cycle compte **12 étages**, les mêmes Gardiens re-mélangés, suivis d'un **nouveau Gardien
@@ -718,7 +765,7 @@ L'étage record enregistre ces étages : c'est lui qui mesure jusqu'où le joueu
 - **Hardcore** : la porte de sortie continue d'être offerte à la fin de **chaque** étage de
   l'infini. C'est là qu'elle prend tout son sens — la puissance des monstres finit toujours par
   dépasser la vôtre, et la seule question est de savoir quand s'arrêter.
-- **Pactes** : les Gardiens revus laissent passer le joueur qui possède déjà leur Pacte. Ceux qui
-  manquent restent arrachables, dans une forme bien plus dangereuse.
+- **Pactes** : aucun ne s'arrache dans l'infini (voir ci-dessus). Ceux qui manquent au joueur
+  devront être pris dans une ascension normale.
 - **XP** : les récompenses continuent normalement, chaque étage de l'infini rapportant comme un
   étage ordinaire.

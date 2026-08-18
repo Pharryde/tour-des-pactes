@@ -19,6 +19,11 @@ pub struct CreneauxFroid {
     #[serde(default)] pub geles_monstre: Vec<usize>,
     #[serde(default)] pub joueur_dabord: Vec<usize>,
     #[serde(default)] pub monstre_dabord: Vec<usize>,
+    // Créneaux où les DEUX camps portaient le dérèglement : il s'y neutralise, personne n'y gagne la
+    // priorité. Ils restent malgré tout des créneaux FROIDS — la Synergie Élémentaire y double donc
+    // sa dose de poison, pour les deux camps. Sans ça, la synergie perdait tout effet à l'Étage du
+    // Froid, précisément là où le Froid est partout.
+    #[serde(default)] pub annules: Vec<usize>,
 }
 
 // Dose de poison qui frappera en fin de tour : celle déjà installée PLUS celle accumulée depuis le
@@ -342,7 +347,11 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     // (jamais rétroactif sur elle-même) — pas de mutation permanente de joueur.base_a.
     let mut guerrier_bonus_base_a = 0;
     // Ninja : une Esquive réussie arme un Coup Critique pour la PROCHAINE Précise du même tour.
-    let mut ninja_crit_pret = false;
+    // Ninja : nombre d'Esquives réussies CONSÉCUTIVES depuis le début du tour. Le Coup Critique qui
+    // attend la prochaine Précise vaut `1 + ce compteur` — x2 après une esquive, x3 après deux, x4
+    // après trois, x5 après quatre. Le tour ne comptant que 5 créneaux, il ne peut pas monter plus
+    // haut sans priver le joueur de la Précise qui le dépenserait.
+    let mut ninja_esquives = 0;
     // Doses de poison posées pendant CE tour, par camp. Elles s'additionnent ici puis sont
     // comparées à la dose déjà en cours en fin de tour (voir convertir_en_poison).
     let mut poison_sur_joueur = 0;
@@ -400,6 +409,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     let creneaux_joueur_dabord = creneaux.joueur_dabord;
     let creneaux_geles_joueur = creneaux.geles_joueur;
     let creneaux_geles_monstre = creneaux.geles_monstre;
+    let creneaux_annules = creneaux.annules;
 
     for i in 0..5 {
         if joueur.pv <= 0 || monstre.pv <= 0 { break; }
@@ -448,11 +458,18 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         val_m = convertir_valeur(val_m, act_m, &monstre);
 
         // Synergie Ninja ("Frappe Insaisissable") : consomme le Coup Critique en attente (armé par
-        // une Esquive réussie plus tôt ce tour) sur la prochaine Précise, quel que soit le combo.
-        let ninja_critique = synergie_j == Some(Synergie::Ninja) && *act_j == ActionType::P && ninja_crit_pret;
-        if ninja_critique {
-            val_j *= 2;
-            ninja_crit_pret = false;
+        // les Esquives réussies enchaînées plus tôt ce tour) sur la prochaine Précise, quel que
+        // soit le combo. Plus la chaîne d'esquives est longue, plus le coup est fort.
+        let ninja_critique = if synergie_j == Some(Synergie::Ninja) && *act_j == ActionType::P && ninja_esquives > 0 {
+            1 + ninja_esquives
+        } else { 1 };
+        if ninja_critique > 1 {
+            val_j *= ninja_critique;
+            // ⚠️ La Précise PAIE ce qu'elle vient de dépenser : la chaîne repart de zéro ici même,
+            // et non à la fin du créneau. C'est ce qui laisse l'esquive éventuelle de ce même
+            // créneau (traitée plus bas) la relancer à 1 — enchaîner les Précises donne donc x2 à
+            // chaque fois, jamais x2 puis x3 puis x4 sans jamais rien payer.
+            ninja_esquives = 0;
         }
 
         // Le niveau d'esquive reste un décompte fidèle du nombre d'actions Esquive enchaînées
@@ -475,11 +492,19 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         let guerrier = synergie_j == Some(Synergie::Guerrier);
         let mut d_joueur = aucun_degat();
         let mut d_monstre = aucun_degat();
+        // Ninja : ce créneau prolonge-t-il la chaîne d'Esquives ? Tout le reste la rompt — une
+        // autre action, une Esquive ratée, ou la Précise qui vient d'en dépenser le bénéfice.
+        let mut ninja_chaine_maintenue = false;
 
-        // Créneaux où le Froid est intervenu en faveur d'un camp : il y agit avant l'autre, ou
-        // l'action adverse y est gelée. Seule la Synergie Élémentaire s'en sert (poison doublé).
-        let froid_pour_joueur = creneaux_joueur_dabord.contains(&i) || gele_m;
-        let froid_pour_monstre = creneaux_monstre_dabord.contains(&i) || gele_j;
+        // Créneaux où le Froid est intervenu : un camp y agit avant l'autre, l'action adverse y est
+        // gelée, ou les deux dérèglements s'y sont neutralisés. Seule la Synergie Élémentaire s'en
+        // sert (poison doublé).
+        // ⚠️ Un créneau ANNULÉ compte pour les deux camps : le Froid y a bien opéré des deux côtés,
+        // c'est seulement son effet de priorité qui s'est annulé. Sans lui, la synergie serait
+        // inopérante à l'Étage du Froid — là où les deux camps portent le même pouvoir.
+        let creneau_annule = creneaux_annules.contains(&i);
+        let froid_pour_joueur = creneaux_joueur_dabord.contains(&i) || gele_m || creneau_annule;
+        let froid_pour_monstre = creneaux_monstre_dabord.contains(&i) || gele_j || creneau_annule;
 
         // ⚠️ Sur un créneau déréglé, celui qui frappe en premier frappe VRAIMENT en premier : si son
         // coup est fatal, l'autre n'a plus l'occasion de riposter. Sans cette garde, le dérèglement
@@ -590,8 +615,8 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
                 log_action.push_str(" <span class=\"log-combo\">❄️ Élémentaire : Poison doublé par le Froid</span>");
             }
         }
-        if ninja_critique {
-            log_action.push_str(" <span class=\"log-mort\">💥 Coup Critique !</span>");
+        if ninja_critique > 1 {
+            log_action.push_str(&format!(" <span class=\"log-mort\">💥 Coup Critique x{} !</span>", ninja_critique));
         }
         // Pas de valeur répétée ici : le log de combo affiche déjà le total final, crit inclus.
         // Classe dédiée (et non log-mort) : au milieu d'une ligne d'action dense, un critique doit
@@ -607,11 +632,16 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
         if d_joueur.esquive {
             log_action.push_str(&format!(" <br>💨 Vous esquivez !{}", mention_esquive(d_joueur.chance_esquive, true)));
 
-            // Synergie Ninja ("Frappe Insaisissable") : n'arme le Critique que sur une Esquive
-            // choisie et réussie (pas une esquive résiduelle d'une action différente).
-            if synergie_j == Some(Synergie::Ninja) && *act_j == ActionType::E {
-                ninja_crit_pret = true;
-                log_action.push_str(" <span class=\"log-combo\">(Prochaine Précise = Critique !)</span>");
+            // Synergie Ninja ("Frappe Insaisissable") : TOUTE esquive réussie arme le Critique, y
+            // compris celle obtenue grâce au palier résiduel en jouant autre chose — c'est le coup
+            // évité qui arme la riposte, pas l'intention. Chaque esquive de la chaîne renforce d'un
+            // cran le coup à venir.
+            // ⚠️ Ne pas aligner la Synergie Tank là-dessus : sa riposte reste conditionnée à une
+            // Esquive CHOISIE (voir juste en dessous).
+            if synergie_j == Some(Synergie::Ninja) {
+                ninja_esquives += 1;
+                ninja_chaine_maintenue = true;
+                log_action.push_str(&format!(" <span class=\"log-combo\">(Prochaine Précise = Critique x{} !)</span>", 1 + ninja_esquives));
             }
 
             // Synergie Tank ("Riposte Fluide") : renvoie l'Armure actuelle (avant toute déduction)
@@ -662,6 +692,11 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             log_action.push_str(&format!(" <br>💥 L'ennemi perd {} PV.{}", d_monstre.dmg_pv, mention_esquive(d_monstre.chance_esquive, false)));
         }
         
+        // ⚠️ La remise à zéro vit ICI, hors de toute branche : sans elle, une Attaque intercalée ou
+        // une Esquive ratée laisserait la chaîne intacte, et le multiplicateur cesserait de
+        // récompenser des esquives *consécutives*.
+        if !ninja_chaine_maintenue { ninja_esquives = 0; }
+
         etapes.push(EtapeCombat {
             est_action: true,
             log: log_action,
@@ -704,42 +739,46 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
 
     if joueur.pv > 0 && monstre.pv > 0 {
         // Assauts d'armure de fin de tour ("Pointes d'Acier" / Pacte de l'Armure II).
-        // ⚠️ Les deux camps sont résolus sur le MÊME instantané d'armure, pris avant tout échange :
-        // en séquence, celui qui frappait en second n'avait plus que le reliquat de son armure,
-        // déjà entamé par l'assaut adverse — le résultat dépendait donc de l'ordre du code.
-        // Et l'armure lancée est DÉPENSÉE : elle ne peut pas en plus servir de bouclier contre
-        // l'assaut d'en face. Deux porteurs face à face encaissent donc tout, chacun de son côté.
-        let armure_j = joueur.armure;
-        let armure_m = monstre.armure;
-        let assaut_m = monstre.degats_armure_restante_fin_tour && armure_m > 0;
-        let assaut_j = joueur.degats_armure_restante_fin_tour && armure_j > 0;
-        let bouclier_j = if assaut_j { 0 } else { armure_j };
-        let bouclier_m = if assaut_m { 0 } else { armure_m };
+        // ⚠️ L'armure lancée est TOUJOURS absorbée par l'armure de la cible, exactement comme une
+        // Attaque ordinaire — c'est ce qui distingue ce pouvoir d'une Précise. Deux porteurs face à
+        // face ne s'infligent donc que l'ÉCART entre leurs deux armures, jamais le total.
+        // ⚠️ Le plus armé des deux frappe en PREMIER, et son assaut consomme l'armure adverse : le
+        // second n'a alors plus rien à lancer. Sans cet ordre imposé, le résultat dépendrait de
+        // l'ordre du code, alors que la règle veut que ce soit la plus grosse armure qui l'emporte.
+        let joueur_frappe_en_premier = joueur.armure >= monstre.armure;
+        let ordre = if joueur_frappe_en_premier { [true, false] } else { [false, true] };
 
-        if assaut_m {
-            let absorbe = armure_m.min(bouclier_j);
-            joueur.armure -= absorbe;
-            let pv_perdus = armure_m - absorbe;
-            joueur.pv -= pv_perdus;
+        for assaillant_est_joueur in ordre {
+            let (attaquant, cible) = if assaillant_est_joueur {
+                (&mut joueur, &mut monstre)
+            } else {
+                (&mut monstre, &mut joueur)
+            };
+            if !attaquant.degats_armure_restante_fin_tour || attaquant.armure <= 0 { continue; }
+
+            // L'armure lancée quitte son porteur : elle ne peut pas servir deux fois.
+            let lancee = attaquant.armure;
+            attaquant.armure = 0;
+
+            let absorbe = lancee.min(cible.armure);
+            cible.armure -= absorbe;
+            let pv_perdus = lancee - absorbe;
+            cible.pv -= pv_perdus;
+
+            let (titre, subit, absorbeur) = if assaillant_est_joueur {
+                ("Pacte de l'Armure II : Vous infligez des dégâts égaux à votre armure restante", "son armure", "son armure")
+            } else {
+                ("Pointes d'Acier : Le Gardien vous inflige des dégâts égaux à son armure restante", "votre armure", "votre armure")
+            };
 
             if pv_perdus > 0 {
-                let detail_absorption = if absorbe > 0 { format!(", {} absorbés par votre armure", absorbe) } else { String::new() };
-                logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ Pointes d'Acier : Le Gardien vous inflige des dégâts égaux à son armure restante (-{} PV{}).</span>", pv_perdus, detail_absorption));
+                let detail = if absorbe > 0 { format!(", {} absorbés par {}", absorbe, subit) } else { String::new() };
+                logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ {} (-{} PV{}).</span>", titre, pv_perdus, detail));
             } else {
-                logs_fin_tour.push(format!("<span class=\"log-tour\">🛡️ Pointes d'Acier : Votre armure absorbe entièrement l'assaut du Gardien (-{} armure).</span>", absorbe));
-            }
-        }
-        if assaut_j {
-            let absorbe = armure_j.min(bouclier_m);
-            monstre.armure -= absorbe;
-            let pv_perdus = armure_j - absorbe;
-            monstre.pv -= pv_perdus;
-
-            if pv_perdus > 0 {
-                let detail_absorption = if absorbe > 0 { format!(", {} absorbés par son armure", absorbe) } else { String::new() };
-                logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ Pacte de l'Armure II : Vous infligez des dégâts égaux à votre armure restante (-{} PV{}).</span>", pv_perdus, detail_absorption));
-            } else {
-                logs_fin_tour.push(format!("<span class=\"log-tour\">🛡️ Pacte de l'Armure II : Son armure absorbe entièrement votre assaut (-{} armure).</span>", absorbe));
+                logs_fin_tour.push(format!(
+                    "<span class=\"log-tour\">🛡️ {} — {} l'absorbe entièrement (-{} armure).</span>",
+                    if assaillant_est_joueur { "Pacte de l'Armure II" } else { "Pointes d'Acier" }, absorbeur, absorbe
+                ));
             }
         }
         if let Some(x) = monstre.regen_pv_chaque_x_tours {

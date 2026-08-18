@@ -17,6 +17,7 @@ interface InventaireProps {
     aPacteChat: boolean;
     onBasculerPacte: (nomPacte: string) => void;
     onEquiperSynergie: (pactes: string[]) => void;
+    onDesequiperTout: () => void;
     onChangeEcran: (ecran: Ecran) => void;
 }
 
@@ -24,7 +25,7 @@ interface InventaireProps {
 // verrouillés dans la grille et donner au joueur une idée de sa progression vers la collection.
 const TOUS_LES_PACTES = Object.keys(PACTES_REGISTRY);
 
-export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, pactesNonVus, marquerPactesVus, synergiesDecouvertes, aPacteChat, onBasculerPacte, onEquiperSynergie, onChangeEcran }: InventaireProps) {
+export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, pactesNonVus, marquerPactesVus, synergiesDecouvertes, aPacteChat, onBasculerPacte, onEquiperSynergie, onDesequiperTout, onChangeEcran }: InventaireProps) {
 
     // Emplacements réellement occupés : le joueur doit voir d'un coup d'œil ce qu'il lui reste,
     // sans avoir à recompter ses cartes surlignées.
@@ -127,19 +128,35 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, p
             {/* Raccourci d'équipement : une synergie exige une combinaison exacte de 4 Pactes
                 répartis sur 3 emplacements de Niveau I et 1 de Niveau II. La recomposer à la main
                 à chaque run est fastidieux et facile à rater. */}
-            {synergiesEquipables.length > 0 && (
+            {(synergiesEquipables.length > 0 || pactesEquipes.length > 0) && (
                 <div className="synergies-raccourcis">
-                    <span className="synergies-raccourcis-titre">Synergies découvertes :</span>
-                    {synergiesEquipables.map(({ synergie, composition, dejaEquipee }) => (
+                    {synergiesEquipables.length > 0 && (
+                        <>
+                            <span className="synergies-raccourcis-titre">Synergies découvertes :</span>
+                            {synergiesEquipables.map(({ synergie, composition, dejaEquipee }) => (
+                                <button
+                                    key={synergie}
+                                    className={`synergie-bouton${dejaEquipee ? ' synergie-bouton--active' : ''}`}
+                                    onClick={() => onEquiperSynergie(composition)}
+                                    title={`${SYNERGIES_REGISTRY[synergie].titre} — ${composition.join(', ')}`}
+                                >
+                                    🔮 {SYNERGIES_REGISTRY[synergie].nom}{dejaEquipee ? ' ✓' : ''}
+                                </button>
+                            ))}
+                        </>
+                    )}
+
+                    {/* Repartir de zéro sans avoir à décliquer les Pactes un par un — indispensable
+                        dès qu'on jongle entre plusieurs compositions. */}
+                    {pactesEquipes.length > 0 && (
                         <button
-                            key={synergie}
-                            className={`synergie-bouton${dejaEquipee ? ' synergie-bouton--active' : ''}`}
-                            onClick={() => onEquiperSynergie(composition)}
-                            title={`${SYNERGIES_REGISTRY[synergie].titre} — ${composition.join(', ')}`}
+                            className="synergie-bouton synergie-bouton--vider"
+                            onClick={onDesequiperTout}
+                            title="Retire les 4 emplacements d'un coup"
                         >
-                            🔮 {SYNERGIES_REGISTRY[synergie].nom}{dejaEquipee ? ' ✓' : ''}
+                            ✖️ Tout déséquiper
                         </button>
-                    ))}
+                    )}
                 </div>
             )}
 
