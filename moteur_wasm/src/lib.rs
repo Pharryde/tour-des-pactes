@@ -206,8 +206,12 @@ fn convertir_en_poison(attaquant: &Entite, cible: &Entite, action: &ActionType, 
 // dissipe la réserve déjà accumulée. C'est ce qui donne son sens au changement de forme du Gardien
 // Absolu — passer en Brasier Vorace éteint le brasier qu'on avait allumé sur lui, passer en Sève
 // Noire purge son poison. Sans ça, l'immunité n'aurait servi qu'à repousser l'échéance d'un tour.
-fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str, est_joueur: bool) -> Vec<String> {
+fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str, est_joueur: bool) -> (Vec<String>, Option<String>) {
     let mut logs = Vec::new();
+    // Quel tic a fait franchir le zéro. Le premier qui y parvient garde la paternité : la brûlure
+    // s'applique avant le poison, donc un poison qui frappe un corps déjà tombé n'a rien tué.
+    let mut cause = None;
+    let vivant_avant = entite.pv > 0;
 
     if entite.part_brulure_subie == Some(0.0) {
         if entite.brulure_active.unwrap_or(0) > 0 {
@@ -239,6 +243,7 @@ fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str, est_joueur: bool) -> Ve
             entite.pv -= pv_perdus;
             let detail = if absorbe > 0 { format!(", {} absorbés par l'armure", absorbe) } else { String::new() };
             logs.push(format!("<span class=\"log-mort\">🔥 Brûlure : {} {} PV{}.</span>", sujet, pv_perdus, detail));
+            if vivant_avant && entite.pv <= 0 { cause = Some("feu".to_string()); }
         }
         let suivante = brulure / 2;
         entite.brulure_active = if suivante > 0 { Some(suivante) } else { None };
@@ -248,10 +253,11 @@ fn tics_de_fin_de_tour(entite: &mut Entite, sujet: &str, est_joueur: bool) -> Ve
         if poison > 0 {
             entite.pv -= poison;
             logs.push(format!("<span class=\"log-mort\">🧪 Poison : {} {} PV (l'armure n'y change rien).</span>", sujet, poison));
+            if vivant_avant && entite.pv <= 0 && cause.is_none() { cause = Some("poison".to_string()); }
         }
     }
 
-    logs
+    (logs, cause)
 }
 
 #[derive(Serialize)]
@@ -296,6 +302,15 @@ pub struct ResultatTour {
     pub creneaux_geles_monstre: Vec<usize>,
     pub creneaux_joueur_dabord: Vec<usize>,
     pub creneaux_monstre_dabord: Vec<usize>,
+
+    // Effet de FIN DE TOUR qui a porté le coup fatal : "feu", "poison" ou "armure" (None si le camp
+    // a survécu, ou s'il est tombé pendant les actions). Seul le moteur peut le dire : les tics et
+    // l'assaut d'armure s'enchaînent dans un ordre strict, et l'assaut est entièrement SAUTÉ dès
+    // qu'un camp est déjà tombé. Sans cette information, l'interface ne pouvait que constater « mort
+    // après la dernière action » et attribuait la cause à tout pouvoir présent — un Gardien de
+    // l'Armure emporté par le poison passait pour une victime de sa propre plaque.
+    pub cause_mort_joueur: Option<String>,
+    pub cause_mort_monstre: Option<String>,
 }
 
 // Le Feu et le Poison REMPLACENT l'action au lieu de s'y ajouter : garder ⚔️/🎯 laisserait croire
@@ -734,8 +749,10 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     // ⚠️ Brûlure et poison se résolvent HORS de la garde « les deux sont vivants » : tuer son
     // adversaire n'annule pas ce qu'on a déjà dans les veines. Le reste des effets de fin de tour
     // (assauts d'armure, régénérations) n'a lui plus de sens si le combat est terminé.
-    logs_fin_tour.extend(tics_de_fin_de_tour(&mut joueur, "vous perdez", true));
-    logs_fin_tour.extend(tics_de_fin_de_tour(&mut monstre, "l'ennemi perd", false));
+    let (logs_j, mut cause_mort_joueur) = tics_de_fin_de_tour(&mut joueur, "vous perdez", true);
+    let (logs_m, mut cause_mort_monstre) = tics_de_fin_de_tour(&mut monstre, "l'ennemi perd", false);
+    logs_fin_tour.extend(logs_j);
+    logs_fin_tour.extend(logs_m);
 
     if joueur.pv > 0 && monstre.pv > 0 {
         // Assauts d'armure de fin de tour ("Pointes d'Acier" / Pacte de l'Armure II).
@@ -774,6 +791,12 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
             if pv_perdus > 0 {
                 let detail = if absorbe > 0 { format!(", {} absorbés par {}", absorbe, subit) } else { String::new() };
                 logs_fin_tour.push(format!("<span class=\"log-mort\">⚔️ {} (-{} PV{}).</span>", titre, pv_perdus, detail));
+                // On n'entre dans ce bloc que si les deux camps ont survécu aux tics : un assaut qui
+                // fait tomber sa cible en est donc bien l'unique cause.
+                if cible.pv <= 0 {
+                    let mort = Some("armure".to_string());
+                    if assaillant_est_joueur { cause_mort_monstre = mort; } else { cause_mort_joueur = mort; }
+                }
             } else {
                 logs_fin_tour.push(format!(
                     "<span class=\"log-tour\">🛡️ {} — {} l'absorbe entièrement (-{} armure).</span>",
@@ -812,6 +835,7 @@ pub fn jouer_tour(joueur_js: JsValue, monstre_js: JsValue, actions_joueur_js: Js
     let resultat = ResultatTour {
         joueur, monstre, actions_monstre, etapes, logs_fin_tour,
         creneaux_geles_joueur, creneaux_geles_monstre, creneaux_joueur_dabord, creneaux_monstre_dabord,
+        cause_mort_joueur, cause_mort_monstre,
     };
     serde_wasm_bindgen::to_value(&resultat).map_err(|e| JsValue::from_str(&e.to_string()))
 }

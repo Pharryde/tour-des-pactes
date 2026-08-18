@@ -1,5 +1,5 @@
 // src/hooks/useGameState.ts
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import init, { get_donnees_etages } from 'moteur_wasm';
 import type { Ecran, Entite, StructureEtage, Competences, Bestiaire, StatsRun, ChoixRepos, Synergie, BenedictionChat, LeconMort, IssueAscension } from '../types';
 import { appliquerPactesSurJoueur, calculerSoinRepos, calculerGainPvMaxRepos, peutEquiperPacte } from '../utils/pactes';
@@ -172,6 +172,11 @@ export function useGameState() {
     const [, setComboJoueurRun] = useLocalStorage<StatCombo>('tdp_combo_joueur_run', COMBO_VIDE);
     const [, setComboMonstresRun] = useLocalStorage<StatCombo>('tdp_combo_monstres_run', COMBO_VIDE);
     const [etageRecord, setEtageRecord] = useLocalStorage<number>(cleProfil('tdp_etage_record', modeHardcore), 0);
+    // Records irrévocables des compteurs de succès (voir CLES_PROFIL) : `effacerProfilHardcore`
+    // n'y touche pas, un succès obtenu ne se reprend donc jamais.
+    const [succesEtageMax, setSuccesEtageMax] = useLocalStorage<number>(cleProfil('tdp_succes_etage_max', modeHardcore), 0);
+    const [succesPactes1Max, setSuccesPactes1Max] = useLocalStorage<number>(cleProfil('tdp_succes_pactes1_max', modeHardcore), 0);
+    const [succesPactes2Max, setSuccesPactes2Max] = useLocalStorage<number>(cleProfil('tdp_succes_pactes2_max', modeHardcore), 0);
     const [statsDerniereRun, setStatsDerniereRun] = useLocalStorage<StatsRun | null>('tdp_stats_derniere_run', null);
 
     // Toutes les écritures du journal passent par ici (une douzaine d'appelants) : c'est le seul
@@ -291,12 +296,16 @@ export function useGameState() {
     const lireDormant = <T,>(cle: CleProfil, defaut: T): T =>
         lireValeurPersistante(cleProfil(cle, !modeHardcore), defaut);
 
-    const moitieActive = {
+    const pactesComptes = compterPactes(pactesDebloques);
+    const moitieActive = useMemo(() => ({
         monstresTues,
-        etageRecord,
+        // `max` du record figé et de la valeur courante : le record n'est écrit qu'à l'instant de
+        // l'effacement (voir `effacerProfilHardcore`), il vaut donc 0 partout ailleurs — y compris
+        // sur une sauvegarde antérieure à ces clés, où la valeur courante fait seule foi.
+        etageRecord: Math.max(succesEtageMax, etageRecord),
         runs: runsAchevees,
-        pactesLvl1: compterPactes(pactesDebloques).lvl1,
-        pactesLvl2: compterPactes(pactesDebloques).lvl2,
+        pactesLvl1: Math.max(succesPactes1Max, pactesComptes.lvl1),
+        pactesLvl2: Math.max(succesPactes2Max, pactesComptes.lvl2),
         synergies: synergiesActivees.length,
         bossLvl0: bossLvl0.length,
         bossLvl1: bossLvl1.length,
@@ -306,29 +315,41 @@ export function useGameState() {
         degatsAttaque: degatsAttaqueTotal,
         degatsPrecise: degatsPreciseTotal,
         soins: soinsTotal,
-    };
-    const pactesDormants = lireDormant<string[]>('tdp_pactes_debloques', []);
-    const moitieDormante = {
-        monstresTues: lireDormant('tdp_monstres_tues', 0),
-        etageRecord: lireDormant('tdp_etage_record', 0),
-        runs: lireDormant('tdp_runs_achevees', 0),
-        pactesLvl1: compterPactes(pactesDormants).lvl1,
-        pactesLvl2: compterPactes(pactesDormants).lvl2,
-        synergies: lireDormant<Synergie[]>('tdp_synergies_activees', []).length,
-        bossLvl0: lireDormant<string[]>('tdp_boss_lvl0', []).length,
-        bossLvl1: lireDormant<string[]>('tdp_boss_lvl1', []).length,
-        bossLvl2: lireDormant<string[]>('tdp_boss_lvl2', []).length,
-        degatsEsquives: lireDormant('tdp_degats_esquives_total', 0),
-        degatsBloques: lireDormant('tdp_degats_bloques_total', 0),
-        degatsAttaque: lireDormant('tdp_degats_attaque_total', 0),
-        degatsPrecise: lireDormant('tdp_degats_precise_total', 0),
-        soins: lireDormant('tdp_soins_total', 0),
-    };
+    }), [monstresTues, succesEtageMax, etageRecord, runsAchevees, succesPactes1Max, succesPactes2Max,
+        pactesComptes.lvl1, pactesComptes.lvl2, synergiesActivees.length, bossLvl0.length,
+        bossLvl1.length, bossLvl2.length, degatsEsquivesTotal, degatsBloquesTotal, degatsAttaqueTotal,
+        degatsPreciseTotal, soinsTotal]);
+    // ⚠️ Lu UNE SEULE FOIS pour la session : seul le profil actif est écrit, et en basculer impose un
+    // rechargement de page (voir `basculerProfil`). Recalculé à chaque rendu, ce bloc coûtait 14
+    // `JSON.parse` de localStorage par rendu, une quinzaine de fois par tour de combat — en pleine
+    // animation.
+    const [moitieDormante] = useState(() => {
+        const pactesDormants = lireDormant<string[]>('tdp_pactes_debloques', []);
+        const comptes = compterPactes(pactesDormants);
+        return {
+            monstresTues: lireDormant('tdp_monstres_tues', 0),
+            etageRecord: Math.max(lireDormant('tdp_succes_etage_max', 0), lireDormant('tdp_etage_record', 0)),
+            runs: lireDormant('tdp_runs_achevees', 0),
+            pactesLvl1: Math.max(lireDormant('tdp_succes_pactes1_max', 0), comptes.lvl1),
+            pactesLvl2: Math.max(lireDormant('tdp_succes_pactes2_max', 0), comptes.lvl2),
+            synergies: lireDormant<Synergie[]>('tdp_synergies_activees', []).length,
+            bossLvl0: lireDormant<string[]>('tdp_boss_lvl0', []).length,
+            bossLvl1: lireDormant<string[]>('tdp_boss_lvl1', []).length,
+            bossLvl2: lireDormant<string[]>('tdp_boss_lvl2', []).length,
+            degatsEsquives: lireDormant('tdp_degats_esquives_total', 0),
+            degatsBloques: lireDormant('tdp_degats_bloques_total', 0),
+            degatsAttaque: lireDormant('tdp_degats_attaque_total', 0),
+            degatsPrecise: lireDormant('tdp_degats_precise_total', 0),
+            soins: lireDormant('tdp_soins_total', 0),
+        };
+    });
     const [moitieNormale, moitieHc] = modeHardcore
         ? [moitieDormante, moitieActive]
         : [moitieActive, moitieDormante];
 
-    const progressionSucces: ProgressionSucces = {
+    // `succesDebloques` parcourt les 96 définitions en cherchant leur série ou leur thème : sans
+    // mémorisation, c'est ~1600 parcours de tableau à chaque rendu.
+    const progressionSucces: ProgressionSucces = useMemo(() => ({
         ...moitieNormale,
         monstresTuesHc: moitieHc.monstresTues,
         etageRecordHc: moitieHc.etageRecord,
@@ -345,9 +366,9 @@ export function useGameState() {
         degatsPreciseHc: moitieHc.degatsPrecise,
         soinsHc: moitieHc.soins,
         themes: succesTheme,
-    };
+    }), [moitieNormale, moitieHc, succesTheme]);
 
-    const succesObtenus = succesDebloques(progressionSucces);
+    const succesObtenus = useMemo(() => succesDebloques(progressionSucces), [progressionSucces]);
     // Pastille "nouveau succès". ⚠️ On mémorise les IDENTIFIANTS vus, pas leur nombre — contrairement
     // aux Pactes, la liste n'est pas monotone : `succesDebloques` la recalcule intégralement depuis
     // la progression, et une mort en hardcore en retire. Un compteur se retrouverait au-dessus du
@@ -474,6 +495,15 @@ export function useGameState() {
     // le savoir (Synergies découvertes, bestiaire, Archives, progrès du Chat) vit dans des clés
     // partagées que ce nettoyage ne touche pas, et le profil normal dort dans les siennes.
     const effacerProfilHardcore = () => {
+        // ⚠️ Figer AVANT d'effacer les compteurs de succès que ce nettoyage remet à zéro. Sans cela,
+        // une mort hardcore RETIRE des succès déjà obtenus — et `publierSucces` poussant la liste
+        // entière, ils disparaissent aussi du registre public. « Finisseur » exigeant les 95 autres
+        // simultanément, il aurait fallu ne plus jamais mourir une fois la collection complète.
+        const comptes = compterPactes(pactesDebloques);
+        setSuccesEtageMax(m => Math.max(m, etageRecord));
+        setSuccesPactes1Max(m => Math.max(m, comptes.lvl1));
+        setSuccesPactes2Max(m => Math.max(m, comptes.lvl2));
+
         setPactesDebloques([]);
         setPactesEquipes([]);
         setPactesVus(0);

@@ -415,20 +415,6 @@ export function CombatArene({
             await attendreEtape(etape.estAction ? 300 : 600);
         }
 
-        ajouterStatsTour({
-            degatsInfliges: degatsInfligesTour,
-            degatsBloques: degatsBloquesTour,
-            degatsEsquives: degatsEsquivesTour,
-            degatsAttaque: degatsAttaqueTour,
-            degatsPrecise: degatsPreciseTour,
-            // Les tics de fin de tour tombent après la dernière étape : un soin qui s'y produit
-            // (Pacte de la Vie II) ne serait pas vu par la boucle ci-dessus.
-            soins: soinsTour + Math.max(0, resultat.joueur.pv - currentJoueur.pv),
-            actions: actionsTour,
-            comboJoueur: comboTourJ,
-            comboMonstre: comboTourM,
-        });
-
         if (resultat.logsFinTour.length > 0) {
             for (const logFin of resultat.logsFinTour) { ajouterLogGlobal(logFin); }
             await attendreEtape(600);
@@ -462,6 +448,22 @@ export function CombatArene({
             await new Promise<void>(resolve => { resolveVieDeChatRef.current = resolve; });
         }
 
+        // ⚠️ Comptabilisé APRÈS les soins de fin de tour (Pacte de la Vie II, Vie de Chat), qui
+        // relèvent `resultat.joueur.pv` en dehors des étapes : mesuré plus haut, l'écart ne portait
+        // que sur les tics du moteur et ces deux soins-là n'étaient JAMAIS comptés — `tdp_soins_total`
+        // sous-comptait et les succès `soins_*` étaient plus durs que leur libellé ne l'annonce.
+        ajouterStatsTour({
+            degatsInfliges: degatsInfligesTour,
+            degatsBloques: degatsBloquesTour,
+            degatsEsquives: degatsEsquivesTour,
+            degatsAttaque: degatsAttaqueTour,
+            degatsPrecise: degatsPreciseTour,
+            soins: soinsTour + Math.max(0, resultat.joueur.pv - currentJoueur.pv),
+            actions: actionsTour,
+            comboJoueur: comboTourJ,
+            comboMonstre: comboTourM,
+        });
+
         setJoueur(resultat.joueur);
         setMonstre(resultat.monstre);
 
@@ -478,7 +480,9 @@ export function CombatArene({
             mortEnFinDeTour: (derniereAction?.joueurPv ?? joueur.pv) > 0 && resultat.joueur.pv <= 0,
             alterationDeclenchee: monstre.pertePvChaqueXTours !== undefined
                 && tourActuel % monstre.pertePvChaqueXTours === 0,
-            assautArmure: monstre.degatsArmureRestanteFinTour === true,
+            // Même exigence que pour les succès à thème : c'est l'assaut qui doit avoir porté le coup
+            // fatal, pas le Gardien qui doit simplement en être capable.
+            assautArmure: resultat.causeMortJoueur === 'armure',
             bloqueEsquive: monstre.bloqueEsquiveOpposant === true,
             sestSoigne: sestSoigneRef.current,
         };
@@ -487,12 +491,13 @@ export function CombatArene({
         // dernière action puis mort à l'arrivée = c'est un effet de fin de tour qui l'a emporté.
         // Plusieurs peuvent être vrais à la fois (brûlure ET poison) ; on les remonte tous et c'est
         // l'étage qui tranchera lequel compte (voir themeMerite).
-        const causesMortMonstre: string[] = [];
-        if (derniereAction !== undefined && derniereAction.monstrePv > 0 && resultat.monstre.pv <= 0) {
-            if ((derniereAction.monstreBrulure ?? 0) > 0) causesMortMonstre.push('feu');
-            if ((derniereAction.monstrePoison ?? 0) > 0) causesMortMonstre.push('poison');
-            if (joueur.degatsArmureRestanteFinTour === true) causesMortMonstre.push('armure');
-        }
+        // ⚠️ La cause vient du MOTEUR (`causeMortMonstre`), jamais d'un pouvoir simplement présent :
+        // lui seul connaît l'ordre réel de la fin de tour. Les tics de brûlure et de poison tombent
+        // d'abord, et l'assaut d'armure est entièrement SAUTÉ si un camp est déjà mort — un Gardien
+        // de l'Armure emporté par le poison décrochait donc « Le mur retourné » sans qu'aucune plaque
+        // n'ait été lancée. Le raisonnement vaut dans les deux sens : un Gardien du Feu achevé par un
+        // assaut d'armure ne doit pas non plus valoir « Retour de flamme ».
+        const causesMortMonstre = resultat.causeMortMonstre ? [resultat.causeMortMonstre] : [];
 
         // Le PNJ du tutoriel ne peut jamais tuer ni être tué : il n'existe que pour dérouler son
         // script sur un nombre de tours fixe, indépendamment des PV.

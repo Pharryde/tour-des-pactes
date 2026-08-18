@@ -57,6 +57,11 @@ const CLES_JEU = [
     'tdp_degats_attaque_total',
     'tdp_degats_precise_total',
     'tdp_soins_total',
+    // Records figés avant l'effacement d'un profil hardcore. Sans eux dans l'instantané, une
+    // restauration cloud rendrait aux succès leur caractère révocable.
+    'tdp_succes_etage_max',
+    'tdp_succes_pactes1_max',
+    'tdp_succes_pactes2_max',
     // Partagé entre les profils, donc listé tel quel : un fait d'armes, pas une progression.
     'tdp_succes_theme',
     'tdp_forgeron_presente',

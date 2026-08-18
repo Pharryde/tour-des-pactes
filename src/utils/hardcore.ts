@@ -48,6 +48,16 @@ export const CLES_PROFIL = [
     'tdp_degats_attaque_total',
     'tdp_degats_precise_total',
     'tdp_soins_total',
+    // Records HAUTS-DE-CRUE des compteurs que la mort hardcore remet à zéro (`effacerProfilHardcore`
+    // efface `tdp_etage_record` et `tdp_pactes_debloques`). Sans eux, une mort RETIRE des succès déjà
+    // obtenus — et comme `publierSucces` pousse la liste entière, ils disparaissent aussi du registre
+    // public. Pire, « Finisseur » exigeant les 95 autres SIMULTANÉMENT, il devenait impossible de
+    // l'obtenir sans ne plus jamais mourir une fois la collection complète.
+    // ⚠️ Ils sont lus en `max(record, valeur courante)` : une sauvegarde antérieure n'a pas la clé,
+    // et la valeur courante fait alors foi — aucune migration nécessaire.
+    'tdp_succes_etage_max',
+    'tdp_succes_pactes1_max',
+    'tdp_succes_pactes2_max',
 ] as const;
 
 export type CleProfil = typeof CLES_PROFIL[number];

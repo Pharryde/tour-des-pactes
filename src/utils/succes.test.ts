@@ -145,6 +145,16 @@ describe('themeMerite', () => {
         expect(themeMerite('Pacte du Poison', ['feu', 'poison'])).toBe('poison');
     });
 
+    // ⚠️ La liste de causes ne porte plus qu'UNE entrée, celle que le moteur a réellement constatée
+    // (`causeMortMonstre`). Elle valait auparavant tout pouvoir simplement présent : un Gardien de
+    // l'Armure emporté par le poison arrivait ici en `['poison','armure']` et décrochait « Le mur
+    // retourné » alors que l'assaut de plaque n'avait même pas eu lieu — le moteur le saute
+    // entièrement dès qu'un camp est déjà tombé.
+    it("ne décerne rien sur une cause que le moteur n'a pas constatée", () => {
+        expect(themeMerite("Pacte de l'Armure", ['poison'])).toBeNull();
+        expect(themeMerite('Pacte du Feu', ['armure'])).toBeNull();
+    });
+
     it("rend null sur un étage sans succès à thème", () => {
         expect(themeMerite('Pacte du Temps', ['feu', 'poison', 'armure'])).toBeNull();
     });
