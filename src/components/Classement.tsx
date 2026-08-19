@@ -16,9 +16,13 @@ interface ClassementProps {
     nomJoueur: string;
     onNomChange: (nom: string) => void;
     onRetour: () => void;
-    // Éteint la pastille du Hub. Appelée à l'ouverture de l'onglet 🏅 et non à l'entrée sur l'écran :
-    // marquer les succès comme vus alors que le joueur consulte le classement les lui escamoterait.
+    // Éteint la pastille du Hub. Appelée à la SORTIE de l'écran, et seulement si l'onglet 🏅 a été
+    // ouvert : plus tôt, les pastilles de nouveauté disparaîtraient avant d'avoir été vues ; sans la
+    // condition, un joueur venu consulter le classement se ferait escamoter ses succès.
     onSuccesVus: () => void;
+    // Succès décrochés depuis la dernière consultation de l'onglet 🏅, pour les marquer d'une
+    // pastille. Ils restent signalés pendant toute la visite : le marquage n'a lieu qu'à la sortie.
+    succesNonVus: string[];
 }
 
 const MEDAILLES = ['🥇', '🥈', '🥉'];
@@ -38,7 +42,13 @@ function libelleValeur(categorie: Categorie, valeur: number): string {
     return `Étage ${valeur}`;
 }
 
-export function Classement({ peutSInscrire, progressionSucces, succesObtenus, nomJoueur, onNomChange, onRetour, onSuccesVus }: ClassementProps) {
+export function Classement({ peutSInscrire, progressionSucces, succesObtenus, succesNonVus, nomJoueur, onNomChange, onRetour, onSuccesVus }: ClassementProps) {
+    // ⚠️ Le marquage « vus » est reporté à la SORTIE : appelé à l'ouverture de l'onglet, il viderait
+    // la liste des nouveautés avant le premier rendu et aucune pastille n'apparaîtrait jamais (même
+    // piège que `marquerPactesVus` dans l'Inventaire). Il reste conditionné à une visite RÉELLE de
+    // l'onglet 🏅 : sortir du classement sans y passer ne doit escamoter aucun succès.
+    const [succesConsultes, setSuccesConsultes] = useState(false);
+    const quitter = () => { if (succesConsultes) onSuccesVus(); onRetour(); };
     const [onglet, setOnglet] = useState<Onglet>('hardcore');
     // Les requêtes de classement ne concernent que les onglets de catégorie : sur l'onglet des
     // succès on garde la dernière catégorie consultée pour ne pas relancer de lecture inutile.
@@ -113,14 +123,14 @@ export function Classement({ peutSInscrire, progressionSucces, succesObtenus, no
                 ))}
                 <button
                     className={`classement-onglet${onglet === 'succes' ? ' classement-onglet--actif' : ''}`}
-                    onClick={() => { setOnglet('succes'); onSuccesVus(); }}
+                    onClick={() => { setOnglet('succes'); setSuccesConsultes(true); }}
                 >
                     🏅 Succès
                 </button>
             </div>
 
             {!surSucces && <p className="texte-description classement-intro">{CATEGORIES[categorie].titre}</p>}
-            {surSucces && <SuccesListe progression={progressionSucces} obtenus={succesObtenus} />}
+            {surSucces && <SuccesListe progression={progressionSucces} obtenus={succesObtenus} nonVus={succesNonVus} />}
 
             {!surSucces && chargement && <p className="texte-description">Consultation des archives…</p>}
 
@@ -226,7 +236,7 @@ export function Classement({ peutSInscrire, progressionSucces, succesObtenus, no
                                 {nomJoueur ? '✏️ Changer mon nom' : '🏷️ Choisir mon nom'}
                             </button>
                         )}
-                        <button className="btn-menu" onClick={onRetour}>Retour au Hub</button>
+                        <button className="btn-menu" onClick={quitter}>Retour au Hub</button>
                     </>
                 )}
             </div>

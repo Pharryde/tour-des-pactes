@@ -42,7 +42,7 @@ function App() {
       modeHardcore, aVaincuLaTour,
       cyclesInfini, offreInfiniDispo, gererContinuerInfini, runsHc, runsHcTotales, monstresHc,
       nomJoueur, setNomJoueur, progressionSucces, succesObtenus, aNouveauSucces, marquerSuccesVus, gererClassementSaisi,
-      succesAFeter, feterSuccesAffiche,
+      succesAFeter, feterSuccesAffiche, succesNonVus,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, pactesNonVus, aPointsCompetenceDispo, estPremiereRun,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie, gererDesequiperTout,
@@ -169,7 +169,7 @@ function App() {
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} modeHardcore={modeHardcore} onQuitterLaTour={gererQuitterLaTour} cyclesInfini={cyclesInfini} />}
           {ecran === 'ecran-hardcore-intro' && <HardcoreIntro onEntrer={gererEntrerHardcore} onRetour={() => setEcran('ecran-hub')} />}
           {ecran === 'ecran-classement-saisie' && <ClassementSaisie nbRuns={runsHc} runsTotales={runsHcTotales} monstresTues={monstresHc} onNomChoisi={setNomJoueur} onTermine={gererClassementSaisi} />}
-          {ecran === 'ecran-classement' && <Classement peutSInscrire={aVaincuLaTour} progressionSucces={progressionSucces} succesObtenus={succesObtenus} nomJoueur={nomJoueur} onNomChange={setNomJoueur} onRetour={() => setEcran('ecran-hub')} onSuccesVus={marquerSuccesVus} />}
+          {ecran === 'ecran-classement' && <Classement peutSInscrire={aVaincuLaTour} progressionSucces={progressionSucces} succesObtenus={succesObtenus} succesNonVus={succesNonVus} nomJoueur={nomJoueur} onNomChange={setNomJoueur} onRetour={() => setEcran('ecran-hub')} onSuccesVus={marquerSuccesVus} />}
           {ecran === 'ecran-extraction' && (
               <ChoixExtraction
                   numeroEtage={indexEtageActuel + 1}

@@ -7,6 +7,10 @@ import {
 interface SuccesListeProps {
     progression: ProgressionSucces;
     obtenus: string[];
+    // Succès décrochés depuis la dernière consultation de cet onglet. ⚠️ Calculé AVANT que la visite
+    // ne les marque comme vus, sinon la liste serait déjà vide au premier rendu (même piège que le
+    // marqueur « Nouveau » de l'Inventaire).
+    nonVus: string[];
 }
 
 const ORDRE_GROUPES: GroupeSucces[] = ['normal', 'hardcore', 'theme', 'final'];
@@ -24,7 +28,7 @@ function seuilDe(id: string): number | null {
     return Number.isFinite(brut) ? brut : null;
 }
 
-export function SuccesListe({ progression, obtenus }: SuccesListeProps) {
+export function SuccesListe({ progression, obtenus, nonVus }: SuccesListeProps) {
     const [raretes, setRaretes] = useState<Record<string, RareteSucces> | null>(null);
 
     useEffect(() => {
@@ -34,6 +38,7 @@ export function SuccesListe({ progression, obtenus }: SuccesListeProps) {
     }, []);
 
     const acquis = new Set(obtenus);
+    const neufs = new Set(nonVus);
 
     return (
         <div className="succes-bloc">
@@ -47,14 +52,16 @@ export function SuccesListe({ progression, obtenus }: SuccesListeProps) {
                     <div className="succes-grille">
                         {SUCCES_REGISTRY.filter(s => s.groupe === groupe).map(def => {
                             const obtenu = acquis.has(def.id);
+                            const estNeuf = neufs.has(def.id);
                             const seuil = seuilDe(def.id);
                             const valeur = valeurAtteinte(def.id, progression);
                             const pourcent = topPourcent(raretes?.[def.id]);
                             return (
-                                <div key={def.id} className={`succes-carte${obtenu ? ' succes-carte--obtenu' : ''}`}>
+                                <div key={def.id} className={`succes-carte${obtenu ? ' succes-carte--obtenu' : ''}${estNeuf ? ' succes-carte--nouveau' : ''}`}>
                                     <div className="succes-carte-tete">
                                         <span className="succes-icone">{obtenu ? '🏅' : '🔒'}</span>
                                         <span className="succes-titre">{def.titre}</span>
+                                        {estNeuf && <span className="succes-pastille">Nouveau</span>}
                                     </div>
                                     <p className="succes-description">{def.description}</p>
 

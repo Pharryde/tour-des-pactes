@@ -409,7 +409,10 @@ export function useGameState() {
     // total et éteindrait la pastille alors que d'autres succès ont été gagnés entre-temps.
     // Clé partagée : `succesObtenus` couvre déjà les deux profils.
     const [succesVus, setSuccesVus] = useLocalStorage<string[]>('tdp_succes_vus', []);
-    const aNouveauSucces = succesObtenus.some(id => !succesVus.includes(id));
+    // Liste (et non simple booléen) : l'écran des succès en marque chacun d'une pastille. Dérivée
+    // AVANT tout marquage, qui n'a lieu qu'à la sortie de l'écran.
+    const succesNonVus = succesObtenus.filter(id => !succesVus.includes(id));
+    const aNouveauSucces = succesNonVus.length > 0;
     const marquerSuccesVus = () => setSuccesVus(succesObtenus);
     // Signature plutôt que le tableau : ce dernier est reconstruit à chaque rendu, il déclencherait
     // un envoi par frappe de clavier. La liste étant issue d'un ordre stable (le registre), la
@@ -997,6 +1000,14 @@ export function useGameState() {
     const ajouterLogGlobal = (log: string) => setHistoriqueLogs(prev => [...prev, log]);
 
     const ajouterStatsTour = (stats: StatsTour) => {
+        // ⚠️ REFERME la fenêtre de célébration : à partir d'ici on est en plein combat, et les
+        // compteurs mis à jour juste en dessous peuvent franchir un palier à n'importe quel tour.
+        // Sans ça, un combat qui ne rapportait aucun succès laissait le drapeau armé indéfiniment
+        // (il ne se baissait qu'au dernier succès acquitté) et le palier suivant éclatait au milieu
+        // de la bataille. Sur le tour fatal, `handleFinDeCombat` réarme juste après — il est appelé
+        // plus bas dans `CombatArene`, donc c'est bien lui qui l'emporte.
+        setCelebrationArmee(false);
+
         setDegatsInfligesRun(prev => prev + stats.degatsInfliges);
         setDegatsBloquesRun(prev => prev + stats.degatsBloques);
         setDegatsEsquivesRun(prev => prev + stats.degatsEsquives);
@@ -1233,6 +1244,7 @@ export function useGameState() {
         progressionSucces,
         succesAFeter,
         feterSuccesAffiche,
+        succesNonVus,
         succesObtenus,
         aNouveauSucces,
         marquerSuccesVus,

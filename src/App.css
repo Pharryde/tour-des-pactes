@@ -1676,3 +1676,23 @@
     .succes-eclat { animation: none; opacity: 0; }
     .succes-celebration-carte { animation: none; }
 }
+
+
+/* Succès décroché depuis la dernière visite de l'onglet 🏅. Même vocabulaire visuel que les Pactes
+   neufs de l'Inventaire (halo mauve + pastille), pour que « nouveau » se lise pareil partout. */
+.succes-carte--nouveau {
+    box-shadow: inset 0 0 0 1px #cba6f7, 0 0 14px rgba(203, 166, 247, 0.25);
+    animation: eclat-nouveau-pacte 1.6s ease-in-out 3;
+}
+.succes-pastille {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: #cba6f7;
+    color: #11111b;
+    font-size: 0.72em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}

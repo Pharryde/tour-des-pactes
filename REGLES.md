@@ -839,8 +839,12 @@ brûlait encore ne donne rien.
 hardcore, et inversement. En revanche, un succès obtenu **ne se reprend jamais** : la mort en
 hardcore efface la progression, mais pas les succès qu'elle avait déjà valus.
 
-**À l'obtention**, chaque succès s'affiche à la fin du combat, **un par un**, feu d'artifice à
-l'appui. Une pastille sur le bouton du Hub signale ceux qui n'ont pas encore été consultés.
+**À l'obtention**, chaque succès s'affiche **à la fin du combat** — jamais pendant, même si le
+palier est franchi au beau milieu d'un tour — et **un par un**, feu d'artifice à l'appui.
+
+Une pastille sur le bouton du Hub signale les succès pas encore consultés, et **chaque nouveau porte
+sa propre pastille** dans la liste. Elle reste visible pendant toute la visite : ils ne sont marqués
+comme vus qu'en quittant l'écran, et seulement si l'onglet 🏅 a réellement été ouvert.
 
 ### Le classement
 
