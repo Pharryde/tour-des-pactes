@@ -73,17 +73,22 @@ interface Serie {
 }
 
 // Séries communes aux deux modes. Chacune est déclinée en version normale et hardcore.
+//
+// ⚠️ L'ORDRE de ce tableau est celui de l'affichage (écran des succès, file de célébration) : le
+// changer est sans conséquence. Les `cle`, elles, sont FIGÉES — elles composent les identifiants
+// publiés dans `public.succes.ids`, et les renommer ferait disparaître les succès déjà obtenus. Le
+// texte visible vit dans `libelle`, jamais dans la clé.
 const SERIES: Serie[] = [
-    { cle: 'monstres', libelle: 'Monstres terrassés', champ: 'monstresTues', seuils: [1, 10, 100, 1000], unite: 'monstre(s) tué(s)' },
-    { cle: 'etages', libelle: 'Profondeur atteinte', champ: 'etageRecord', seuils: [1, 2, 6, 12], unite: 'étage(s) atteint(s) en une ascension' },
-    { cle: 'runs', libelle: 'Ascensions achevées', champ: 'runs', seuils: [1, 10], unite: 'ascension(s) menée(s) à son terme' },
+    { cle: 'monstres', libelle: 'C\'était de la légitime défense', champ: 'monstresTues', seuils: [1, 10, 100, 1000], unite: 'monstre(s) tué(s)' },
     // Compteurs de combat, cumulés sur toute la vie du profil (les `tdp_*_run` ne couvrent qu'une
     // ascension). « Encaissé » = absorbé par l'armure, le pendant exact de « esquivé ».
-    { cle: 'esquive', libelle: 'Dégâts esquivés', champ: 'degatsEsquives', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) évité(s) par l\'Esquive' },
-    { cle: 'encaisse', libelle: 'Dégâts encaissés', champ: 'degatsBloques', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) absorbé(s) par l\'armure' },
-    { cle: 'attaque', libelle: 'Dégâts d\'Attaque', champ: 'degatsAttaque', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) infligé(s) à l\'Attaque' },
-    { cle: 'precise', libelle: 'Dégâts de Précise', champ: 'degatsPrecise', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) infligé(s) à la Précise' },
-    { cle: 'soins', libelle: 'Points de vie regagnés', champ: 'soins', seuils: [50, 100, 500, 1000], unite: 'PV récupérés' },
+    { cle: 'attaque', libelle: 'Taper fort', champ: 'degatsAttaque', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) infligé(s) à l\'Attaque' },
+    { cle: 'encaisse', libelle: 'Comment il t\'a défoncé ta gueule', champ: 'degatsBloques', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) absorbé(s) par l\'armure' },
+    { cle: 'precise', libelle: 'Bien vu l\'aveugle', champ: 'degatsPrecise', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) infligé(s) à la Précise' },
+    { cle: 'esquive', libelle: 'Là tu mvois, là tu mvois plus', champ: 'degatsEsquives', seuils: [100, 500, 1000, 10000], unite: 'dégât(s) évité(s) par l\'Esquive' },
+    { cle: 'soins', libelle: 'Mercurochrome le pansement des héros', champ: 'soins', seuils: [50, 100, 500, 1000], unite: 'PV récupérés' },
+    { cle: 'etages', libelle: 'Ben putain ça grimpe', champ: 'etageRecord', seuils: [1, 2, 6, 12], unite: 'étage(s) atteint(s) en une ascension' },
+    { cle: 'runs', libelle: 'I\'m the danger', champ: 'runs', seuils: [1, 10], unite: 'ascension(s) menée(s) à son terme' },
     { cle: 'pactes1', libelle: 'Pactes de Niveau I', champ: 'pactesLvl1', seuils: [1, 3, 6, 12], unite: 'Pacte(s) de Niveau I arraché(s)' },
     { cle: 'pactes2', libelle: 'Pactes de Niveau II', champ: 'pactesLvl2', seuils: [1, 3, 6, 12], unite: 'Pacte(s) de Niveau II arraché(s)' },
     { cle: 'synergies', libelle: 'Synergies révélées', champ: 'synergies', seuils: [1, 2, 3, 5], unite: 'synergie(s) découverte(s)' },
@@ -126,7 +131,9 @@ function construireRegistre(): DefSucces[] {
             for (const seuil of serie.seuils) {
                 succes.push({
                     id: `${serie.cle}_${seuil}${hardcore ? '_hc' : ''}`,
-                    titre: `${serie.libelle} ${seuil}`,
+                    // Le versant hardcore CRIE son titre : c'est la même série des deux côtés, et
+                    // la casse est le seul repère qui les distingue au premier coup d'œil.
+                    titre: `${hardcore ? serie.libelle.toUpperCase() : serie.libelle} ${seuil}`,
                     description: `${seuil} ${serie.unite}${hardcore ? ' en mode hardcore' : ''}.`,
                     groupe: hardcore ? 'hardcore' : 'normal',
                 });

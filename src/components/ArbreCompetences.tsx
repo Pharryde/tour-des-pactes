@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Competences } from '../types';
-import { calculerPointsCompetence, calculerProchainPalier, getPalierPrecedent, calculerPointsDepenses } from '../utils/competences';
+import { calculerPointsCompetence, calculerProchainPalier, getPalierPrecedent, calculerPointsDepenses, bonusEsquive, gainProchainPointEsquive, POINTS_ESQUIVE_MAX } from '../utils/competences';
 import { SpriteAnime } from './SpriteAnime';
 import { ANIMATION_FORGE } from '../utils/animationsForge';
 
@@ -21,10 +21,13 @@ interface LigneCompProps {
     effet: string;
     niveau: number;
     ptsDispo: number;
+    // Compétence arrivée au bout de sa progression : le bouton reste visible mais inactif, pour que
+    // le plafond se voie plutôt que de laisser dépenser un point qui ne rapporterait rien.
+    plusDesactive?: boolean;
     onModifier: (direction: 1 | -1) => void;
 }
 
-function LigneComp({ nom, icone, cout, effet, niveau, ptsDispo, onModifier }: LigneCompProps) {
+function LigneComp({ nom, icone, cout, effet, niveau, ptsDispo, plusDesactive, onModifier }: LigneCompProps) {
     return (
         <div className="ligne-comp">
             <div className="ligne-comp-info">
@@ -33,7 +36,7 @@ function LigneComp({ nom, icone, cout, effet, niveau, ptsDispo, onModifier }: Li
             </div>
             <div className="ligne-comp-actions">
                 <button className="ligne-comp-btn" onClick={() => onModifier(-1)} disabled={niveau === 0}>-</button>
-                <button className="ligne-comp-btn ligne-comp-btn--plus" onClick={() => onModifier(1)} disabled={ptsDispo < cout}>+</button>
+                <button className="ligne-comp-btn ligne-comp-btn--plus" onClick={() => onModifier(1)} disabled={ptsDispo < cout || plusDesactive}>+</button>
             </div>
         </div>
     );
@@ -132,7 +135,18 @@ export function ArbreCompetences({ xpTotal, competences, setCompetences, monstre
                 <LigneComp icone="🛡️" nom="Peau de Fer" cout={1} effet="+1 Défense de base" niveau={brouillon.def || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('def', 1, dir)} />
                 <LigneComp icone="⚔️" nom="Force Brute" cout={1} effet="+1 Attaque de base" niveau={brouillon.atk || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('atk', 1, dir)} />
                 <LigneComp icone="🎯" nom="Œil de Faucon" cout={2} effet="+1 Précision de base" niveau={brouillon.pre || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('pre', 2, dir)} />
-                <LigneComp icone="💨" nom="Réflexes" cout={1} effet="+5% d'Esquive max (si action utilisée)" niveau={brouillon.esq || 0} ptsDispo={ptsDispo} onModifier={(dir) => modifier('esq', 1, dir)} />
+                {/* Rendement dégressif : le libellé annonce ce que rapporte le PROCHAIN point, pas une
+                    valeur fixe — sinon l'arbre promettrait +5% jusqu'au dernier point. */}
+                <LigneComp
+                    icone="💨" nom="Réflexes" cout={1}
+                    effet={gainProchainPointEsquive(brouillon.esq || 0) > 0
+                        ? `+${gainProchainPointEsquive(brouillon.esq || 0)}% d'Esquive max au prochain point (total : +${bonusEsquive(brouillon.esq || 0)}%)`
+                        : `+${bonusEsquive(brouillon.esq || 0)}% d'Esquive max — maîtrise complète`}
+                    niveau={brouillon.esq || 0}
+                    ptsDispo={ptsDispo}
+                    plusDesactive={(brouillon.esq || 0) >= POINTS_ESQUIVE_MAX}
+                    onModifier={(dir) => modifier('esq', 1, dir)}
+                />
             </div>
 
             <div className="arbre-footer">

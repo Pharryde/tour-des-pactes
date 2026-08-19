@@ -3,6 +3,7 @@ import { calculerSoinRepos, calculerGainPvMaxRepos } from './utils/pactes';
 import { useGameState } from './hooks/useGameState';
 import { LIMITE_COMBO_PREMIERE_RUN } from './utils/combat';
 import { Hub } from './components/Hub';
+import { SuccesCelebration } from './components/SuccesCelebration';
 import { Inventaire } from './components/Inventaire';
 import { CombatArene } from './components/CombatArene';
 import { Fin } from './components/Fin';
@@ -41,6 +42,7 @@ function App() {
       modeHardcore, aVaincuLaTour,
       cyclesInfini, offreInfiniDispo, gererContinuerInfini, runsHc, runsHcTotales, monstresHc,
       nomJoueur, setNomJoueur, progressionSucces, succesObtenus, aNouveauSucces, marquerSuccesVus, gererClassementSaisi,
+      succesAFeter, feterSuccesAffiche,
       monstresTues, competences, setCompetences, xpTotal, bestiaire, aConnuBuff, synergiesDecouvertes, aNouveauteTuto,
       aNouveauPacte, pactesNonVus, aPointsCompetenceDispo, estPremiereRun,
       ajouterLogGlobal, ajouterStatsTour, marquerTutoLu, marquerPactesVus, gererAbandon, gererBasculerPacte, gererEquiperSynergie, gererDesequiperTout,
@@ -167,7 +169,7 @@ function App() {
           {ecran === 'ecran-sortie-tour' && <SortieTour onContinuer={gererDeclenchementMegaBoss} modeHardcore={modeHardcore} onQuitterLaTour={gererQuitterLaTour} cyclesInfini={cyclesInfini} />}
           {ecran === 'ecran-hardcore-intro' && <HardcoreIntro onEntrer={gererEntrerHardcore} onRetour={() => setEcran('ecran-hub')} />}
           {ecran === 'ecran-classement-saisie' && <ClassementSaisie nbRuns={runsHc} runsTotales={runsHcTotales} monstresTues={monstresHc} onNomChoisi={setNomJoueur} onTermine={gererClassementSaisi} />}
-          {ecran === 'ecran-classement' && <Classement progressionSucces={progressionSucces} succesObtenus={succesObtenus} nomJoueur={nomJoueur} onNomChange={setNomJoueur} onRetour={() => setEcran('ecran-hub')} onSuccesVus={marquerSuccesVus} />}
+          {ecran === 'ecran-classement' && <Classement peutSInscrire={aVaincuLaTour} progressionSucces={progressionSucces} succesObtenus={succesObtenus} nomJoueur={nomJoueur} onNomChange={setNomJoueur} onRetour={() => setEcran('ecran-hub')} onSuccesVus={marquerSuccesVus} />}
           {ecran === 'ecran-extraction' && (
               <ChoixExtraction
                   numeroEtage={indexEtageActuel + 1}
@@ -275,6 +277,16 @@ function App() {
                 onFinTutoriel={gererFinTutoriel}
               />
             </div>
+          )}
+
+          {/* Rendue en DERNIER et hors du rendu conditionnel des écrans : la célébration se pose
+              par-dessus l'écran où le combat vient de déboucher, quel qu'il soit. */}
+          {succesAFeter.length > 0 && (
+              <SuccesCelebration
+                  id={succesAFeter[0]}
+                  restants={succesAFeter.length}
+                  onContinuer={feterSuccesAffiche}
+              />
           )}
         </div>
     </ErrorBoundary>

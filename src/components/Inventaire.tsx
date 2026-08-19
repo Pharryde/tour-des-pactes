@@ -103,8 +103,19 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, p
         );
     };
 
+    // ⚠️ Un seul chemin de sortie pour les deux boutons : `marquerPactesVus` doit être appelée à la
+    // SORTIE de l'écran (voir plus haut), et dupliquer l'appel au fil des boutons est le meilleur
+    // moyen d'en oublier un le jour où l'on en ajoute un troisième.
+    const retourAuHub = () => { marquerPactesVus(); onChangeEcran('ecran-hub'); };
+
     return (
         <div id="ecran-inventaire" className="ecran inventaire-ecran">
+            {/* Second retour en tête d'écran : la liste des Pactes est longue, et remonter jusqu'en
+                bas pour sortir devient pénible dès qu'on en possède plusieurs. */}
+            <button onClick={retourAuHub} className="btn-retour btn-retour--haut">
+                🔙 Retour au Hub
+            </button>
+
             <h1 className="titre-geant">📜 Vos Pactes</h1>
             <p className="texte-description inventaire-intro">
                 Équipez jusqu'à 3 Pactes de Niveau I et 1 Pacte de Niveau II.
@@ -186,7 +197,7 @@ export function Inventaire({ pactesDebloques, pactesEquipes, pactesVictorieux, p
                 )}
             </div>
 
-            <button className="btn-menu btn-jouer" onClick={() => { marquerPactesVus(); onChangeEcran('ecran-hub'); }}>
+            <button className="btn-menu btn-jouer" onClick={retourAuHub}>
                 Retour au Hub
             </button>
         </div>

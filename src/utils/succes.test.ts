@@ -40,6 +40,35 @@ describe('registre', () => {
         expect(SUCCES_REGISTRY.filter(s => s.groupe === 'theme')).toHaveLength(THEMES.length);
         expect(SUCCES_PAR_ID[ID_FINISSEUR]).toBeDefined();
     });
+
+    // ⚠️ Les identifiants partent en base (`public.succes.ids`) et servent au calcul du top % : les
+    // renommer ferait DISPARAÎTRE les succès déjà obtenus par les joueurs. Ils doivent donc survivre
+    // à tout changement de libellé ou d'ordre d'affichage — d'où cette liste figée.
+    it('conserve les identifiants publiés malgré les renommages', () => {
+        const attendus = [
+            'monstres_1', 'monstres_10', 'monstres_100', 'monstres_1000',
+            'etages_1', 'etages_2', 'etages_6', 'etages_12',
+            'runs_1', 'runs_10',
+            'esquive_100', 'encaisse_100', 'attaque_100', 'precise_100', 'soins_50',
+            'pactes1_1', 'pactes2_1', 'synergies_1', 'boss0_6', 'boss1_12', 'boss2_12',
+        ];
+        for (const id of attendus) {
+            expect(SUCCES_PAR_ID[id], `identifiant disparu : ${id}`).toBeDefined();
+            expect(SUCCES_PAR_ID[`${id}_hc`], `identifiant disparu : ${id}_hc`).toBeDefined();
+        }
+    });
+
+    // Le versant hardcore crie son titre : c'est le seul repère qui distingue les deux moitiés du
+    // tableau, les deux séries portant par ailleurs exactement le même nom.
+    it('met les titres hardcore en majuscules, et eux seuls', () => {
+        for (const s of SUCCES_REGISTRY.filter(x => x.groupe === 'hardcore')) {
+            expect(s.titre, s.id).toBe(s.titre.toUpperCase());
+        }
+        const normauxEnMinuscules = SUCCES_REGISTRY
+            .filter(x => x.groupe === 'normal')
+            .filter(x => x.titre !== x.titre.toUpperCase());
+        expect(normauxEnMinuscules.length).toBe(SUCCES_REGISTRY.filter(x => x.groupe === 'normal').length);
+    });
 });
 
 describe('succesDebloques', () => {

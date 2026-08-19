@@ -170,11 +170,16 @@
 /* ======================================================= */
 /* Bouton dépouillé de toute apparence de bouton : seul le sprite se voit. Il reste un <button>
    pour rester atteignable au clavier et réagir au tap comme au clic. */
+/* ⚠️ DANS LE FLUX, sous le menu (voir Hub.tsx). En absolu — `left: 8%` d'un écran dont le menu est
+   centré à largeur fixe — le chat rejoignait mécaniquement la colonne des boutons dès qu'on passait
+   sous ~500px de large, et s'asseyait sur le dernier d'entre eux. Aucun réglage de pourcentage ne
+   pouvait tenir : sur un téléphone il ne RESTE pas de place à gauche du menu.
+   `margin-left` en `clamp` conserve le placement d'origine sur grand écran (~160px du bord) tout en
+   se collant au bord sur mobile. */
 .chat-hub {
     --sprite-echelle: 1.2;
-    position: absolute;
-    left: 8%;
-    bottom: 16%;
+    align-self: flex-start;
+    margin: 26px 0 0 clamp(8px, 8vw, 160px);
     z-index: 5;
     background: none;
     border: none;
@@ -196,17 +201,38 @@
 }
 
 /* Course au sol, puis bond : le sommet de l'arc dépasse le point d'atterrissage de 60px pour que
-   la trajectoire se lise comme un vrai saut et non comme un glissement en diagonale. */
+   la trajectoire se lise comme un vrai saut et non comme un glissement en diagonale.
+   Le démarrage est légèrement accéléré (le chat s'élance, il ne part pas à pleine vitesse), et
+   l'appui marque un très bref tassement juste avant de quitter le sol. */
 @keyframes chat-hub-bond {
-    0% { transform: translate(0, 0); animation-timing-function: linear; }
-    55% { transform: translate(calc(var(--chat-x) * 0.6), 0); animation-timing-function: ease-out; }
+    0% { transform: translate(0, 0); animation-timing-function: ease-in; }
+    18% { transform: translate(calc(var(--chat-x) * 0.1), 0); animation-timing-function: linear; }
+    52% { transform: translate(calc(var(--chat-x) * 0.58), 0); animation-timing-function: ease-out; }
+    58% { transform: translate(calc(var(--chat-x) * 0.64), 6px); animation-timing-function: ease-out; }
     80% { transform: translate(calc(var(--chat-x) * 0.85), calc(var(--chat-y) - 60px)); animation-timing-function: ease-in; }
     100% { transform: translate(var(--chat-x), var(--chat-y)); }
 }
 
+/* Réception : le corps s'écrase à l'impact puis se redresse. Porté par une enveloppe distincte,
+   `.chat-hub` étant déjà occupé par la trajectoire. */
+.chat-hub-corps { display: inline-block; transform-origin: bottom center; }
+.chat-hub--arrive .chat-hub-corps { animation: chat-hub-reception 0.32s ease-out; }
+@keyframes chat-hub-reception {
+    0%   { transform: scale(1.14, 0.8); }
+    45%  { transform: scale(0.95, 1.07); }
+    100% { transform: scale(1, 1); }
+}
+
+/* ⚠️ On ne raccourcit PAS la trajectoire ici : sa durée est doublée côté JS par les minuteurs qui
+   lancent la run (voir DUREE_BOND_MS), et l'écourter d'un seul côté laisserait le chat immobile sur
+   son bouton pendant près de deux secondes. Seul le rebond de réception, purement décoratif, saute. */
+@media (prefers-reduced-motion: reduce) {
+    .chat-hub--arrive .chat-hub-corps { animation: none; }
+}
+
 @media (max-width: 768px) {
-    /* Moins de place au sol sur mobile : le chat se cale plus bas et plus près du bord. */
-    .chat-hub { --sprite-echelle: 1; left: 4%; bottom: 10%; }
+    /* Sprite plus discret sur mobile ; le placement, lui, vient déjà du `clamp` ci-dessus. */
+    .chat-hub { --sprite-echelle: 1; margin-top: 18px; }
 }
 
 /* ======================================================= */
@@ -906,7 +932,7 @@
 }
 
 /* ======================================================= */
-/* --- BOUTON RETOUR PARTAGÉ (Tuto / Arbre de Compétences) --- */
+/* --- BOUTON RETOUR PARTAGÉ (Tuto / Arbre / Inventaire) --- */
 /* ======================================================= */
 .btn-retour {
     margin-top: 0.6rem;
@@ -920,6 +946,10 @@
     font-weight: bold;
     flex-shrink: 0;
 }
+
+/* Variante en tête d'écran : alignée à gauche pour se lire comme un retour et non comme l'action
+   principale de la page, qui reste le bouton du pied. */
+.btn-retour--haut { align-self: flex-start; margin: 0 0 0.4rem; }
 
 /* ======================================================= */
 /* --- SCÉNETTES DU CHAT (apparitions entre deux runs) --- */
@@ -1550,3 +1580,99 @@
 }
 
 .succes-rarete { margin: 8px 0 0; font-size: 0.8em; color: #f9e2af; }
+
+
+/* ======================================================= */
+/* --- CÉLÉBRATION D'UN SUCCÈS (feu d'artifice) --- */
+/* ======================================================= */
+/* Couche par-dessus l'écran en cours : le combat vient de finir et la suite du flux
+   (Zone de Repos, Pacte arraché, écran de fin) attend derrière. */
+.succes-celebration {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: rgba(17, 17, 27, 0.92);
+    animation: fadeIn 0.25s ease-in-out;
+    overflow: hidden;
+}
+
+/* Le feu d'artifice occupe toute la couche mais ne doit jamais intercepter le clic du bouton. */
+.succes-feu-artifice {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.succes-gerbe { position: absolute; width: 0; height: 0; }
+
+/* Un éclat part du centre de sa gerbe et file selon son propre angle. `--angle` est posé en ligne
+   (12 par gerbe) : douze règles CSS distinctes diraient la même chose en illisible. */
+.succes-eclat {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    opacity: 0;
+    animation: succes-explosion 1.5s ease-out infinite;
+    transform: rotate(var(--angle)) translateY(0);
+}
+@keyframes succes-explosion {
+    0%   { opacity: 0; transform: rotate(var(--angle)) translateY(0) scale(0.4); }
+    12%  { opacity: 1; }
+    70%  { opacity: 1; transform: rotate(var(--angle)) translateY(-95px) scale(1); }
+    100% { opacity: 0; transform: rotate(var(--angle)) translateY(-125px) scale(0.25); }
+}
+
+.succes-celebration-carte {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    padding: 30px 26px;
+    text-align: center;
+    background-color: #1e1e2e;
+    border: 2px solid #f9e2af;
+    border-radius: 16px;
+    box-shadow: 0 0 40px rgba(249, 226, 175, 0.25);
+    animation: succes-carte-entree 0.45s cubic-bezier(0.22, 1.2, 0.4, 1);
+}
+@keyframes succes-carte-entree {
+    from { opacity: 0; transform: scale(0.82); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.succes-celebration-bandeau {
+    display: inline-block;
+    margin-bottom: 14px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background-color: #f9e2af;
+    color: #11111b;
+    font-weight: bold;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.succes-celebration-titre { color: #f9e2af; font-size: 1.5em; margin: 0 0 10px; }
+.succes-celebration-desc { color: #bac2de; line-height: 1.5; margin: 0 0 18px; }
+.succes-celebration-restants { display: block; color: #6c7086; font-size: 0.9em; margin-bottom: 16px; }
+
+@media (max-width: 768px) {
+    .succes-celebration-carte { padding: 24px 18px; }
+    .succes-celebration-titre { font-size: 1.25em; }
+    /* Gerbes resserrées : à pleine amplitude, les éclats sortent de l'écran sur un téléphone. */
+    @keyframes succes-explosion {
+        0%   { opacity: 0; transform: rotate(var(--angle)) translateY(0) scale(0.4); }
+        12%  { opacity: 1; }
+        70%  { opacity: 1; transform: rotate(var(--angle)) translateY(-62px) scale(0.9); }
+        100% { opacity: 0; transform: rotate(var(--angle)) translateY(-82px) scale(0.25); }
+    }
+}
+
+/* Respect du réglage système : une explosion en boucle est exactement ce que ce réglage vise. */
+@media (prefers-reduced-motion: reduce) {
+    .succes-eclat { animation: none; opacity: 0; }
+    .succes-celebration-carte { animation: none; }
+}

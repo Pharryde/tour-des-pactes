@@ -8,6 +8,10 @@ import { ANIMATIONS_CHAT, ANIMATION_CHAT_COURSE } from '../utils/animationsChat'
 
 // Doit rester alignée sur la durée de l'animation CSS `chat-hub-bond`.
 const DUREE_BOND_MS = 1400;
+// Temps de pose après l'atterrissage, avant que l'écran ne change. Sans lui, la run se lançait à
+// l'instant EXACT où le chat touchait le bouton : la réception ne se voyait jamais, et le bond
+// donnait l'impression de se terminer en coupure.
+const DUREE_RECEPTION_MS = 320;
 
 type EtatChat = 'repos' | 'bond' | 'arrive';
 
@@ -21,13 +25,13 @@ interface Props {
 
 export function ChatHub({ refCible, onLancer }: Props) {
     const refChat = useRef<HTMLButtonElement>(null);
-    const refMinuteur = useRef<number | null>(null);
+    const refMinuteurs = useRef<number[]>([]);
     const [etat, setEtat] = useState<EtatChat>('repos');
     const [cible, setCible] = useState({ x: 0, y: 0 });
 
     // Le bond survit à un changement d'écran déclenché autrement (clic direct sur le bouton
-    // pendant la course) : sans ce nettoyage, le minuteur lancerait la run une seconde fois.
-    useEffect(() => () => { if (refMinuteur.current !== null) clearTimeout(refMinuteur.current); }, []);
+    // pendant la course) : sans ce nettoyage, les minuteurs lanceraient la run une seconde fois.
+    useEffect(() => () => { refMinuteurs.current.forEach(clearTimeout); }, []);
 
     const auClic = () => {
         if (etat !== 'repos') return;
@@ -45,10 +49,10 @@ export function ChatHub({ refCible, onLancer }: Props) {
         });
         setEtat('bond');
 
-        refMinuteur.current = window.setTimeout(() => {
-            setEtat('arrive');
-            onLancer();
-        }, DUREE_BOND_MS);
+        refMinuteurs.current = [
+            window.setTimeout(() => setEtat('arrive'), DUREE_BOND_MS),
+            window.setTimeout(onLancer, DUREE_BOND_MS + DUREE_RECEPTION_MS),
+        ];
     };
 
     // Les feuilles de sprites du Chat sont dessinées tournées vers la GAUCHE : elles servent
@@ -69,11 +73,15 @@ export function ChatHub({ refCible, onLancer }: Props) {
         >
             {/* `key` force le remontage à chaque changement d'animation, pour que la course
                 reprenne à sa première frame plutôt qu'à celle où l'idle s'était arrêtée. */}
-            <SpriteAnime
-                key={etat === 'bond' ? 'course' : 'idle'}
-                definition={etat === 'bond' ? ANIMATION_CHAT_COURSE : ANIMATIONS_CHAT.idle}
-                miroir={regardeADroite}
-            />
+            {/* Enveloppe dédiée à la réception : le `transform` de `.chat-hub` porte déjà la
+                trajectoire, il ne peut pas porter en plus l'écrasement à l'impact. */}
+            <span className="chat-hub-corps">
+                <SpriteAnime
+                    key={etat === 'bond' ? 'course' : 'idle'}
+                    definition={etat === 'bond' ? ANIMATION_CHAT_COURSE : ANIMATIONS_CHAT.idle}
+                    miroir={regardeADroite}
+                />
+            </span>
         </button>
     );
 }

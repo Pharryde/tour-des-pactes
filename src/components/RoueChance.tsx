@@ -42,7 +42,7 @@ export function RoueChance({ benediction, onEntrer }: Props) {
 
     return (
         <div id="ecran-roue" className="ecran roue-ecran">
-            <h1 className="roue-titre">🎡 La Roue de la Chance</h1>
+            <h1 className="roue-titre">🍀 La Roue de la Chance</h1>
             <p className="texte-description">
                 Le Chat Mystérieux fait tourner sa roue. Son verdict vaudra pour toute cette ascension.
             </p>

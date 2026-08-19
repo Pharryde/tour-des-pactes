@@ -31,6 +31,7 @@ répercutée ici.**
 18. [Ce qui se perd et ce qui reste](#18-ce-qui-se-perd-et-ce-qui-reste)
 19. [Le Mode Hardcore](#19-le-mode-hardcore)
 20. [Le Mode Infini](#20-le-mode-infini)
+21. [Succès et Classement](#21-succès-et-classement)
 
 ---
 
@@ -590,8 +591,20 @@ endroit où l'on peut, plus tard dans l'ascension, retrouver d'où vient une sta
 | PV | 1 point | +10 PV max |
 | Attaque | 1 point | +1 ⚔️ |
 | Défense | 1 point | +1 🛡️ |
-| Esquive | 1 point | +5 % sur les paliers 1 à 3 |
+| Esquive (Réflexes) | 1 point | **dégressif**, voir ci-dessous |
 | **Précise** | **2 points** | +1 🎯 |
+
+**Réflexes a un rendement dégressif** : les premiers points valent plus que les suivants.
+
+| Points investis | Gain par point | Total atteint |
+|---|---|---|
+| 1ᵉʳ et 2ᵉ | **+5 %** | +10 % |
+| 3ᵉ au 6ᵉ | **+4 %** | +26 % |
+| 7ᵉ au 14ᵉ | **+3 %** | **+50 %** |
+
+Au-delà du 14ᵉ point, un point de plus n'apporte **rien** : +50 % sature déjà les trois paliers
+(50/75/100 → 100/100/100), et le bouton se grise. L'Arbre annonce toujours ce que rapporte le
+**prochain** point, jamais une valeur fixe.
 
 Les modifications de l'Arbre ne sont **validées qu'au clic sur « Valider »** : quitter l'écran sans
 valider annule tout. Une réinitialisation est toujours possible.
@@ -632,8 +645,9 @@ rentrer… ou de s'enfoncer dans le [Mode Infini](#20-le-mode-infini).
 de Repos, l'ordre des étages, la Bénédiction tirée, les statistiques de la run.
 
 **Conservé définitivement** : les **Pactes arrachés**, l'**XP totale** et les points de compétence,
-les **Synergies découvertes**, les Pactes **victorieux** (trophées), le bestiaire, l'étage record, et
-les progrès du Chat (Bénédiction, Forgeron présenté, leçons vues).
+les **Synergies découvertes**, les Pactes **victorieux** (trophées), le bestiaire, l'étage record,
+les [Succès](#21-succès-et-classement) et les progrès du Chat (Bénédiction, Forgeron présenté,
+leçons vues).
 
 La progression vit dans le **navigateur** (`localStorage`), doublée d'une **sauvegarde cloud**
 anonyme et automatique — un miroir de secours, pas un compte.
@@ -769,3 +783,83 @@ L'étage record enregistre ces étages : c'est lui qui mesure jusqu'où le joueu
   devront être pris dans une ascension normale.
 - **XP** : les récompenses continuent normalement, chaque étage de l'infini rapportant comme un
   étage ordinaire.
+
+---
+
+## 21. Succès et Classement
+
+### Les succès
+
+**96 succès** en tout, tous consultables depuis le Hub (bouton « 🏆 Classement », onglet 🏅).
+
+| Groupe | Nombre |
+|---|---|
+| Mode normal | 46 |
+| Mode hardcore | les **46 mêmes**, titre en MAJUSCULES |
+| Retournements (à thème) | 3 |
+| Consécration | 1 |
+
+**Les 14 séries**, dans leur ordre d'affichage :
+
+| Succès | Paliers |
+|---|---|
+| C'était de la légitime défense | 1 · 10 · 100 · 1000 monstres tués |
+| Taper fort | 100 · 500 · 1000 · 10000 dégâts d'Attaque |
+| Comment il t'a défoncé ta gueule | 100 · 500 · 1000 · 10000 dégâts absorbés par l'armure |
+| Bien vu l'aveugle | 100 · 500 · 1000 · 10000 dégâts de Précise |
+| Là tu mvois, là tu mvois plus | 100 · 500 · 1000 · 10000 dégâts esquivés |
+| Mercurochrome le pansement des héros | 50 · 100 · 500 · 1000 PV regagnés |
+| Ben putain ça grimpe | étage 1 · 2 · 6 · 12 atteint en une ascension |
+| I'm the danger | 1 · 10 ascensions achevées |
+| Pactes de Niveau I | 1 · 3 · 6 · 12 |
+| Pactes de Niveau II | 1 · 3 · 6 · 12 |
+| Synergies révélées | 1 · 2 · 3 · 5 |
+| Gardiens vaincus | 6 · 12 **Gardiens différents** |
+| Formes Héroïques vaincues | les 12 |
+| Formes Ultimes vaincues | les 12 |
+
+Les compteurs de combat (dégâts, soins, monstres) sont **cumulés sur toute la vie du profil**, pas
+sur une ascension. Les Gardiens se comptent en **formes distinctes** : douze victoires sur le même
+n'en valent qu'une.
+
+**Les 3 Retournements** exigent qu'un Gardien tombe sous **sa propre mécanique** — et sur son étage :
+
+| Succès | Condition |
+|---|---|
+| Retour de flamme | Terrasser le Gardien du Feu avec sa propre brûlure |
+| Sa propre médecine | Terrasser le Gardien du Poison avec son propre venin |
+| Le mur retourné | Terrasser le Gardien de l'Armure sous l'assaut de sa propre plaque |
+
+C'est bien le **coup fatal** qui compte : un Gardien du Feu achevé par un assaut d'armure alors qu'il
+brûlait encore ne donne rien.
+
+**La Consécration** (« Finisseur ») demande les **95 autres simultanément**.
+
+⚠️ **Les deux profils comptent séparément.** Un succès obtenu en normal ne débloque pas son jumeau
+hardcore, et inversement. En revanche, un succès obtenu **ne se reprend jamais** : la mort en
+hardcore efface la progression, mais pas les succès qu'elle avait déjà valus.
+
+**À l'obtention**, chaque succès s'affiche à la fin du combat, **un par un**, feu d'artifice à
+l'appui. Une pastille sur le bouton du Hub signale ceux qui n'ont pas encore été consultés.
+
+### Le classement
+
+Trois listes publiques, **consultables par tout le monde et à tout moment** :
+
+| Liste | Ce qu'elle classe |
+|---|---|
+| ☠️ Hardcore | Le **nombre d'ascensions** qu'il a fallu pour vaincre la Tour en hardcore — le plus petit gagne. Le nombre de monstres terrassés sur la même période s'affiche à côté |
+| 🛡️ Étages | L'étage record en mode normal |
+| ☠️ Étages HC | L'étage record en mode hardcore |
+
+**S'y inscrire demande d'avoir vaincu la Tour** (Gardien Absolu terrassé) : c'est cette victoire qui
+rend une progression comparable aux autres. Tant qu'elle n'est pas acquise, on consulte sans pouvoir
+choisir de pseudo.
+
+- Le **pseudo est unique** et partagé par les trois listes : un même joueur y apparaît sous un seul
+  nom. Il peut être changé, mais pas dupliqué.
+- Un record **ne se dégrade jamais** : une contre-performance ne remplace pas un meilleur score.
+- Les **égalités se départagent au premier arrivé**, chaque record ayant son propre horodatage.
+- Sa propre position est affichée **même hors du top 10**.
+- Le score hardcore repart de zéro à chaque mort, en même temps que le profil : « fini en N
+  ascensions » veut dire « fini presque en partant de rien », et le record reste à la portée de tous.

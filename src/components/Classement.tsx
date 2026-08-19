@@ -8,6 +8,9 @@ import {
 } from '../utils/classement';
 
 interface ClassementProps {
+    // Le classement se CONSULTE toujours ; seule l'inscription de son nom exige d'avoir vaincu la
+    // Tour, puisque c'est elle qui rend une progression comparable aux autres.
+    peutSInscrire: boolean;
     progressionSucces: ProgressionSucces;
     succesObtenus: string[];
     nomJoueur: string;
@@ -35,7 +38,7 @@ function libelleValeur(categorie: Categorie, valeur: number): string {
     return `Étage ${valeur}`;
 }
 
-export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomChange, onRetour, onSuccesVus }: ClassementProps) {
+export function Classement({ peutSInscrire, progressionSucces, succesObtenus, nomJoueur, onNomChange, onRetour, onSuccesVus }: ClassementProps) {
     const [onglet, setOnglet] = useState<Onglet>('hardcore');
     // Les requêtes de classement ne concernent que les onglets de catégorie : sur l'onglet des
     // succès on garde la dernière catégorie consultée pour ne pas relancer de lecture inutile.
@@ -169,15 +172,23 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
                         </div>
                     ) : (
                         <p className="texte-description classement-absent">
-                            {nomJoueur
-                                ? "Vous n'avez encore rien inscrit dans cette catégorie."
-                                : "Choisissez un nom pour que vos records y soient inscrits."}
+                            {/* Sans le droit de s'inscrire, « choisissez un nom » désignerait un
+                                bouton qui n'existe pas encore : on dit plutôt ce qui l'ouvrira. */}
+                            {!peutSInscrire
+                                ? "Terrassez le Gardien Absolu pour inscrire votre nom sur ces listes."
+                                : nomJoueur
+                                    ? "Vous n'avez encore rien inscrit dans cette catégorie."
+                                    : "Choisissez un nom pour que vos records y soient inscrits."}
                         </p>
                     )}
                 </div>
             )}
 
-            {editionNom ? (
+            {/* On consulte librement, on ne s'inscrit qu'une fois la Tour vaincue : proposer un
+                pseudo plus tôt ferait choisir une identité publique pour des records qui ne partent
+                pas encore. La publication des SUCCÈS, elle, ne dépend que de la session — jamais du
+                pseudo — et fonctionne donc dès le premier combat. */}
+            {peutSInscrire && (editionNom ? (
                 <div className="classement-champ">
                     <input
                         type="text"
@@ -198,10 +209,10 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
                 </div>
             ) : (
                 nomJoueur && <p className="classement-identite">Vous jouez sous le nom de <b>{nomJoueur}</b>.</p>
-            )}
+            ))}
 
             <div className="menu-vertical">
-                {editionNom ? (
+                {peutSInscrire && editionNom ? (
                     <>
                         <button className="btn-menu btn-jouer" onClick={validerNom} disabled={!nomJoueurValide(brouillonNom) || envoiNom}>
                             {envoiNom ? 'Enregistrement…' : '✔️ Valider ce nom'}
@@ -210,9 +221,11 @@ export function Classement({ progressionSucces, succesObtenus, nomJoueur, onNomC
                     </>
                 ) : (
                     <>
-                        <button className="btn-menu" onClick={() => setEditionNom(true)}>
-                            {nomJoueur ? '✏️ Changer mon nom' : '🏷️ Choisir mon nom'}
-                        </button>
+                        {peutSInscrire && (
+                            <button className="btn-menu" onClick={() => setEditionNom(true)}>
+                                {nomJoueur ? '✏️ Changer mon nom' : '🏷️ Choisir mon nom'}
+                            </button>
+                        )}
                         <button className="btn-menu" onClick={onRetour}>Retour au Hub</button>
                     </>
                 )}

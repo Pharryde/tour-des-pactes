@@ -14,7 +14,7 @@ import { detecterSynergie, SYNERGIES_REGISTRY } from '../utils/synergies';
 import { detecterLeconMort, leconAAfficher, type CirconstancesMort } from '../utils/leconsMort';
 import { construireChatMysterieux, construireHerosTuto, DIALOGUE_CHAT_TUTO } from '../utils/tutoCombat';
 import { calculerRecompenseCombat } from '../utils/recompenses';
-import { calculerPointsDisponibles } from '../utils/competences';
+import { bonusEsquive, calculerPointsDisponibles } from '../utils/competences';
 import { lireHistoriqueLogsPersistant, extraireLogsDuDernierTour, lireValeurPersistante } from '../utils/logs';
 import {
     COMBO_VIDE, COMPTEURS_ACTIONS_VIDES, COMPTEURS_REPOS_VIDES, construireEvenementRun,
@@ -124,6 +124,13 @@ export function useGameState() {
     const [leconsMortVues, setLeconsMortVues] = useLocalStorage<LeconMort[]>('tdp_lecons_mort_vues', []);
     const [leconMortEnAttente, setLeconMortEnAttente] = useLocalStorage<LeconMort | null>('tdp_lecon_mort_attente', null);
     const [pacteObtenu, setPacteObtenu] = useLocalStorage<string | null>('tdp_pacte_obtenu', null);
+    // Succès déjà FÊTÉS (animation vue), distincts de `tdp_succes_vus` qui n'éteint que la pastille
+    // du Hub. Un joueur peut très bien consulter l'onglet 🏅 sans avoir jamais vu l'animation, et
+    // inversement. Clé partagée : la liste des succès couvre déjà les deux profils.
+    const [succesFetes, setSuccesFetes] = useLocalStorage<string[]>('tdp_succes_fetes', []);
+    // La file ne se remplit qu'à la SORTIE d'un combat : sans cette condition, un succès décroché
+    // au lancement d'une run (synergie activée) éclaterait en plein Hub.
+    const [celebrationArmee, setCelebrationArmee] = useState(false);
     const [benedictionActive, setBenedictionActive] = useLocalStorage<BenedictionChat | null>('tdp_benediction_active', null);
     const [vieChatDispo, setVieChatDispo] = useLocalStorage<boolean>('tdp_vie_chat_dispo', false);
 
@@ -369,6 +376,33 @@ export function useGameState() {
     }), [moitieNormale, moitieHc, succesTheme]);
 
     const succesObtenus = useMemo(() => succesDebloques(progressionSucces), [progressionSucces]);
+
+    // Succès décrochés mais pas encore fêtés, dans l'ordre du registre. Dérivé plutôt que cumulé :
+    // `succesDebloques` recalcule tout à chaque fois, une file mémorisée divergerait dès qu'une mort
+    // hardcore en retire un. Le premier de la liste est celui qu'on montre.
+    const succesAFeter = useMemo(
+        () => (celebrationArmee ? succesObtenus.filter(id => !succesFetes.includes(id)) : []),
+        [celebrationArmee, succesObtenus, succesFetes],
+    );
+
+    // Ouvre la file à la sortie d'un combat. ⚠️ Appelée AVANT que les récompenses ne soient
+    // encaissées : `succesObtenus` y vaut encore l'état d'AVANT le combat, ce qui en fait le point de
+    // référence exact pour amorcer la liste des succès fêtés sur une sauvegarde antérieure à cette
+    // animation — sans quoi le premier combat suivant la mise à jour ferait défiler des dizaines de
+    // feux d'artifice pour des succès obtenus il y a des semaines.
+    const armerCelebrationSucces = () => {
+        if (window.localStorage.getItem('tdp_succes_fetes') === null) setSuccesFetes(succesObtenus);
+        setCelebrationArmee(true);
+    };
+
+    // Acquitte le succès affiché. On désarme au dernier : la file resterait sinon ouverte jusqu'au
+    // prochain combat et un succès gagné entre-temps s'afficherait hors de son contexte.
+    const feterSuccesAffiche = () => {
+        const [premier, ...reste] = succesAFeter;
+        if (premier === undefined) return;
+        setSuccesFetes(prev => (prev.includes(premier) ? prev : [...prev, premier]));
+        if (reste.length === 0) setCelebrationArmee(false);
+    };
     // Pastille "nouveau succès". ⚠️ On mémorise les IDENTIFIANTS vus, pas leur nombre — contrairement
     // aux Pactes, la liste n'est pas monotone : `succesDebloques` la recalcule intégralement depuis
     // la progression, et une mort en hardcore en retire. Un compteur se retrouverait au-dessus du
@@ -643,7 +677,7 @@ export function useGameState() {
     const gererDesequiperTout = () => setPactesEquipes([]);
 
     const gererLancerRun = (benediction: BenedictionChat | null) => {
-        const bonusEsq = (competences.esq || 0) * 5;
+        const bonusEsq = bonusEsquive(competences.esq || 0);
 
         const herosBase: Entite = {
             nom: "Héros",
@@ -1110,6 +1144,9 @@ export function useGameState() {
     };
 
     const handleFinDeCombat = (victoire: boolean, joueurRestant: Entite, doubleKO: boolean = false, circonstances?: CirconstancesMort, causesMortMonstre?: string[]) => {
+        // Y compris sur une défaite : un record d'étage se décroche aussi en tombant.
+        armerCelebrationSucces();
+
         if (enCombatMegaBoss) {
             gererFinMegaBoss(victoire, joueurRestant);
             return;
@@ -1194,6 +1231,8 @@ export function useGameState() {
         monstresHc,
         nomJoueur, setNomJoueur,
         progressionSucces,
+        succesAFeter,
+        feterSuccesAffiche,
         succesObtenus,
         aNouveauSucces,
         marquerSuccesVus,

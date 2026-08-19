@@ -62,6 +62,9 @@ const CLES_JEU = [
     'tdp_succes_etage_max',
     'tdp_succes_pactes1_max',
     'tdp_succes_pactes2_max',
+    // Succès dont l'animation a déjà été vue. Sans lui dans l'instantané, une restauration sur un
+    // autre appareil rejouerait des dizaines de feux d'artifice au premier combat.
+    'tdp_succes_fetes',
     // Partagé entre les profils, donc listé tel quel : un fait d'armes, pas une progression.
     'tdp_succes_theme',
     'tdp_forgeron_presente',

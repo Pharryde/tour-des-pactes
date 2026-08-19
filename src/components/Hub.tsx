@@ -40,7 +40,6 @@ export function Hub({
 
     return (
         <div id="ecran-hub" className={`ecran${modeHardcore ? ' ecran--hardcore' : ''}`}>
-            <ChatHub refCible={refBoutonLancer} onLancer={onLancerRun} />
 
             <h1 className="titre-geant">Tour des Pactes</h1>
 
@@ -87,17 +86,23 @@ export function Hub({
                     )
                 )}
 
-                {/* Même seuil que le mode hardcore : le classement ne récompense que lui, l'afficher
-                    plus tôt révélerait une fin de jeu que le joueur n'a pas encore atteinte. */}
-                {aVaincuLaTour && (
-                    <button className="btn-menu" onClick={() => onChangeEcran('ecran-classement')}>
-                        🏆 Classement
-                        {aNouveauSucces && (
-                            <span title="Nouveau succès débloqué" className="badge-nouveaute" />
-                        )}
-                    </button>
-                )}
+                {/* Toujours accessible, sans condition : le classement se CONSULTE librement (voir
+                    ce qui attend en haut de la Tour fait partie de l'attrait), et c'est aussi la
+                    seule vue d'ensemble des succès. Seule l'INSCRIPTION de son nom reste derrière la
+                    victoire sur la Tour, côté écran de classement. */}
+                <button className="btn-menu" onClick={() => onChangeEcran('ecran-classement')}>
+                    🏆 Classement
+                    {aNouveauSucces && (
+                        <span title="Nouveau succès débloqué" className="badge-nouveaute" />
+                    )}
+                </button>
             </div>
+
+            {/* Placé APRÈS le menu et DANS le flux : c'est ce qui garantit qu'il ne pourra jamais le
+                recouvrir, quels que soient la largeur de l'écran et le nombre d'entrées. Positionné
+                en absolu, il finissait assis sur le dernier bouton dès qu'on descendait sous ~500px.
+                Le bond, lui, reste une affaire de `transform` : il fonctionne à l'identique. */}
+            <ChatHub refCible={refBoutonLancer} onLancer={onLancerRun} />
         </div>
     );
 }
